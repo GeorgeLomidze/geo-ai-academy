@@ -514,9 +514,32 @@ All text in Georgian.
 ### Prompt 6: Auth Pages
 ```
 Create auth pages:
-- app/(auth)/login/page.tsx: LoginForm component (email + password, Supabase signInWithPassword, error handling, redirect to /dashboard)
-- app/(auth)/register/page.tsx: RegisterForm (name + email + password + confirm, Zod validation, Supabase signUp)
-Both "use client". Beautiful UI. All labels and error messages in Georgian.
+- app/(auth)/login/page.tsx: LoginForm component with:
+  - Email + password login (Supabase signInWithPassword)
+  - Google OAuth button (Supabase signInWithOAuth, provider: 'google')
+  - "დავიწყდა პაროლი?" link → /forgot-password
+  - "დარეგისტრირდი" link → /register
+  - Error handling, redirect to /dashboard on success
+
+- app/(auth)/register/page.tsx: RegisterForm with:
+  - Name + email + password + confirm password
+  - Google OAuth button
+  - Zod validation
+  - Supabase signUp, redirect to /dashboard
+
+- app/(auth)/forgot-password/page.tsx: ForgotPasswordForm with:
+  - Email input
+  - Supabase resetPasswordForEmail
+  - Success message: "ბმული გამოგზავნილია თქვენს ელ-ფოსტაზე"
+
+- app/(auth)/reset-password/page.tsx: ResetPasswordForm with:
+  - New password + confirm password
+  - Supabase updateUser({ password })
+  - Redirect to /login on success
+
+All "use client". Beautiful UI. All labels and error messages in Georgian.
+Separator between email/password and Google OAuth: "ან"
+Google button text: "Google-ით შესვლა"
 ```
 
 ### Prompt 7: Student Pages
