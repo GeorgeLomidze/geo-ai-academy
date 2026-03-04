@@ -10,7 +10,8 @@ export const navItems = [
 ] as const;
 
 export const adminNavItems = [
-  { label: "მთავარი", href: "/admin" },
-  { label: "კურსები", href: "/admin/courses" },
-  { label: "სტუდენტები", href: "/admin/students" },
+  { label: "მიმოხილვა", href: "/admin", icon: "LayoutDashboard" },
+  { label: "კურსები", href: "/admin/courses", icon: "BookOpen" },
+  { label: "სტუდენტები", href: "/admin/students", icon: "Users" },
+  { label: "პარამეტრები", href: "/admin/settings", icon: "Settings" },
 ] as const;
