@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/admin-auth";
 import { createVideo } from "@/lib/bunny/client";
 import { getTusUploadUrl } from "@/lib/bunny/upload";
 
@@ -9,36 +9,9 @@ const uploadSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  // Auth check — admin only
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const auth = await requireAdmin();
+  if (!auth.authorized) return auth.response;
 
-  if (!user) {
-    return NextResponse.json(
-      { error: "ავტორიზაცია აუცილებელია" },
-      { status: 401 }
-    );
-  }
-
-  if (user.user_metadata?.role !== "admin") {
-    // Also check Supabase user metadata for role
-    const { data: profile } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "მხოლოდ ადმინისტრატორს აქვს ატვირთვის უფლება" },
-        { status: 403 }
-      );
-    }
-  }
-
-  // Validate body
   const body = await request.json().catch(() => null);
   const result = uploadSchema.safeParse(body);
 
@@ -49,7 +22,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Create video on Bunny + get upload URL
   try {
     const video = await createVideo(result.data.title);
     const { uploadUrl, headers } = getTusUploadUrl(video.guid);
