@@ -19,7 +19,8 @@
       "Bash(node:*)",
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm ls:*)"
     ]
   }
 }

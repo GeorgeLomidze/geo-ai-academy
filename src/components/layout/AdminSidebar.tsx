@@ -64,7 +64,7 @@ export function AdminSidebar() {
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 px-3 py-4" aria-label="ადმინის ნავიგაცია">
           {adminNavItems.map((item) => {
             const Icon = iconMap[item.icon as keyof typeof iconMap];
             const isActive =
@@ -76,6 +76,7 @@ export function AdminSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
@@ -93,7 +94,7 @@ export function AdminSidebar() {
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 z-50 flex w-full border-t border-brand-border bg-brand-surface lg:hidden">
+      <nav className="fixed bottom-0 left-0 z-50 flex w-full border-t border-brand-border bg-brand-surface lg:hidden" aria-label="ადმინის ნავიგაცია">
         {adminNavItems.map((item) => {
           const Icon = iconMap[item.icon as keyof typeof iconMap];
           const isActive =

@@ -29,11 +29,13 @@ export default function AdminStudentsPage() {
         {/* Table header */}
         <div className="overflow-x-auto">
           <table className="w-full">
+            <caption className="sr-only">სტუდენტების სია</caption>
             <thead>
               <tr className="border-b border-brand-border">
                 {tableHeaders.map((header) => (
                   <th
                     key={header}
+                    scope="col"
                     className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-brand-muted"
                   >
                     {header}

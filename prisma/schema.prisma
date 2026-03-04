@@ -11,6 +11,17 @@ enum Role {
   ADMIN
 }
 
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum LessonType {
+  VIDEO
+  TEXT
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -20,5 +31,90 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  enrollments    Enrollment[]
+  lessonProgress LessonProgress[]
+
   @@map("users")
+}
+
+model Course {
+  id               String       @id @default(uuid())
+  title            String
+  slug             String       @unique
+  description      String?
+  shortDescription String?
+  thumbnailUrl     String?
+  price            Int          @default(0)
+  status           CourseStatus @default(DRAFT)
+  sortOrder        Int          @default(0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  modules     Module[]
+  enrollments Enrollment[]
+
+  @@map("courses")
+}
+
+model Module {
+  id        String   @id @default(uuid())
+  title     String
+  sortOrder Int      @default(0)
+  courseId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@map("modules")
+}
+
+model Lesson {
+  id            String     @id @default(uuid())
+  title         String
+  type          LessonType @default(VIDEO)
+  content       String?
+  bunnyVideoId  String?
+  duration      Int        @default(0)
+  isFree        Boolean    @default(false)
+  sortOrder     Int        @default(0)
+  moduleId      String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  module   Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
+
+  @@map("lessons")
+}
+
+model Enrollment {
+  id         String   @id @default(uuid())
+  userId     String
+  courseId    String
+  enrolledAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model LessonProgress {
+  id             String    @id @default(uuid())
+  userId         String
+  lessonId       String
+  completed      Boolean   @default(false)
+  watchedSeconds Int       @default(0)
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_progress")
 }

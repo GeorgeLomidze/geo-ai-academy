@@ -11,7 +11,7 @@ export default function StudentLayout({
       <Navbar />
       <div className="flex flex-1">
         <StudentSidebar />
-        <main className="flex-1 bg-brand-background p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 bg-brand-background p-4 pb-20 sm:p-6 sm:pb-20 lg:p-8 lg:pb-8">
           {children}
         </main>
       </div>

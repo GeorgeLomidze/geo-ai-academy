@@ -41,7 +41,7 @@ export function HeroSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-primary/20 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary-light">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-purple-300">
                 <Sparkles className="size-3" />
                 ახალი პლატფორმა
               </span>
@@ -66,7 +66,7 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="mt-6 max-w-lg text-base leading-relaxed text-gray-400 sm:text-lg"
+              className="mt-6 max-w-lg text-base leading-relaxed text-gray-300 sm:text-lg"
             >
               შეისწავლე ხელოვნური ინტელექტის უახლესი ტექნოლოგიები პროფესიონალ
               ტრენერთან ერთად. ვიდეო გაკვეთილები, პრაქტიკული პროექტები და
@@ -110,21 +110,21 @@ export function HeroSection() {
                 <p className="font-display text-2xl font-bold text-white">
                   500+
                 </p>
-                <p className="text-xs text-gray-500">სტუდენტი</p>
+                <p className="text-xs text-gray-400">სტუდენტი</p>
               </div>
               <div className="h-8 w-px bg-white/10" />
               <div>
                 <p className="font-display text-2xl font-bold text-white">
                   12+
                 </p>
-                <p className="text-xs text-gray-500">კურსი</p>
+                <p className="text-xs text-gray-400">კურსი</p>
               </div>
               <div className="h-8 w-px bg-white/10" />
               <div>
                 <p className="font-display text-2xl font-bold text-white">
                   98%
                 </p>
-                <p className="text-xs text-gray-500">კმაყოფილება</p>
+                <p className="text-xs text-gray-400">კმაყოფილება</p>
               </div>
             </motion.div>
           </div>
@@ -139,9 +139,9 @@ export function HeroSection() {
           >
             <div className="relative size-80">
               {/* Orbiting rings */}
-              <div className="absolute inset-0 animate-[spin_20s_linear_infinite] rounded-full border border-brand-primary/20" />
-              <div className="absolute inset-4 animate-[spin_15s_linear_infinite_reverse] rounded-full border border-brand-primary/15" />
-              <div className="absolute inset-8 animate-[spin_25s_linear_infinite] rounded-full border border-brand-accent/10" />
+              <div className="absolute inset-0 animate-[spin_20s_linear_infinite] rounded-full border border-brand-primary/20 will-change-transform motion-reduce:animate-none" />
+              <div className="absolute inset-4 animate-[spin_15s_linear_infinite_reverse] rounded-full border border-brand-primary/15 will-change-transform motion-reduce:animate-none" />
+              <div className="absolute inset-8 animate-[spin_25s_linear_infinite] rounded-full border border-brand-accent/10 will-change-transform motion-reduce:animate-none" />
 
               {/* Center glow */}
               <div className="absolute inset-16 rounded-full bg-brand-primary/20 blur-2xl" />

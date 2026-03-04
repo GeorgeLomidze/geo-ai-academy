@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { LogOut, User, LayoutDashboard, Menu, X } from "lucide-react";
+import { User, LayoutDashboard } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { navItems, siteConfig } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import { SignOutButton } from "@/components/layout/SignOutButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -47,17 +48,17 @@ export async function Navbar() {
         </Link>
 
         {/* Desktop Nav */}
-        <div className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-1 md:flex" aria-label="მთავარი ნავიგაცია">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-brand-muted transition-colors hover:bg-brand-primary-light hover:text-brand-primary"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-brand-muted transition-colors duration-200 hover:bg-brand-primary-light hover:text-brand-primary"
             >
               {item.label}
             </Link>
           ))}
-        </div>
+        </nav>
 
         {/* Right side */}
         <div className="flex items-center gap-3">
@@ -97,14 +98,7 @@ export async function Navbar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <form action="/api/auth/signout" method="POST">
-                    <button type="submit" className="flex w-full items-center gap-2">
-                      <LogOut className="size-4" />
-                      გასვლა
-                    </button>
-                  </form>
-                </DropdownMenuItem>
+                <SignOutButton />
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (

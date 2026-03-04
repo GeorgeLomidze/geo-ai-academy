@@ -106,7 +106,7 @@ export function FeaturedCourses() {
               <motion.article
                 key={course.title}
                 variants={item}
-                className="group relative flex flex-col overflow-hidden rounded-2xl border border-brand-border bg-brand-surface transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-primary/5"
+                className="group relative flex flex-col overflow-hidden rounded-2xl border border-brand-border bg-brand-surface transition-all duration-300 will-change-transform hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-primary/5"
               >
                 {/* Card top gradient bar */}
                 <div
@@ -156,7 +156,7 @@ export function FeaturedCourses() {
                     </span>
                     <Button
                       size="sm"
-                      className="rounded-xl bg-brand-primary text-white hover:bg-brand-primary-hover"
+                      className="rounded-xl bg-brand-primary text-white transition-all duration-200 hover:scale-[1.02] hover:bg-brand-primary-hover"
                     >
                       დეტალურად
                     </Button>

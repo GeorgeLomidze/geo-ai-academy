@@ -69,7 +69,7 @@ export default function AdminOverviewPage() {
           return (
             <div
               key={stat.label}
-              className="rounded-2xl border border-brand-border bg-brand-surface p-5"
+              className="rounded-2xl border border-brand-border bg-brand-surface p-5 transition-shadow duration-200 hover:shadow-md"
             >
               <div className="flex items-center justify-between">
                 <div

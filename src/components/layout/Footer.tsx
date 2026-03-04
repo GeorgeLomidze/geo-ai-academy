@@ -33,7 +33,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/"
-                  className="text-sm text-gray-300 transition-colors hover:text-white"
+                  className="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
                 >
                   მთავარი
                 </Link>
@@ -41,7 +41,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/courses"
-                  className="text-sm text-gray-300 transition-colors hover:text-white"
+                  className="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
                 >
                   კურსები
                 </Link>
@@ -49,7 +49,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/register"
-                  className="text-sm text-gray-300 transition-colors hover:text-white"
+                  className="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
                 >
                   რეგისტრაცია
                 </Link>

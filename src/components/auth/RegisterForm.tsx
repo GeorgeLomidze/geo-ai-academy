@@ -112,7 +112,7 @@ export function RegisterForm() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {serverError && (
-          <div className="rounded-lg border border-brand-danger/20 bg-red-50 px-4 py-3 text-sm text-brand-danger">
+          <div role="alert" className="rounded-lg border border-brand-danger/20 bg-red-50 px-4 py-3 text-sm text-brand-danger">
             {serverError}
           </div>
         )}
