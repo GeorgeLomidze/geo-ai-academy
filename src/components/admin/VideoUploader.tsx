@@ -9,35 +9,36 @@ type VideoUploaderProps = {
   existingVideoId?: string | null;
 };
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const value = bytes / Math.pow(1024, i);
+  return `${value.toFixed(i > 1 ? 1 : 0)} ${units[i]}`;
+}
+
 export function VideoUploader({
   onUploadComplete,
   existingVideoId,
 }: VideoUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [bytesUploaded, setBytesUploaded] = useState(0);
+  const [bytesTotal, setBytesTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [videoId, setVideoId] = useState<string | null>(
     existingVideoId ?? null
   );
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [lastFile, setLastFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("video/")) {
-      setError("მხოლოდ ვიდეო ფაილები არის ნებადართული");
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024 * 1024) {
-      setError("ფაილის ზომა არ უნდა აღემატებოდეს 2GB-ს");
-      return;
-    }
-
+  async function uploadFile(file: File) {
     setError(null);
     setUploading(true);
     setProgress(0);
+    setBytesUploaded(0);
+    setBytesTotal(file.size);
 
     try {
       // 1. Create video on Bunny, get upload URL
@@ -52,8 +53,12 @@ export function VideoUploader({
         throw new Error(data.error ?? "ვიდეოს შექმნა ვერ მოხერხდა");
       }
 
-      const { videoId: newVideoId, uploadUrl, tusHeaders } =
-        await createRes.json();
+      const {
+        videoId: newVideoId,
+        uploadUrl,
+        tusHeaders,
+        thumbnailUrl: thumb,
+      } = await createRes.json();
 
       // 2. Upload using TUS protocol via dynamic import
       const { Upload: TusUpload } = await import("tus-js-client");
@@ -66,13 +71,17 @@ export function VideoUploader({
           filename: file.name,
           filetype: file.type,
         },
-        onProgress(bytesUploaded, bytesTotal) {
-          const pct = Math.round((bytesUploaded / bytesTotal) * 100);
+        onProgress(uploaded, total) {
+          const pct = Math.round((uploaded / total) * 100);
           setProgress(pct);
+          setBytesUploaded(uploaded);
+          setBytesTotal(total);
         },
         onSuccess() {
           setVideoId(newVideoId);
+          setThumbnailUrl(thumb ?? null);
           setUploading(false);
+          setLastFile(null);
           onUploadComplete(newVideoId);
         },
         onError(err) {
@@ -90,35 +99,81 @@ export function VideoUploader({
     }
   }
 
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("video/")) {
+      setError("მხოლოდ ვიდეო ფაილები არის ნებადართული");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024 * 1024) {
+      setError("ფაილის ზომა არ უნდა აღემატებოდეს 2GB-ს");
+      return;
+    }
+
+    setLastFile(file);
+    uploadFile(file);
+  }
+
+  function handleRetry() {
+    if (lastFile) {
+      uploadFile(lastFile);
+    }
+  }
+
   function handleClear() {
     setVideoId(null);
+    setThumbnailUrl(null);
     setProgress(0);
+    setBytesUploaded(0);
+    setBytesTotal(0);
     setError(null);
+    setLastFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }
 
+  // Completed state — show thumbnail + video ID
   if (videoId && !uploading) {
     return (
-      <div className="flex items-center gap-3 rounded-xl border border-brand-border bg-brand-primary-light p-3">
-        <Film className="size-5 text-brand-primary" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-brand-secondary">
-            ვიდეო ატვირთულია
-          </p>
-          <p className="truncate text-xs text-brand-muted">{videoId}</p>
+      <div className="overflow-hidden rounded-xl border border-brand-border">
+        {/* Thumbnail preview */}
+        {thumbnailUrl && (
+          <div className="relative aspect-video w-full bg-black/5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={thumbnailUrl}
+              alt="ვიდეოს გადახედვა"
+              className="size-full object-contain"
+              onError={(e) => {
+                // Bunny may not have generated the thumbnail yet
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          </div>
+        )}
+        <div className="flex items-center gap-3 bg-brand-primary-light p-3">
+          <Film className="size-5 shrink-0 text-brand-primary" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-brand-secondary">
+              ვიდეო ატვირთულია
+            </p>
+            <p className="truncate text-xs text-brand-muted">{videoId}</p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            className="size-8 shrink-0 rounded-lg p-0"
+          >
+            <X className="size-4" />
+            <span className="sr-only">წაშლა</span>
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleClear}
-          className="size-8 rounded-lg p-0"
-        >
-          <X className="size-4" />
-          <span className="sr-only">წაშლა</span>
-        </Button>
       </div>
     );
   }
@@ -141,9 +196,14 @@ export function VideoUploader({
         )}
         <div className="text-center">
           {uploading ? (
-            <p className="text-sm font-medium text-brand-primary">
-              იტვირთება... {progress}%
-            </p>
+            <>
+              <p className="text-sm font-medium text-brand-primary">
+                იტვირთება... {progress}%
+              </p>
+              <p className="mt-0.5 text-xs text-brand-muted">
+                {formatBytes(bytesUploaded)} / {formatBytes(bytesTotal)}
+              </p>
+            </>
           ) : (
             <>
               <p className="text-sm font-medium text-brand-secondary">
@@ -174,19 +234,36 @@ export function VideoUploader({
         </div>
       )}
 
-      {/* Error */}
+      {/* Error with retry */}
       {error && (
-        <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2">
-          <p className="text-sm text-red-700">{error}</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setError(null)}
-            className="size-7 rounded-lg p-0 text-red-700 hover:bg-red-100"
-          >
-            <RotateCcw className="size-3.5" />
-          </Button>
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+          <p className="min-w-0 text-sm text-red-700">{error}</p>
+          <div className="flex shrink-0 items-center gap-1">
+            {lastFile && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleRetry}
+                className="h-7 rounded-lg px-2 text-xs text-red-700 hover:bg-red-100"
+              >
+                <RotateCcw className="mr-1 size-3" />
+                ხელახლა
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setError(null);
+                setLastFile(null);
+              }}
+              className="size-7 rounded-lg p-0 text-red-700 hover:bg-red-100"
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

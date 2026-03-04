@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createVideo } from "@/lib/bunny/client";
 import { getTusUploadUrl } from "@/lib/bunny/upload";
+import { getVideoThumbnailUrl } from "@/lib/bunny/signed-url";
 
 const uploadSchema = z.object({
   title: z.string().min(1, "ვიდეოს სახელი აუცილებელია"),
@@ -30,6 +31,7 @@ export async function POST(request: NextRequest) {
       videoId: video.guid,
       uploadUrl,
       tusHeaders: headers,
+      thumbnailUrl: getVideoThumbnailUrl(video.guid),
     });
   } catch (err) {
     const message =
