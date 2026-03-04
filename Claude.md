@@ -1,37 +1,37 @@
 # GEO AI Academy — Learning Platform
 
 ## Overview
-ონლაინ კურსების პლატფორმა ქართული ბაზრისთვის. სტუდენტები ყიდულობენ და გადიან ვიდეო კურსებს, ტრენერი მართავს კონტენტს admin dashboard-იდან.
+Online course platform for the Georgian market. Students purchase and complete video courses, while the trainer manages content from an admin dashboard. All UI text must be in Georgian language.
 
 ---
 
 ## Tech Stack
 - **Framework:** Next.js 16 (App Router, TypeScript, strict mode)
-- **Bundler:** Turbopack (default, არ გვჭირდება webpack config)
+- **Bundler:** Turbopack (default, no webpack config needed)
 - **UI:** React 19 + Tailwind CSS 4 + shadcn/ui
 - **Auth & DB:** Supabase (PostgreSQL + Auth + Row Level Security)
 - **ORM:** Prisma
 - **Language:** TypeScript (strict: true, noUncheckedIndexedAccess: true)
 - **Validation:** Zod
-- **State:** React Context (Zustand მოგვიანებით საჭიროებისას)
+- **State:** React Context (Zustand later if needed)
 - **Deployment target:** Hetzner CPX11 (Docker + Caddy)
-- **Node.js:** 20.9+ (Next.js 16 მოთხოვნა)
+- **Node.js:** 20.9+ (Next.js 16 requirement)
 
 ---
 
-## Current Sprint: Sprint 1 — Skeleton (ჩონჩხი)
+## Current Sprint: Sprint 1 — Skeleton
 
-### Sprint 1 მიზანი
-სამი ძირითადი ნაწილის ჩონჩხის აწყობა:
-1. Landing Page (საჯარო)
-2. სტუდენტის მხარე (Auth + Dashboard shell)
-3. Admin მხარე (Dashboard shell + role guard)
+### Sprint 1 Goal
+Build the skeleton of three core sections:
+1. Landing Page (public)
+2. Student side (Auth + Dashboard shell)
+3. Admin side (Dashboard shell + role guard)
 
-### Sprint 1-ში არ ვაკეთებთ
-- ვიდეო player / Bunny Stream integration
-- Flitt გადახდა
-- კურსის შექმნა/რედაქტირება
-- ქვიზები, სერთიფიკატები
+### NOT in Sprint 1
+- Video player / Bunny Stream integration
+- Flitt payments
+- Course creation/editing
+- Quizzes, certificates
 - Email notifications
 - SEO optimization
 
@@ -45,7 +45,7 @@ geo-ai-academy/
 │   ├── (public)/
 │   │   ├── page.tsx                    # Landing page
 │   │   ├── courses/
-│   │   │   └── page.tsx                # კურსების კატალოგი (placeholder)
+│   │   │   └── page.tsx                # Course catalog (placeholder)
 │   │   └── layout.tsx                  # Public layout (navbar + footer)
 │   │
 │   ├── (auth)/
@@ -119,7 +119,7 @@ geo-ai-academy/
 ## Next.js 16 Critical Rules
 
 ### proxy.ts (NOT middleware.ts)
-Next.js 16-ში middleware.ts ჩანაცვლდა proxy.ts-ით. ექსპორტირებული ფუნქცია უნდა იყოს `proxy`, არა `middleware`.
+Next.js 16 replaced middleware.ts with proxy.ts. The exported function must be named `proxy`, not `middleware`.
 
 ```typescript
 // proxy.ts
@@ -135,18 +135,18 @@ export const config = {
 ```
 
 ### "use cache" Directive
-- Landing page და courses catalog: გამოიყენე "use cache" სტატიკური კონტენტისთვის
-- Dashboard, profile, admin pages: არ გამოიყენო "use cache" — ეს დინამიური გვერდებია
-- Sprint 1-ში ჯერ არ გვჭირდება "use cache", მოგვიანებით დავამატებთ
+- Landing page and courses catalog: use "use cache" for static content
+- Dashboard, profile, admin pages: do NOT use "use cache" — these are dynamic
+- Not needed in Sprint 1, will add later
 
 ### React Compiler
-- React Compiler stable-ია Next.js 16-ში
-- არ გამოიყენო ხელით useMemo/useCallback — compiler ავტომატურად აკეთებს memoization-ს
-- გამონაკლისი: თუ performance profiling-ით დაადასტურებ რომ საჭიროა
+- React Compiler is stable in Next.js 16
+- Do NOT manually use useMemo/useCallback — compiler handles memoization automatically
+- Exception: only if performance profiling proves it necessary
 
 ### Turbopack
-- Default bundler — არანაირი webpack config არ გვჭირდება
-- next.config.ts-ში არ დაამატო webpack overrides
+- Default bundler — no webpack config needed
+- Do not add webpack overrides in next.config.ts
 
 ---
 
@@ -154,23 +154,23 @@ export const config = {
 
 ### Auth Setup
 - Email/Password authentication
-- Google OAuth (არჩევითი, Sprint 1-ში email საკმარისია)
-- Redirect after login: /dashboard (student) ან /admin (admin)
+- Google OAuth (optional, email is enough for Sprint 1)
+- Redirect after login: /dashboard (student) or /admin (admin)
 
 ### User Roles
-users ცხრილში role ველი: 'student' | 'admin'
+Role field in users table: 'student' | 'admin'
 - Default role: 'student'
-- Admin role ხელით მიენიჭება Supabase dashboard-იდან
+- Admin role assigned manually from Supabase dashboard
 
 ### Row Level Security (RLS)
-- users: ყველა ხედავს მხოლოდ საკუთარ row-ს
-- Sprint 1-ში მინიმალური RLS, შემდეგ Sprint-ებში გავაფართოვებთ
+- users: each user can only see their own row
+- Minimal RLS in Sprint 1, will expand in later Sprints
 
 ---
 
 ## Database Schema (Prisma) — Sprint 1
 
-Sprint 1-ში მხოლოდ ის ცხრილები რომლებიც აუცილებელია:
+Only the tables that are essential for Sprint 1:
 
 ```prisma
 model User {
@@ -189,37 +189,38 @@ enum Role {
 }
 ```
 
-სრული schema (courses, modules, lessons, enrollments, orders...) Sprint 2-ში დაემატება.
+Full schema (courses, modules, lessons, enrollments, orders...) will be added in Sprint 2.
 
 ---
 
 ## Component Guidelines
 
 ### General
-- ყველა კომპონენტი Server Component by default
-- "use client" მხოლოდ: forms, event handlers, useState/useEffect, browser APIs
-- shadcn/ui კომპონენტები UI-სთვის (Button, Card, Input, Dialog, etc.)
-- Tailwind utility classes სტილისთვის, არ შექმნა ცალკე CSS ფაილები
+- All components are Server Components by default
+- "use client" only for: forms, event handlers, useState/useEffect, browser APIs
+- Use shadcn/ui components for UI (Button, Card, Input, Dialog, etc.)
+- Tailwind utility classes for styling, do not create separate CSS files
 
 ### Landing Page Components
 
 **HeroSection:**
-- სათაური: "ისწავლე AI ტექნოლოგიები ქართულად"
-- ქვესათაური: მოკლე აღწერა პლატფორმის შესახებ
+- Title: "ისწავლე AI ტექნოლოგიები ქართულად"
+- Subtitle: short description about the platform in Georgian
 - CTA button: "დაიწყე სწავლა" → /register
-- Background: gradient ან abstract pattern
+- Background: gradient or abstract pattern
 
 **FeaturedCourses:**
-- 3 CourseCard კომპონენტი (ჯერ mock data-ით)
-- CourseCard: thumbnail, სახელი, მოკლე აღწერა, ფასი, ღილაკი
+- 3 CourseCard components (mock data for now)
+- CourseCard: thumbnail, name, short description, price, button
+- All text in Georgian
 
 **WhyUs:**
-- 3-4 FeatureCard: icon (lucide-react) + სათაური + აღწერა
-- მაგ: "ვიდეო გაკვეთილები", "სერთიფიკატი", "ქართულად", "24/7 წვდომა"
+- 3-4 FeatureCard: icon (lucide-react) + title + description
+- Examples: "ვიდეო გაკვეთილები", "სერთიფიკატი", "ქართულად", "24/7 წვდომა"
 
 **FAQSection:**
-- shadcn/ui Accordion კომპონენტი
-- 4-5 ხშირად დასმული კითხვა (mock data)
+- shadcn/ui Accordion component
+- 4-5 frequently asked questions (mock data, in Georgian)
 
 ### Auth Components
 
@@ -228,12 +229,14 @@ enum Role {
 - "დავიწყდა პაროლი" link
 - "დარეგისტრირდი" link → /register
 - Supabase signInWithPassword
+- All labels in Georgian
 
 **RegisterForm:**
-- სახელი + Email + Password + Password confirm
+- Name + Email + Password + Password confirm
 - Zod validation
 - Supabase signUp
-- წარმატებით რეგისტრაციის შემდეგ → /dashboard
+- After successful registration → /dashboard
+- All labels and error messages in Georgian
 
 ### Student Dashboard
 
@@ -244,56 +247,58 @@ enum Role {
 
 **Dashboard Page:**
 - Welcome message: "გამარჯობა, {name}!"
-- ცარიელი state: "ჯერ არ გაქვს კურსები. დაათვალიერე კატალოგი." + CTA button
-- ეს Sprint 1-ში placeholder-ია, Sprint 2-ში შეივსება კურსების ბარათებით
+- Empty state: "ჯერ არ გაქვს კურსები. დაათვალიერე კატალოგი." + CTA button
+- This is a placeholder in Sprint 1, will be filled with course cards in Sprint 2
 
 **Profile Page:**
-- სახელის შეცვლა
-- ავატარის URL შეცვლა
-- ემაილი (read-only)
-- პაროლის შეცვლა
+- Edit name
+- Edit avatar URL
+- Email (read-only)
+- Change password
+- All labels in Georgian
 
 ### Admin Dashboard
 
 **Layout:**
-- Left sidebar: ნავიგაცია (Overview, Courses, Students, Settings)
+- Left sidebar: navigation (მიმოხილვა, კურსები, სტუდენტები, პარამეტრები)
 - Top bar: admin name, notifications icon, logout
 - Main content area
 
 **Overview Page:**
-- 4 KPI ბარათი (mock data): სულ სტუდენტები, აქტიური კურსები, შემოსავალი, ახალი რეგისტრაციები
-- ცარიელი chart area (placeholder for Recharts)
-- ბოლო აქტივობის სია (placeholder)
+- 4 KPI cards (mock data): total students, active courses, revenue, new registrations
+- Empty chart area (placeholder for Recharts)
+- Recent activity list (placeholder)
+- All labels in Georgian
 
 **Courses Page (placeholder):**
-- ცარიელი DataTable shell
-- "ახალი კურსის დამატება" ღილაკი (disabled ან placeholder)
+- Empty DataTable shell
+- "ახალი კურსის დამატება" button (disabled or placeholder)
 
 **Students Page (placeholder):**
-- ცარიელი DataTable shell
+- Empty DataTable shell
 - Search input (placeholder)
 
 ---
 
-## Skills Setup (პროექტის დაწყებამდე გაუშვი)
+## Skills Setup (run before starting the project)
 
-### 1. Frontend Design Skill (აუცილებელი)
-Anthropic-ის ოფიციალური skill — Claude Code-ს ასწავლის პროფესიონალური UI-ის გენერაციას.
+### 1. Frontend Design Skill (required)
+Anthropic's official skill — teaches Claude Code to generate professional UI.
 ```bash
 mkdir -p .claude/skills/frontend-design
 curl -o .claude/skills/frontend-design/SKILL.md \
   https://raw.githubusercontent.com/anthropics/claude-code/main/plugins/frontend-design/skills/frontend-design/SKILL.md
 ```
 
-### 2. UI Skills Pack (რეკომენდებული)
-UI-ის პოლირებისთვის — accessibility, motion performance, baseline quality.
+### 2. UI Skills Pack (recommended)
+For UI polishing — accessibility, motion performance, baseline quality.
 ```bash
 npx ui-skills add baseline-ui
 npx ui-skills add fixing-accessibility
 npx ui-skills add fixing-motion-performance
 ```
 
-### 3. სტრუქტურა Skills-ების შემდეგ
+### 3. Structure after Skills installation
 ```
 geo-ai-academy/
 ├── .claude/
@@ -306,25 +311,25 @@ geo-ai-academy/
 │   │   │   └── SKILL.md              ← a11y fixes
 │   │   └── fixing-motion-performance/
 │   │       └── SKILL.md              ← animation perf
-│   ├── commands/                      ← custom commands (მოგვიანებით)
+│   ├── commands/                      ← custom commands (later)
 │   └── settings.json
-├── CLAUDE.md                          ← ეს ფაილი
+├── CLAUDE.md                          ← this file
 └── ...
 ```
 
-### Skills-ების გამოყენება
-- Landing page-ის აწყობის შემდეგ: "გადახედე landing page-ს frontend-design skill-ით და გააუმჯობესე"
-- UI polish: "გაუშვი baseline-ui skill ყველა კომპონენტზე"
-- Accessibility: "შეამოწმე accessibility fixing-accessibility skill-ით"
+### How to use Skills
+- After building landing page: "Review the landing page using frontend-design skill principles and improve it"
+- UI polish: "Run baseline-ui skill on all components"
+- Accessibility: "Check accessibility using fixing-accessibility skill"
 
 ---
 
 ## Styling & Design System
 
 ### Brand Identity
-- **სახელი:** GEO AI Academy
-- **პოზიციონირება:** Modern, tech-forward, ქართული
-- **განწყობა:** Professional მაგრამ approachable, AI/tech ასოციაცია
+- **Name:** GEO AI Academy
+- **Positioning:** Modern, tech-forward, Georgian
+- **Mood:** Professional but approachable, AI/tech association
 
 ### Colors (Tailwind Config)
 ```
@@ -346,11 +351,11 @@ muted:         #6B7280  (gray-500 — secondary text, placeholders)
 - **Display font:** Space Grotesk (Google Fonts, next/font) — headings, hero, brand
 - **Body font:** Inter (Google Fonts, next/font) — body text, UI elements
 - Scale: text-sm (14px), text-base (16px), text-lg (18px), text-xl–text-5xl headings
-- ქართული ტექსტი კარგად მუშაობს ორივე ფონტთან
+- Georgian text works well with both fonts
 
 ### Design Principles
-- **არა generic AI დიზაინი** — distinctive, memorable, professional
-- ბევრი whitespace — 8px grid system (p-2, p-4, p-6, p-8)
+- **No generic AI design** — distinctive, memorable, professional
+- Generous whitespace — 8px grid system (p-2, p-4, p-6, p-8)
 - Rounded corners: rounded-2xl on cards, rounded-xl on buttons
 - Shadows: shadow-sm default, shadow-lg on hover (elevation change)
 - Purple brand color dominant, emerald for action/CTA
@@ -361,10 +366,10 @@ muted:         #6B7280  (gray-500 — secondary text, placeholders)
 - **Buttons:** scale-[1.02] on hover, smooth transition-all duration-200
 - **Sections:** fade-in-up on scroll (Framer Motion / CSS intersection observer)
 - **Page transitions:** subtle opacity + translateY
-- **არ გადააჭარბო** — 1-2 ანიმაცია per component max
+- **Do not overdo it** — 1-2 animations per component max
 
 ### Landing Page Design Direction
-- **Hero:** full-width, gradient background (purple→dark), large bold headline, animated particles ან abstract shapes (CSS only), floating CTA button
+- **Hero:** full-width, gradient background (purple→dark), large bold headline, animated particles or abstract shapes (CSS only), floating CTA button
 - **Course Cards:** thumbnail top, rounded-2xl, shadow on hover, price badge, category tag
 - **WhyUs Section:** icon circles with primary-light background, centered layout
 - **FAQ:** clean accordion, purple accent on active item
@@ -378,20 +383,28 @@ muted:         #6B7280  (gray-500 — secondary text, placeholders)
 
 ### Student Portal Design Direction
 - **Dashboard:** welcoming, card-based, progress bars with primary gradient
-- **Empty states:** illustration ან icon + descriptive text + CTA
+- **Empty states:** illustration or icon + descriptive text + CTA
 - **Profile:** clean form layout, card container
 
 ---
 
 ## Naming Conventions
-- ფაილები: kebab-case (hero-section.tsx არა, კომპონენტებისთვის PascalCase: HeroSection.tsx)
-- კომპონენტები: PascalCase
-- ფუნქციები: camelCase
-- ცვლადები: camelCase
-- Types/Interfaces: PascalCase, prefix "I" არ გამოიყენო
+- Files: PascalCase for components (HeroSection.tsx), kebab-case for utils
+- Components: PascalCase
+- Functions: camelCase
+- Variables: camelCase
+- Types/Interfaces: PascalCase, do NOT use "I" prefix
 - Database columns: camelCase (Prisma convention)
 - API routes: kebab-case (/api/auth/callback)
 - CSS classes: Tailwind utilities only
+
+---
+
+## Language Rules
+- **All UI text must be in Georgian** — buttons, labels, headings, descriptions, error messages, placeholders
+- **Code is in English** — variable names, function names, component names, comments
+- **CLAUDE.md is in English** — for better Claude Code comprehension
+- Example: component named `LoginForm` with Georgian label "ელ-ფოსტა" for email field
 
 ---
 
@@ -411,32 +424,32 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_APP_NAME="GEO AI Academy"
 ```
 
-Sprint 2-ში დაემატება: BUNNY_API_KEY, BUNNY_LIBRARY_ID, FLITT_MERCHANT_ID, FLITT_SECRET_KEY
+Sprint 2 will add: BUNNY_API_KEY, BUNNY_LIBRARY_ID, FLITT_MERCHANT_ID, FLITT_SECRET_KEY
 
 ---
 
-## Off-Limits (არ გააკეთო)
-- არასოდეს `any` ტიპი
-- არასოდეს inline styles (style={{}})
-- არასოდეს console.log production კოდში (dev-only)
-- არ შექმნა ცალკე .css ფაილები (Tailwind only, გარდა globals.css)
-- არ გამოიყენო Pages Router — მხოლოდ App Router
-- არ გამოიყენო middleware.ts — Next.js 16-ში proxy.ts-ია
-- არ გამოიყენო webpack config — Turbopack default-ია
-- არ გამოიყენო ხელით useMemo/useCallback — React Compiler handles it
-- არ დააინსტალირო axios — fetch API + Next.js caching
-- არ დააინსტალირო moment.js — date-fns ან built-in Intl
-- არ გამოიყენო default export API routes-ში — named exports (GET, POST)
+## Off-Limits (do NOT do these)
+- Never use `any` type
+- Never use inline styles (style={{}})
+- Never use console.log in production code (dev-only)
+- Do not create separate .css files (Tailwind only, except globals.css)
+- Do not use Pages Router — App Router only
+- Do not use middleware.ts — Next.js 16 uses proxy.ts
+- Do not use webpack config — Turbopack is default
+- Do not manually use useMemo/useCallback — React Compiler handles it
+- Do not install axios — use fetch API + Next.js caching
+- Do not install moment.js — use date-fns or built-in Intl
+- Do not use default exports in API routes — use named exports (GET, POST)
 
 ---
 
 ## Sprint 1 Prompt Sequence
 
-ეს არის Claude Code-ისთვის რეკომენდებული prompt-ების თანმიმდევრობა:
+Recommended prompt sequence for Claude Code:
 
-### Prompt 0: Skills Setup (ერთჯერადი)
+### Prompt 0: Skills Setup (one-time)
 ```
-გაუშვი ეს ბრძანებები skills-ების დასაყენებლად:
+Run these commands to install skills:
 mkdir -p .claude/skills/frontend-design
 curl -o .claude/skills/frontend-design/SKILL.md https://raw.githubusercontent.com/anthropics/claude-code/main/plugins/frontend-design/skills/frontend-design/SKILL.md
 npx ui-skills add baseline-ui
@@ -446,114 +459,117 @@ npx ui-skills add fixing-motion-performance
 
 ### Prompt 1: Project Init
 ```
-შექმენი Next.js 16 პროექტი "geo-ai-academy" სახელით.
-გაუშვი: npx create-next-app@latest geo-ai-academy --typescript --tailwind --app --src-dir --import-alias "@/*"
-შემდეგ: დააინსტალირე shadcn/ui (npx shadcn@latest init), prisma, @supabase/ssr, @supabase/supabase-js, zod, framer-motion.
-shadcn/ui კომპონენტებიდან დაამატე: button, card, input, label, accordion, avatar, dropdown-menu, separator, badge.
-დააკონფიგურირე tailwind.config.ts CLAUDE.md-ში აღწერილი ფერებით (primary, secondary, accent, და ა.შ.).
-დაამატე ორი font next/font/google-ით: Space Grotesk (headings) და Inter (body).
-შექმენი .env.local ფაილი CLAUDE.md-ის environment variables სექციის მიხედვით.
+Create a Next.js 16 project named "geo-ai-academy".
+Run: npx create-next-app@latest geo-ai-academy --typescript --tailwind --app --src-dir --import-alias "@/*"
+Then install: shadcn/ui (npx shadcn@latest init), prisma, @supabase/ssr, @supabase/supabase-js, zod, framer-motion.
+Add these shadcn/ui components: button, card, input, label, accordion, avatar, dropdown-menu, separator, badge.
+Configure tailwind.config.ts with colors from CLAUDE.md (primary, secondary, accent, etc.).
+Add two fonts via next/font/google: Space Grotesk (headings) and Inter (body).
+Create .env.local file per CLAUDE.md environment variables section.
 ```
 
 ### Prompt 2: Supabase + Auth + Proxy
 ```
-დააკონფიგურირე Supabase:
+Configure Supabase:
 - lib/supabase/client.ts (browser client)
 - lib/supabase/server.ts (server client with cookies)
 - app/api/auth/callback/route.ts (OAuth callback)
-- proxy.ts: auth guard — /dashboard/*, /profile/*, /admin/* routes-ზე ამოწმებს session-ს. თუ არ არის authenticated, redirect /login-ზე. /admin/* routes-ზე ამოწმებს role === 'admin'.
+- proxy.ts: auth guard — check session on /dashboard/*, /profile/*, /admin/* routes. If not authenticated, redirect to /login. On /admin/* routes, also check role === 'admin'.
 ```
 
 ### Prompt 3: Prisma Schema
 ```
-შექმენი prisma/schema.prisma Sprint 1 schema-ით (User model + Role enum).
-DATABASE_URL Supabase PostgreSQL connection string-ით.
-გაუშვი: npx prisma generate
+Create prisma/schema.prisma with Sprint 1 schema (User model + Role enum).
+DATABASE_URL uses Supabase PostgreSQL connection string.
+Run: npx prisma generate
 ```
 
 ### Prompt 4: Layouts
 ```
-შექმენი layouts:
+Create layouts:
 - app/layout.tsx: root layout, Inter font, metadata
 - app/(public)/layout.tsx: Navbar + Footer
 - app/(auth)/layout.tsx: centered, minimal, logo on top
 - app/(student)/layout.tsx: Navbar (with user menu) + main content
 - app/(admin)/admin/layout.tsx: AdminSidebar + AdminTopbar + main content
 
-Navbar: logo "GEO AI Academy", nav links (მთავარი, კურსები, შესვლა/რეგისტრაცია). თუ authenticated: Dashboard link + Avatar dropdown.
-AdminSidebar: Overview, კურსები, სტუდენტები, პარამეტრები. Collapsible on mobile.
-Footer: მარტივი — copyright + social links placeholders.
+Navbar: logo "GEO AI Academy", nav links (მთავარი, კურსები, შესვლა/რეგისტრაცია). If authenticated: Dashboard link + Avatar dropdown.
+AdminSidebar: მიმოხილვა, კურსები, სტუდენტები, პარამეტრები. Collapsible on mobile.
+Footer: simple — copyright + social links placeholders.
+All navigation text in Georgian.
 ```
 
 ### Prompt 5: Landing Page
 ```
-შექმენი app/(public)/page.tsx — Landing page. გამოიყენე frontend-design skill-ის პრინციპები.
-კომპონენტები:
-- HeroSection: სათაური "ისწავლე AI ტექნოლოგიები ქართულად" (Space Grotesk, bold, large), ქვესათაური, CTA button "დაიწყე სწავლა" → /register (accent color), gradient background (purple→dark). staggered fade-in ანიმაცია (framer-motion).
-- FeaturedCourses: 3 CourseCard mock data-ით (AI Content Creation, ვებ დეველოპმენტი, Prompt Engineering). Cards: rounded-2xl, hover lift effect, shadow-lg on hover, price badge.
-- WhyUs: 4 FeatureCard lucide icons-ით, icon primary-light background-ით. Fade-in-up on scroll.
-- FAQSection: shadcn Accordion, 5 კითხვა ქართულად, purple accent on active.
-ყველაფერი responsive, mobile-first. არა generic — distinctive და professional.
+Create app/(public)/page.tsx — Landing page. Apply frontend-design skill principles.
+Components:
+- HeroSection: title "ისწავლე AI ტექნოლოგიები ქართულად" (Space Grotesk, bold, large), subtitle in Georgian, CTA button "დაიწყე სწავლა" → /register (accent color), gradient background (purple→dark). Staggered fade-in animation (framer-motion).
+- FeaturedCourses: 3 CourseCard with mock data (AI Content Creation, ვებ დეველოპმენტი, Prompt Engineering). Cards: rounded-2xl, hover lift effect, shadow-lg on hover, price badge.
+- WhyUs: 4 FeatureCard with lucide icons, icon on primary-light background. Fade-in-up on scroll.
+- FAQSection: shadcn Accordion, 5 questions in Georgian, purple accent on active.
+Everything responsive, mobile-first. Not generic — distinctive and professional.
+All text in Georgian.
 ```
 
 ### Prompt 6: Auth Pages
 ```
-შექმენი auth გვერდები:
-- app/(auth)/login/page.tsx: LoginForm კომპონენტით (email + password, Supabase signInWithPassword, error handling, redirect to /dashboard)
+Create auth pages:
+- app/(auth)/login/page.tsx: LoginForm component (email + password, Supabase signInWithPassword, error handling, redirect to /dashboard)
 - app/(auth)/register/page.tsx: RegisterForm (name + email + password + confirm, Zod validation, Supabase signUp)
-ორივე "use client". ლამაზი UI, ქართული labels.
+Both "use client". Beautiful UI. All labels and error messages in Georgian.
 ```
 
 ### Prompt 7: Student Pages
 ```
-შექმენი სტუდენტის გვერდები:
-- app/(student)/dashboard/page.tsx: Welcome message (user name-ით), empty state "ჯერ არ გაქვს კურსები", CTA → /courses
+Create student pages:
+- app/(student)/dashboard/page.tsx: Welcome message with user name ("გამარჯობა, {name}!"), empty state "ჯერ არ გაქვს კურსები", CTA → /courses
 - app/(student)/profile/page.tsx: profile edit form (name, avatar URL, password change), Zod validation, Server Action for update
+All text in Georgian.
 ```
 
 ### Prompt 8: Admin Pages
 ```
-შექმენი admin გვერდები:
+Create admin pages:
 - app/(admin)/admin/page.tsx: Overview — 4 StatsCard (mock numbers), icon + colored background, big number, trend arrow. Empty chart placeholder, recent activity placeholder.
 - app/(admin)/admin/courses/page.tsx: placeholder DataTable shell, "ახალი კურსი" disabled button
 - app/(admin)/admin/students/page.tsx: placeholder DataTable shell, search input
 Admin sidebar: dark theme (secondary color), active item primary highlight.
-ყველაფერი ქართულად.
+All text in Georgian.
 ```
 
 ### Prompt 9: Design Polish Pass
 ```
-გადახედე მთელ აპლიკაციას frontend-design skill-ის პრინციპებით და გააუმჯობესე:
-1. Landing page: შეამოწმე ანიმაციები, spacing, hover effects, typography hierarchy
-2. Auth pages: ლამაზი centered layout, subtle animations
+Review the entire application using frontend-design skill principles and improve:
+1. Landing page: check animations, spacing, hover effects, typography hierarchy
+2. Auth pages: beautiful centered layout, subtle animations
 3. Student dashboard: welcoming empty state, consistent card design
 4. Admin dashboard: professional data-focused design, sidebar polish
-5. გაუშვი baseline-ui skill ყველა page-ზე
-6. შეამოწმე accessibility (fixing-accessibility skill)
-7. შეამოწმე motion performance (fixing-motion-performance skill)
-8. Mobile responsiveness ყველა გვერდზე
+5. Run baseline-ui skill on all pages
+6. Check accessibility (fixing-accessibility skill)
+7. Check motion performance (fixing-motion-performance skill)
+8. Mobile responsiveness on all pages
 ```
 
 ---
 
 ## Future Sprints (Reference)
 
-### Sprint 2: კურსის სისტემა
+### Sprint 2: Course System
 - Prisma schema expansion (courses, modules, lessons, enrollments)
 - Bunny Stream integration (video upload + signed URL)
 - Course creation in admin
 - Course catalog with real data
 - /learn/[slug]/[lessonId] page with video player
 
-### Sprint 3: გადახდა და გაყიდვები
+### Sprint 3: Payments & Sales
 - Flitt payment integration (API + webhook)
 - Checkout flow
 - Order management in admin
 - Sales analytics (Recharts)
 
-### Sprint 4: ბონუს ფუნქციები
-- ქვიზები
-- სერთიფიკატები (PDF generation)
-- კუპონები / ფასდაკლებები
+### Sprint 4: Bonus Features
+- Quizzes
+- Certificates (PDF generation)
+- Coupons / discounts
 - Email notifications (Resend)
 - SEO optimization ("use cache", metadata, sitemap)
