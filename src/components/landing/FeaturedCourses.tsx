@@ -1,69 +1,44 @@
-"use client";
-
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowRight, Clock, Users, Sparkles, Code, PenTool } from "lucide-react";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { prisma } from "@/lib/prisma";
+import { CourseCard } from "@/components/course/CourseCard";
+import { FeaturedCoursesClient } from "@/components/landing/FeaturedCoursesClient";
 
-const courses = [
-  {
-    title: "AI Content Creation",
-    description:
-      "ისწავლე AI-ის გამოყენება კონტენტის შესაქმნელად — ტექსტი, სურათები, ვიდეო და სოციალური მედია.",
-    price: "₾ 89",
-    category: "AI",
-    icon: Sparkles,
-    duration: "8 კვირა",
-    students: "127",
-    color: "from-purple-600 to-brand-primary",
-    iconBg: "bg-purple-100 text-purple-600",
-  },
-  {
-    title: "ვებ დეველოპმენტი",
-    description:
-      "HTML, CSS, JavaScript და React — ააწყე თანამედროვე ვებ აპლიკაციები ნულიდან.",
-    price: "₾ 129",
-    category: "Development",
-    icon: Code,
-    duration: "12 კვირა",
-    students: "203",
-    color: "from-brand-accent to-emerald-600",
-    iconBg: "bg-emerald-100 text-emerald-600",
-  },
-  {
-    title: "Prompt Engineering",
-    description:
-      "დაეუფლე ChatGPT, Claude და Midjourney-ს ეფექტურ გამოყენებას პროფესიულ საქმიანობაში.",
-    price: "₾ 69",
-    category: "AI",
-    icon: PenTool,
-    duration: "6 კვირა",
-    students: "185",
-    color: "from-amber-500 to-orange-600",
-    iconBg: "bg-amber-100 text-amber-600",
-  },
-] as const;
-
-const container = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.15,
+async function getFeaturedCourses() {
+  const courses = await prisma.course.findMany({
+    where: { status: "PUBLISHED" },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+    include: {
+      modules: {
+        include: {
+          lessons: {
+            select: { id: true },
+          },
+        },
+      },
     },
-  },
-};
+  });
 
-const item = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: "easeOut" as const },
-  },
-};
+  return courses.map((course) => ({
+    id: course.id,
+    title: course.title,
+    slug: course.slug,
+    shortDescription: course.shortDescription,
+    thumbnailUrl: course.thumbnailUrl,
+    price: course.price,
+    lessonCount: course.modules.reduce(
+      (sum, mod) => sum + mod.lessons.length,
+      0
+    ),
+  }));
+}
 
-export function FeaturedCourses() {
+export async function FeaturedCourses() {
+  const courses = await getFeaturedCourses();
+
   return (
     <section className="relative py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -93,79 +68,33 @@ export function FeaturedCourses() {
         </div>
 
         {/* Course cards */}
-        <motion.div
-          variants={container}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {courses.map((course) => {
-            const Icon = course.icon;
-            return (
-              <motion.article
-                key={course.title}
-                variants={item}
-                className="group relative flex flex-col overflow-hidden rounded-2xl border border-brand-border bg-brand-surface transition-all duration-300 will-change-transform hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-primary/5"
-              >
-                {/* Card top gradient bar */}
-                <div
-                  className={`h-1.5 w-full bg-gradient-to-r ${course.color}`}
-                />
-
-                <div className="flex flex-1 flex-col p-6">
-                  {/* Icon + Category */}
-                  <div className="flex items-center justify-between">
-                    <div
-                      className={`flex size-11 items-center justify-center rounded-xl ${course.iconBg}`}
-                    >
-                      <Icon className="size-5" />
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="text-xs text-brand-muted"
-                    >
-                      {course.category}
-                    </Badge>
-                  </div>
-
-                  {/* Content */}
-                  <h3 className="mt-4 font-display text-lg font-bold text-brand-secondary">
-                    {course.title}
-                  </h3>
-                  <p className="mt-2 flex-1 text-sm leading-relaxed text-brand-muted">
-                    {course.description}
-                  </p>
-
-                  {/* Meta */}
-                  <div className="mt-4 flex items-center gap-4 text-xs text-brand-muted">
-                    <span className="flex items-center gap-1">
-                      <Clock className="size-3.5" />
-                      {course.duration}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="size-3.5" />
-                      {course.students} სტუდენტი
-                    </span>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="mt-5 flex items-center justify-between border-t border-brand-border pt-5">
-                    <span className="font-display text-xl font-bold text-brand-secondary">
-                      {course.price}
-                    </span>
-                    <Button
-                      size="sm"
-                      className="rounded-xl bg-brand-primary text-white transition-all duration-200 hover:scale-[1.02] hover:bg-brand-primary-hover"
-                    >
-                      დეტალურად
-                    </Button>
-                  </div>
-                </div>
-              </motion.article>
-            );
-          })}
-        </motion.div>
+        {courses.length > 0 ? (
+          <FeaturedCoursesClient>
+            {courses.map((course) => (
+              <CourseCard
+                key={course.id}
+                title={course.title}
+                slug={course.slug}
+                shortDescription={course.shortDescription}
+                thumbnailUrl={course.thumbnailUrl}
+                price={course.price}
+                lessonCount={course.lessonCount}
+              />
+            ))}
+          </FeaturedCoursesClient>
+        ) : (
+          <div className="mt-12 flex flex-col items-center rounded-2xl border border-dashed border-brand-border py-16 text-center">
+            <div className="flex size-16 items-center justify-center rounded-2xl bg-brand-primary-light">
+              <BookOpen className="size-7 text-brand-primary" />
+            </div>
+            <h3 className="mt-4 font-display text-lg font-bold text-brand-secondary">
+              კურსები მალე დაემატება
+            </h3>
+            <p className="mt-2 max-w-sm text-sm text-brand-muted">
+              ჩვენ ვმუშაობთ ახალ კურსებზე. მალე შეძლებ სწავლის დაწყებას.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
