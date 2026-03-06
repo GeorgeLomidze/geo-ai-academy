@@ -107,7 +107,7 @@ export function LessonForm({
       </h4>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-xl border border-brand-danger/20 bg-brand-danger/10 px-3 py-2 text-sm text-brand-danger">
           {error}
         </div>
       )}

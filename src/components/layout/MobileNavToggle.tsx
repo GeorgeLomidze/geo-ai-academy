@@ -25,14 +25,14 @@ export function MobileNavToggle({
       </Button>
 
       {open && (
-        <div className="absolute left-0 top-16 z-50 w-full border-b border-brand-border bg-brand-surface p-4 shadow-lg">
+        <div className="absolute left-0 top-16 z-50 w-full border-b border-brand-border bg-brand-background/95 p-4 shadow-lg backdrop-blur-xl">
           <div className="flex flex-col gap-1">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium text-brand-muted transition-colors hover:bg-brand-primary-light hover:text-brand-primary"
+                className="rounded-xl px-3 py-2.5 text-sm font-medium text-brand-muted transition-colors hover:bg-brand-primary-light hover:text-brand-primary"
               >
                 {item.label}
               </Link>
@@ -43,14 +43,14 @@ export function MobileNavToggle({
                 <Link
                   href="/login"
                   onClick={() => setOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-brand-muted transition-colors hover:bg-brand-primary-light hover:text-brand-primary"
+                  className="rounded-xl px-3 py-2.5 text-sm font-medium text-brand-muted transition-colors hover:bg-brand-primary-light hover:text-brand-primary"
                 >
                   შესვლა
                 </Link>
                 <Link
                   href="/register"
                   onClick={() => setOpen(false)}
-                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-brand-primary transition-colors hover:bg-brand-primary-light"
+                  className="rounded-xl bg-brand-accent px-3 py-2.5 text-sm font-bold text-black transition-colors hover:bg-brand-accent-hover"
                 >
                   რეგისტრაცია
                 </Link>

@@ -9,8 +9,11 @@ import {
   FileText,
   Lock,
   Unlock,
+  MessageSquareText,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { formatRatingValue } from "@/lib/review-constants";
+import { getCourseReviewsSectionData } from "@/lib/reviews";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +24,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { PriceTag } from "@/components/course/PriceTag";
+import { EnrollButton } from "@/components/course/EnrollButton";
+import { StarRating } from "@/components/reviews/StarRating";
+import { ReviewsSection } from "@/components/reviews/ReviewsSection";
 
 interface CourseDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -75,11 +81,9 @@ export default async function CourseDetailPage({
   params,
 }: CourseDetailPageProps) {
   const { slug } = await params;
-  const course = await getCourse(slug);
+  const [course, supabase] = await Promise.all([getCourse(slug), createClient()]);
   if (!course) notFound();
 
-  // Check enrollment status
-  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -87,6 +91,11 @@ export default async function CourseDetailPage({
   const isEnrolled = user
     ? course.enrollments.some((e) => e.userId === user.id)
     : false;
+  const reviewData = await getCourseReviewsSectionData({
+    courseId: course.id,
+    currentUserId: user?.id ?? null,
+    limit: 20,
+  });
 
   // Stats
   const totalLessons = course.modules.reduce(
@@ -103,8 +112,8 @@ export default async function CourseDetailPage({
   return (
     <div className="bg-brand-background">
       {/* Hero section */}
-      <section className="relative overflow-hidden bg-brand-secondary">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(108,60,225,0.35),transparent)]" />
+      <section className="relative overflow-hidden bg-[linear-gradient(180deg,#0A0A0A_0%,#1a1000_50%,#0A0A0A_100%)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(245,166,35,0.18),transparent)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.04]">
           <div
             className="absolute inset-0"
@@ -122,18 +131,42 @@ export default async function CourseDetailPage({
           <div className="grid items-center gap-10 lg:grid-cols-[1fr_400px] lg:gap-16">
             {/* Text content */}
             <div>
-              <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
+              <h1 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
                 {course.title}
               </h1>
 
               {course.shortDescription && (
-                <p className="mt-4 max-w-xl text-base leading-relaxed text-gray-300 sm:text-lg">
+                <p className="mt-4 max-w-xl text-base leading-relaxed text-foreground sm:text-lg">
                   {course.shortDescription}
                 </p>
               )}
 
+              <div className="mt-6 inline-flex flex-wrap items-center gap-3 rounded-2xl border border-brand-border bg-brand-surface/60 px-4 py-3 backdrop-blur-sm">
+                {reviewData.summary.totalReviews > 0 ? (
+                  <>
+                    <StarRating
+                      value={reviewData.summary.averageRating ?? 0}
+                      size="sm"
+                    />
+                    <span className="font-semibold tabular-nums text-brand-secondary">
+                      {formatRatingValue(reviewData.summary.averageRating ?? 0)}
+                    </span>
+                    <span className="text-sm text-foreground">
+                      {reviewData.summary.totalReviews} შეფასება
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <MessageSquareText className="size-4 text-foreground" />
+                    <span className="text-sm text-foreground">
+                      ჯერ შეფასებები არ არის
+                    </span>
+                  </>
+                )}
+              </div>
+
               {/* Stats row */}
-              <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-gray-400">
+              <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-brand-muted">
                 <span className="flex items-center gap-1.5">
                   <Layers className="size-4" />
                   {moduleCount} მოდული
@@ -151,30 +184,40 @@ export default async function CourseDetailPage({
               </div>
 
               {/* CTA */}
-              <div className="mt-8 flex flex-wrap items-center gap-4">
+              <div id="course-cta" className="mt-8 flex flex-wrap items-center gap-4">
                 {isEnrolled ? (
                   <Button
                     asChild
                     size="lg"
-                    className="h-12 rounded-xl bg-brand-accent px-8 text-base font-semibold text-white shadow-lg shadow-brand-accent/25 transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
+                    className="h-12 rounded-xl bg-brand-accent px-8 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
                   >
                     <Link href={`/learn/${slug}`}>კურსის დაწყება</Link>
                   </Button>
+                ) : user ? (
+                  <>
+                    <EnrollButton
+                      courseId={course.id}
+                      className="h-12 rounded-xl bg-brand-accent px-8 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
+                    />
+                    <PriceTag
+                      price={course.price}
+                      size="lg"
+                      className="text-brand-secondary"
+                    />
+                  </>
                 ) : (
                   <>
                     <Button
                       asChild
                       size="lg"
-                      className="h-12 rounded-xl bg-brand-accent px-8 text-base font-semibold text-white shadow-lg shadow-brand-accent/25 transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
+                      className="h-12 rounded-xl bg-brand-accent px-8 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
                     >
-                      <Link href={user ? "#enroll" : "/register"}>
-                        კურსის შეძენა
-                      </Link>
+                      <Link href="/register">კურსის შეძენა</Link>
                     </Button>
                     <PriceTag
                       price={course.price}
                       size="lg"
-                      className="text-white"
+                      className="text-brand-secondary"
                     />
                   </>
                 )}
@@ -182,7 +225,7 @@ export default async function CourseDetailPage({
             </div>
 
             {/* Thumbnail */}
-            <div className="relative hidden aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 shadow-2xl lg:block">
+            <div className="relative hidden aspect-[4/3] overflow-hidden rounded-2xl border border-brand-border shadow-2xl lg:block">
               {course.thumbnailUrl ? (
                 <Image
                   src={course.thumbnailUrl}
@@ -195,7 +238,7 @@ export default async function CourseDetailPage({
               ) : (
                 <div className="flex size-full items-center justify-center bg-gradient-to-br from-brand-primary/30 via-brand-primary/15 to-brand-accent/15">
                   <div className="flex size-24 items-center justify-center rounded-3xl bg-brand-primary/20 backdrop-blur-sm">
-                    <BookOpen className="size-12 text-white/70" />
+                    <BookOpen className="size-12 text-brand-secondary/70" />
                   </div>
                 </div>
               )}
@@ -338,19 +381,22 @@ export default async function CourseDetailPage({
                     <Button
                       asChild
                       size="lg"
-                      className="w-full rounded-xl bg-brand-accent text-base font-semibold text-white transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
+                      className="w-full rounded-xl bg-brand-accent text-base font-bold text-black transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
                     >
                       <Link href={`/learn/${slug}`}>კურსის დაწყება</Link>
                     </Button>
+                  ) : user ? (
+                    <EnrollButton
+                      courseId={course.id}
+                      className="w-full rounded-xl bg-brand-accent text-base font-bold text-black transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
+                    />
                   ) : (
                     <Button
                       asChild
                       size="lg"
-                      className="w-full rounded-xl bg-brand-accent text-base font-semibold text-white transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
+                      className="w-full rounded-xl bg-brand-accent text-base font-bold text-black transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
                     >
-                      <Link href={user ? "#enroll" : "/register"}>
-                        კურსის შეძენა
-                      </Link>
+                      <Link href="/register">კურსის შეძენა</Link>
                     </Button>
                   )}
                 </div>
@@ -386,11 +432,40 @@ export default async function CourseDetailPage({
                       </span>
                     </li>
                   )}
+                  <li className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-brand-muted">
+                      <MessageSquareText className="size-4" />
+                      შეფასებები
+                    </span>
+                    <span className="font-semibold tabular-nums text-brand-secondary">
+                      {reviewData.summary.totalReviews}
+                    </span>
+                  </li>
                 </ul>
               </div>
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
+        <ReviewsSection
+          key={[
+            reviewData.summary.totalReviews,
+            reviewData.summary.averageRating ?? "none",
+            reviewData.currentUserReview?.id ?? "none",
+            reviewData.currentUserReview?.updatedAt ?? "none",
+            reviewData.reviews
+              .map((review) => `${review.id}:${review.updatedAt}`)
+              .join("|"),
+          ].join("-")}
+          courseId={course.id}
+          summary={reviewData.summary}
+          reviews={reviewData.reviews}
+          currentUserReview={reviewData.currentUserReview}
+          isAuthenticated={!!user}
+          isEnrolled={isEnrolled}
+        />
       </section>
     </div>
   );

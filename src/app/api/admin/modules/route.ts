@@ -22,7 +22,7 @@ const deleteModuleSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   const body = await request.json().catch(() => null);
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   const body = await request.json().catch(() => null);
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   const body = await request.json().catch(() => null);

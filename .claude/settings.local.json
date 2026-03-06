@@ -20,7 +20,12 @@
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
       "Bash(curl:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git restore:*)",
+      "WebSearch",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ]
   }
 }

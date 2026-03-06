@@ -3,11 +3,28 @@ import { z } from "zod/v4";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 
+function isValidThumbnailUrl(value: string) {
+  if (value.startsWith("/")) {
+    return true;
+  }
+
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const updateCourseSchema = z.object({
   title: z.string().min(1, "კურსის სახელი აუცილებელია").optional(),
   description: z.string().optional(),
   shortDescription: z.string().nullable().optional(),
-  thumbnailUrl: z.string().url("არასწორი ბმული").nullable().optional(),
+  thumbnailUrl: z
+    .string()
+    .refine(isValidThumbnailUrl, "არასწორი ბმული")
+    .nullable()
+    .optional(),
   price: z.number().int().min(0, "ფასი არ შეიძლება იყოს უარყოფითი").optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
   sortOrder: z.number().int().min(0).optional(),
@@ -16,7 +33,7 @@ const updateCourseSchema = z.object({
 type RouteParams = { params: Promise<{ courseId: string }> };
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   const { courseId } = await params;
@@ -46,7 +63,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   const { courseId } = await params;
@@ -78,7 +95,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   const { courseId } = await params;

@@ -349,7 +349,7 @@ function SortableModule({
           variant="ghost"
           size="sm"
           onClick={onDelete}
-          className="size-8 shrink-0 rounded-lg p-0 text-brand-danger hover:bg-red-50"
+          className="size-8 shrink-0 rounded-lg p-0 text-brand-danger hover:bg-brand-danger/10"
         >
           <Trash2 className="size-4" />
           <span className="sr-only">წაშლა</span>
@@ -382,7 +382,7 @@ function SortableModule({
                         {lesson.type === "VIDEO" ? "ვიდეო" : "ტექსტი"}
                       </span>
                       {lesson.isFree && (
-                        <span className="inline-flex items-center gap-0.5 text-xs text-emerald-600">
+                        <span className="inline-flex items-center gap-0.5 text-xs text-brand-success">
                           <Eye className="size-3" />
                           უფასო
                         </span>
@@ -406,7 +406,7 @@ function SortableModule({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="size-7 rounded-lg p-0 text-brand-danger hover:bg-red-50"
+                      className="size-7 rounded-lg p-0 text-brand-danger hover:bg-brand-danger/10"
                       onClick={() => handleDeleteLesson(lesson.id)}
                     >
                       <Trash2 className="size-3.5" />

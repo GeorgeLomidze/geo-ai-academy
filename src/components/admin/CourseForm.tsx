@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save } from "lucide-react";
 import { slugify } from "@/lib/slugify";
+import { ImageUploader } from "@/components/admin/ImageUploader";
 
 type CourseData = {
   id?: string;
@@ -91,7 +92,7 @@ export function CourseForm({ course }: { course?: CourseData }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-brand-danger/20 bg-brand-danger/10 px-4 py-3 text-sm text-brand-danger">
           {error}
         </div>
       )}
@@ -159,16 +160,12 @@ export function CourseForm({ course }: { course?: CourseData }) {
           />
         </div>
 
-        {/* Thumbnail URL */}
+        {/* Thumbnail Upload */}
         <div className="space-y-2">
-          <Label htmlFor="thumbnailUrl">სურათის ბმული</Label>
-          <Input
-            id="thumbnailUrl"
-            type="url"
+          <Label>კურსის სურათი</Label>
+          <ImageUploader
             value={thumbnailUrl}
-            onChange={(e) => setThumbnailUrl(e.target.value)}
-            placeholder="https://..."
-            className="rounded-xl"
+            onChange={setThumbnailUrl}
           />
         </div>
 
@@ -190,21 +187,6 @@ export function CourseForm({ course }: { course?: CourseData }) {
           </div>
         </div>
       </div>
-
-      {/* Preview thumbnail */}
-      {thumbnailUrl && (
-        <div className="space-y-2">
-          <Label>სურათის გადახედვა</Label>
-          <div className="h-40 w-64 overflow-hidden rounded-xl border border-brand-border">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={thumbnailUrl}
-              alt="კურსის სურათი"
-              className="size-full object-cover"
-            />
-          </div>
-        </div>
-      )}
 
       <div className="flex justify-end">
         <Button type="submit" className="rounded-xl gap-2" disabled={saving}>

@@ -3,6 +3,7 @@ import { ArrowRight, BookOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
+import { getCourseRatingSummaries } from "@/lib/reviews";
 import { CourseCard } from "@/components/course/CourseCard";
 import { FeaturedCoursesClient } from "@/components/landing/FeaturedCoursesClient";
 
@@ -22,6 +23,10 @@ async function getFeaturedCourses() {
     },
   });
 
+  const ratingSummaries = await getCourseRatingSummaries(
+    courses.map((course) => course.id)
+  );
+
   return courses.map((course) => ({
     id: course.id,
     title: course.title,
@@ -33,6 +38,8 @@ async function getFeaturedCourses() {
       (sum, mod) => sum + mod.lessons.length,
       0
     ),
+    averageRating: ratingSummaries[course.id]?.averageRating ?? null,
+    totalReviews: ratingSummaries[course.id]?.totalReviews ?? 0,
   }));
 }
 
@@ -79,6 +86,8 @@ export async function FeaturedCourses() {
                 thumbnailUrl={course.thumbnailUrl}
                 price={course.price}
                 lessonCount={course.lessonCount}
+                averageRating={course.averageRating}
+                totalReviews={course.totalReviews}
               />
             ))}
           </FeaturedCoursesClient>

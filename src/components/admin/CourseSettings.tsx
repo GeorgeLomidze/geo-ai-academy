@@ -102,7 +102,7 @@ export function CourseSettings({ course }: CourseSettingsProps) {
 
               {saving && <Loader2 className="size-4 animate-spin text-brand-muted" />}
               {saved && (
-                <span className="text-sm text-emerald-600">შენახულია</span>
+                <span className="text-sm text-brand-success">შენახულია</span>
               )}
             </div>
           </div>
@@ -131,7 +131,7 @@ export function CourseSettings({ course }: CourseSettingsProps) {
       </div>
 
       {/* Danger zone */}
-      <div className="rounded-2xl border border-red-200 bg-red-50/50 p-6">
+      <div className="rounded-2xl border border-brand-danger/20 bg-brand-danger/10 p-6">
         <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-brand-danger">
           <AlertTriangle className="size-5" />
           საშიში ზონა

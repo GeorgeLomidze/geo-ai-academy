@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export function CTASection() {
   return (
-    <section className="relative overflow-hidden bg-brand-primary py-20 sm:py-24">
+    <section className="relative overflow-hidden bg-[linear-gradient(180deg,#0A0A0A_0%,#1a1000_50%,#0A0A0A_100%)] py-20 sm:py-24">
       {/* Background decoration */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_100%_100%_at_80%_0%,rgba(255,255,255,0.15),transparent)]" />
       <div
@@ -25,10 +25,10 @@ export function CTASection() {
         transition={{ duration: 0.5 }}
         className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8"
       >
-        <h2 className="font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <h2 className="font-display text-3xl font-bold text-white sm:text-4xl">
           მზად ხარ სწავლის დასაწყებად?
         </h2>
-        <p className="mx-auto mt-4 max-w-xl text-base text-white/70">
+        <p className="mx-auto mt-4 max-w-xl text-base text-foreground">
           შემოგვიერთდი 500+ სტუდენტს, რომლებმაც უკვე დაიწყეს AI ტექნოლოგიების
           შესწავლა ქართულად.
         </p>
@@ -36,7 +36,7 @@ export function CTASection() {
           <Button
             asChild
             size="lg"
-            className="h-12 rounded-xl bg-white px-6 text-base font-semibold text-brand-primary shadow-lg transition-all duration-200 hover:scale-[1.02] hover:bg-gray-50"
+            className="h-12 rounded-2xl bg-brand-accent px-6 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
           >
             <Link href="/register">
               უფასოდ დარეგისტრირდი

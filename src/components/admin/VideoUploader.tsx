@@ -236,8 +236,8 @@ export function VideoUploader({
 
       {/* Error with retry */}
       {error && (
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
-          <p className="min-w-0 text-sm text-red-700">{error}</p>
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-brand-danger/20 bg-brand-danger/10 px-3 py-2">
+          <p className="min-w-0 text-sm text-brand-danger">{error}</p>
           <div className="flex shrink-0 items-center gap-1">
             {lastFile && (
               <Button
@@ -245,7 +245,7 @@ export function VideoUploader({
                 variant="ghost"
                 size="sm"
                 onClick={handleRetry}
-                className="h-7 rounded-lg px-2 text-xs text-red-700 hover:bg-red-100"
+                className="h-7 rounded-lg px-2 text-xs text-brand-danger hover:bg-brand-danger/10"
               >
                 <RotateCcw className="mr-1 size-3" />
                 ხელახლა
@@ -259,7 +259,7 @@ export function VideoUploader({
                 setError(null);
                 setLastFile(null);
               }}
-              className="size-7 rounded-lg p-0 text-red-700 hover:bg-red-100"
+              className="size-7 rounded-lg p-0 text-brand-danger hover:bg-brand-danger/10"
             >
               <X className="size-3.5" />
             </Button>

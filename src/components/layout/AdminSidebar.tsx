@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   BookOpen,
+  Star,
   Users,
   Settings,
   PanelLeftClose,
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 const iconMap = {
   LayoutDashboard,
   BookOpen,
+  Star,
   Users,
   Settings,
 } as const;
@@ -31,7 +33,7 @@ export function AdminSidebar() {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden h-screen flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 lg:flex",
+          "hidden h-dvh flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-200 lg:flex",
           collapsed ? "w-[68px]" : "w-64"
         )}
       >
@@ -40,9 +42,9 @@ export function AdminSidebar() {
           {!collapsed && (
             <Link
               href="/admin"
-              className="flex items-center gap-2 font-display text-base font-bold text-white"
+              className="flex items-center gap-2 font-display text-base font-bold text-brand-secondary"
             >
-              <span className="flex size-7 items-center justify-center rounded-lg bg-brand-primary text-sm font-bold">
+              <span className="flex size-7 items-center justify-center rounded-xl bg-brand-primary text-sm font-bold text-black">
                 G
               </span>
               {siteConfig.name}
@@ -52,7 +54,7 @@ export function AdminSidebar() {
             variant="ghost"
             size="icon-sm"
             onClick={() => setCollapsed(!collapsed)}
-            className="text-gray-400 hover:bg-sidebar-accent hover:text-white"
+            className="text-brand-muted hover:bg-sidebar-accent hover:text-brand-secondary"
             aria-label={collapsed ? "გვერდითი პანელის გახსნა" : "გვერდითი პანელის დახურვა"}
           >
             {collapsed ? (
@@ -78,10 +80,10 @@ export function AdminSidebar() {
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-xl border-l-2 border-transparent px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-gray-400 hover:bg-sidebar-accent hover:text-white"
+                    ? "border-l-brand-primary bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-brand-muted hover:bg-sidebar-accent hover:text-brand-secondary"
                 )}
                 title={collapsed ? item.label : undefined}
               >
@@ -94,7 +96,7 @@ export function AdminSidebar() {
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 z-50 flex w-full border-t border-brand-border bg-brand-surface lg:hidden" aria-label="ადმინის ნავიგაცია">
+      <nav className="fixed bottom-0 left-0 z-50 flex w-full border-t border-brand-border bg-brand-background lg:hidden" aria-label="ადმინის ნავიგაცია">
         {adminNavItems.map((item) => {
           const Icon = iconMap[item.icon as keyof typeof iconMap];
           const isActive =

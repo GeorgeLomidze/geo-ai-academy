@@ -1,11 +1,25 @@
+import { redirect } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { StudentSidebar } from "@/components/layout/StudentSidebar";
+import { syncAuthUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
-export default function StudentLayout({
+export default async function StudentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  await syncAuthUser(user);
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />

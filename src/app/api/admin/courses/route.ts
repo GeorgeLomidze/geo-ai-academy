@@ -4,17 +4,33 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 import { slugify } from "@/lib/slugify";
 
+function isValidThumbnailUrl(value: string) {
+  if (value.startsWith("/")) {
+    return true;
+  }
+
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const createCourseSchema = z.object({
   title: z.string().min(1, "კურსის სახელი აუცილებელია"),
   description: z.string().min(1, "კურსის აღწერა აუცილებელია"),
   shortDescription: z.string().optional(),
-  thumbnailUrl: z.string().url("არასწორი ბმული").optional(),
+  thumbnailUrl: z
+    .string()
+    .refine(isValidThumbnailUrl, "არასწორი ბმული")
+    .optional(),
   price: z.number().int().min(0, "ფასი არ შეიძლება იყოს უარყოფითი").default(0),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
 });
 
-export async function GET() {
-  const auth = await requireAdmin();
+export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   const courses = await prisma.course.findMany({
@@ -49,7 +65,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (!auth.authorized) return auth.response;
 
   const body = await request.json().catch(() => null);

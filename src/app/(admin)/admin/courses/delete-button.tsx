@@ -46,7 +46,7 @@ export function DeleteCourseButton({
         <Button
           variant="ghost"
           size="sm"
-          className="size-8 rounded-lg p-0 text-brand-danger hover:bg-red-50 hover:text-brand-danger"
+          className="size-8 rounded-lg p-0 text-brand-danger hover:bg-brand-danger/10 hover:text-brand-danger"
         >
           <Trash2 className="size-3.5" />
           <span className="sr-only">წაშლა</span>

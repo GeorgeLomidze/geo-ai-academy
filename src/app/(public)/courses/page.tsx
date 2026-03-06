@@ -1,39 +1,15 @@
 import { BookOpen } from "lucide-react";
-import { prisma } from "@/lib/prisma";
 import { CourseCard } from "@/components/course/CourseCard";
 import { CourseGrid } from "@/components/course/CourseGrid";
+import { getPublicCourses } from "@/lib/public-courses";
 
 export const metadata = {
   title: "კურსების კატალოგი — GEO AI Academy",
   description: "შეარჩიე შენთვის სასურველი კურსი და დაიწყე სწავლა",
 };
 
-async function getPublishedCourses() {
-  const courses = await prisma.course.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { sortOrder: "asc" },
-    include: {
-      modules: {
-        include: {
-          lessons: {
-            select: { id: true },
-          },
-        },
-      },
-    },
-  });
-
-  return courses.map((course) => ({
-    ...course,
-    lessonCount: course.modules.reduce(
-      (sum, mod) => sum + mod.lessons.length,
-      0
-    ),
-  }));
-}
-
 export default async function CoursesPage() {
-  const courses = await getPublishedCourses();
+  const courses = await getPublicCourses();
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
@@ -60,6 +36,8 @@ export default async function CoursesPage() {
               thumbnailUrl={course.thumbnailUrl}
               price={course.price}
               lessonCount={course.lessonCount}
+              averageRating={course.averageRating}
+              totalReviews={course.totalReviews}
             />
           ))}
         </CourseGrid>

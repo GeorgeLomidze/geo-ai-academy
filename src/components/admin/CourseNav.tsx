@@ -30,7 +30,7 @@ export function CourseNav({ courseId }: { courseId: string }) {
             className={cn(
               "rounded-lg px-4 py-2 text-sm font-medium transition-colors",
               isActive
-                ? "bg-brand-primary text-white"
+                ? "bg-brand-primary text-black"
                 : "text-brand-muted hover:bg-brand-primary-light hover:text-brand-primary"
             )}
           >

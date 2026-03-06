@@ -1,12 +1,30 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@/lib/supabase/server";
 
 type AdminAuthResult =
   | { authorized: true; userId: string }
   | { authorized: false; response: NextResponse };
 
-export async function requireAdmin(): Promise<AdminAuthResult> {
-  const supabase = await createClient();
+export async function requireAdmin(request?: NextRequest): Promise<AdminAuthResult> {
+  const supabase = request
+    ? createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll() {
+              // Route Handlers can't set cookies on the request;
+              // the proxy already handles session refresh.
+            },
+          },
+        }
+      )
+    : await createClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

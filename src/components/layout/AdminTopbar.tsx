@@ -28,13 +28,13 @@ export async function AdminTopbar() {
     .slice(0, 2);
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-brand-border bg-brand-surface px-4 sm:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-brand-border bg-brand-background px-4 sm:px-6">
       <div />
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
-          className="relative text-brand-muted"
+          className="relative text-brand-muted hover:bg-brand-surface"
           aria-label="შეტყობინებები"
         >
           <Bell className="size-5" />

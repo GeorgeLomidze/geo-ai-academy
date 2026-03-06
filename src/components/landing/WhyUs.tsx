@@ -1,106 +1,200 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Play, Award, Globe, Clock } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  Clock3,
+  GraduationCap,
+  MonitorPlay,
+  NotebookPen,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const features = [
   {
-    icon: Play,
+    number: "01",
     title: "ვიდეო გაკვეთილები",
-    description:
-      "მაღალი ხარისხის ვიდეო კონტენტი, რომელიც ხელმისაწვდომია ნებისმიერ მოწყობილობაზე.",
+    icon: MonitorPlay,
+    side: "left",
+    desktopClass: "lg:left-0 lg:top-18 xl:left-4",
   },
   {
-    icon: Award,
-    title: "სერთიფიკატი",
-    description:
-      "კურსის დასრულების შემდეგ მიიღე ვერიფიცირებული სერთიფიკატი შენი პორტფოლიოსთვის.",
-  },
-  {
-    icon: Globe,
-    title: "ქართულად",
-    description:
-      "სრულად ქართულენოვანი კურსები — ისწავლე შენს ენაზე, ბარიერების გარეშე.",
-  },
-  {
-    icon: Clock,
+    number: "02",
     title: "24/7 წვდომა",
-    description:
-      "ისწავლე შენი ტემპით, ნებისმიერ დროს. კურსზე წვდომა შენ სამუდამოდ გექნება.",
+    icon: Clock3,
+    side: "left",
+    desktopClass: "lg:left-0 lg:top-[29.5rem] xl:left-4",
+  },
+  {
+    number: "03",
+    title: "TOP AI ხელსაწყოები",
+    icon: NotebookPen,
+    side: "right",
+    desktopClass: "lg:right-0 lg:top-18 xl:right-4",
+  },
+  {
+    number: "04",
+    title: "პრაქტიკული გამოყენება",
+    icon: GraduationCap,
+    side: "right",
+    desktopClass: "lg:right-0 lg:top-[29.5rem] xl:right-4",
   },
 ] as const;
 
-const container = {
+const containerVariants = {
   hidden: {},
   visible: {
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.08,
     },
   },
 };
 
-const item = {
-  hidden: { opacity: 0, y: 30 },
+const itemVariants = {
+  hidden: { opacity: 0, y: 24 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: "easeOut" as const },
+    transition: { duration: 0.45, ease: "easeOut" as const },
   },
 };
 
 export function WhyUs() {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <section className="relative bg-brand-secondary py-20 sm:py-28">
-      {/* Subtle grid pattern */}
+    <section className="relative overflow-hidden bg-brand-background py-20 sm:py-28">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,#050505_0%,#0b0b0b_48%,#050505_100%)]" />
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.04]"
         style={{
-          backgroundImage: `radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)`,
-          backgroundSize: "32px 32px",
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.18) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
         }}
       />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_52%,rgba(245,166,35,0.14),transparent_24%)]" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Section header */}
         <div className="text-center">
-          <Badge className="rounded-lg bg-brand-primary/20 text-brand-primary-light">
+          <Badge className="rounded-xl border-brand-primary/20 bg-brand-primary-light text-brand-primary">
             უპირატესობები
           </Badge>
-          <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-white sm:text-4xl">
+          <h2 className="mt-3 text-3xl text-white sm:text-4xl">
             რატომ GEO AI Academy?
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-gray-400">
-            ჩვენ ვქმნით საუკეთესო სასწავლო გარემოს ქართველი სტუდენტებისთვის
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-brand-muted sm:text-base">
+            თანამედროვე სასწავლო გამოცდილება, სადაც ხარისხიანი კონტენტი,
+            პრაქტიკა და მკაფიო სტრუქტურა ერთ პრემიუმ ეკოსისტემაში ერთიანდება.
           </p>
         </div>
 
-        {/* Feature cards */}
         <motion.div
-          variants={container}
+          variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
+          viewport={{ once: true, margin: "-80px" }}
+          className="relative mt-14 grid gap-4 sm:grid-cols-2 lg:block lg:min-h-[690px]"
         >
+          <motion.div
+            variants={itemVariants}
+            className="relative mx-auto flex size-[280px] items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(145deg,#ffcf33_0%,#f5a623_54%,#7a4a00_100%)] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.56)] sm:size-[320px] lg:absolute lg:left-1/2 lg:top-1/2 lg:z-10 lg:size-[360px] lg:-translate-x-1/2 lg:-translate-y-1/2 xl:size-[400px]"
+          >
+            <div className="relative flex size-full flex-col items-center justify-center rounded-full border border-brand-border bg-[radial-gradient(circle_at_50%_30%,#262626_0%,#0a0a0a_74%)] px-8 text-center">
+              <div className="inline-flex items-center rounded-full border border-brand-primary/18 bg-brand-primary-light px-3 py-1 text-xs font-semibold text-brand-primary">
+                GEO AI Academy
+              </div>
+              <h3 className="mt-5 text-3xl text-white sm:text-4xl">
+                გამორჩეული
+                <br />
+                სასწავლო სისტემა
+              </h3>
+              <p className="mt-4 max-w-[16rem] text-sm leading-6 text-brand-muted">
+                სტრუქტურა, ხარისხი და პრაქტიკა ერთ დახვეწილ გარემოში AI
+                განათლებისთვის.
+              </p>
+            </div>
+          </motion.div>
+
           {features.map((feature) => {
             const Icon = feature.icon;
+
             return (
-              <motion.div
-                key={feature.title}
-                variants={item}
-                className="group rounded-2xl border border-white/5 bg-white/[0.03] p-6 backdrop-blur-sm transition-all duration-300 hover:border-brand-primary/20 hover:bg-white/[0.06]"
+              <motion.article
+                key={feature.number}
+                variants={itemVariants}
+                animate={
+                  reduceMotion
+                    ? undefined
+                    : feature.number === "01"
+                      ? { x: [0, 14, -10, 0], y: [0, -18, 8, 0] }
+                      : feature.number === "02"
+                        ? { x: [0, -15, 12, 0], y: [0, 16, -9, 0] }
+                        : feature.number === "03"
+                          ? { x: [0, -18, 9, 0], y: [0, -14, 11, 0] }
+                          : { x: [0, 17, -11, 0], y: [0, 18, -10, 0] }
+                }
+                transition={
+                  reduceMotion
+                    ? undefined
+                    : {
+                        duration:
+                          feature.number === "01"
+                            ? 3.8
+                            : feature.number === "02"
+                              ? 4.1
+                              : feature.number === "03"
+                                ? 3.9
+                                : 4.2,
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: "easeInOut",
+                        delay: Number(feature.number) * 0.1,
+                      }
+                }
+                className={cn(
+                  "group relative overflow-visible rounded-[18px] border border-[#e0a315] bg-[linear-gradient(180deg,#ffcc2e_0%,#f2aa19_100%)] p-5 text-black shadow-[0_16px_36px_rgba(0,0,0,0.34)] transition-all duration-300 hover:translate-y-[-2px] hover:shadow-[0_18px_42px_rgba(0,0,0,0.42)] sm:p-6 lg:absolute lg:min-h-[132px] lg:w-[330px] xl:w-[348px]",
+                  feature.desktopClass
+                )}
               >
-                <div className="flex size-12 items-center justify-center rounded-xl bg-brand-primary/15 transition-colors duration-300 group-hover:bg-brand-primary/25">
-                  <Icon className="size-6 text-brand-primary-light" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 rounded-b-[18px] bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(0,0,0,0.12)_100%)]" />
+                <div
+                  className={cn(
+                    "hidden lg:absolute lg:top-1/2 lg:z-10 lg:flex lg:size-[96px] lg:-translate-y-1/2 lg:items-center lg:justify-center lg:rounded-full lg:border lg:border-brand-primary/24 lg:bg-[radial-gradient(circle_at_50%_28%,#242424_0%,#090909_78%)] lg:shadow-[0_14px_30px_rgba(0,0,0,0.38)]",
+                    feature.side === "left" ? "lg:right-[-36px]" : "lg:left-[-36px]"
+                  )}
+                >
+                  <Icon className="size-8 text-brand-secondary" />
                 </div>
-                <h3 className="mt-4 font-display text-base font-semibold text-white">
-                  {feature.title}
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-400">
-                  {feature.description}
-                </p>
-              </motion.div>
+
+                <div
+                  className={cn(
+                    "flex items-start gap-4",
+                    feature.side === "left"
+                      ? "lg:pr-28"
+                      : "lg:pl-28 lg:flex-row-reverse lg:text-right"
+                  )}
+                >
+                  <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-black/90 lg:hidden">
+                    <Icon className="size-6 text-brand-secondary" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className={cn(
+                        "flex items-center gap-3",
+                        feature.side === "right" && "lg:flex-row-reverse"
+                      )}
+                    >
+                      <span className="text-4xl font-bold tabular-nums text-black/86">
+                        {feature.number}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-[1.55rem] leading-[1.08] text-black">
+                      {feature.title}
+                    </h3>
+                  </div>
+                </div>
+              </motion.article>
             );
           })}
         </motion.div>

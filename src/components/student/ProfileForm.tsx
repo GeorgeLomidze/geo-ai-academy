@@ -28,12 +28,12 @@ export function ProfileForm({
 
       <form action={formAction} className="mt-5 space-y-4">
         {state.error && (
-          <div role="alert" className="rounded-lg border border-brand-danger/20 bg-red-50 px-4 py-3 text-sm text-brand-danger">
+          <div role="alert" className="rounded-lg border border-brand-danger/20 bg-brand-danger/10 px-4 py-3 text-sm text-brand-danger">
             {state.error}
           </div>
         )}
         {state.success && (
-          <div className="flex items-center gap-2 rounded-lg border border-brand-accent/20 bg-emerald-50 px-4 py-3 text-sm text-brand-accent">
+          <div className="flex items-center gap-2 rounded-lg border border-brand-accent/20 bg-brand-success/10 px-4 py-3 text-sm text-brand-accent">
             <Check className="size-4" />
             პროფილი წარმატებით განახლდა
           </div>

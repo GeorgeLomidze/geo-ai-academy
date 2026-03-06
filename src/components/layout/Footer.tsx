@@ -5,7 +5,7 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-brand-border bg-brand-secondary text-white">
+    <footer className="border-t border-brand-border bg-[#050505] text-brand-secondary">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {/* Brand */}
@@ -14,26 +14,26 @@ export function Footer() {
               href="/"
               className="flex items-center gap-2 font-display text-lg font-bold"
             >
-              <span className="flex size-7 items-center justify-center rounded-lg bg-brand-primary text-sm font-bold">
+              <span className="flex size-7 items-center justify-center rounded-xl bg-brand-primary text-sm font-bold text-black">
                 G
               </span>
               {siteConfig.name}
             </Link>
-            <p className="mt-3 text-sm text-gray-400">
+            <p className="mt-3 text-sm text-brand-muted">
               {siteConfig.description}
             </p>
           </div>
 
           {/* Links */}
           <div>
-            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-gray-400">
+            <h3 className="font-display text-sm font-semibold text-brand-muted">
               ნავიგაცია
             </h3>
             <ul className="mt-3 space-y-2">
               <li>
                 <Link
                   href="/"
-                  className="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
+                  className="text-sm text-foreground transition-colors duration-200 hover:text-brand-primary"
                 >
                   მთავარი
                 </Link>
@@ -41,7 +41,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/courses"
-                  className="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
+                  className="text-sm text-foreground transition-colors duration-200 hover:text-brand-primary"
                 >
                   კურსები
                 </Link>
@@ -49,7 +49,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/register"
-                  className="text-sm text-gray-300 transition-colors duration-200 hover:text-white"
+                  className="text-sm text-foreground transition-colors duration-200 hover:text-brand-primary"
                 >
                   რეგისტრაცია
                 </Link>
@@ -59,24 +59,24 @@ export function Footer() {
 
           {/* Social */}
           <div>
-            <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-gray-400">
+            <h3 className="font-display text-sm font-semibold text-brand-muted">
               სოციალური ქსელები
             </h3>
             <ul className="mt-3 space-y-2">
               <li>
-                <span className="text-sm text-gray-300">Facebook</span>
+                <span className="text-sm text-foreground">Facebook</span>
               </li>
               <li>
-                <span className="text-sm text-gray-300">Instagram</span>
+                <span className="text-sm text-foreground">Instagram</span>
               </li>
               <li>
-                <span className="text-sm text-gray-300">YouTube</span>
+                <span className="text-sm text-foreground">YouTube</span>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-8 border-t border-gray-700 pt-6 text-center text-xs text-gray-500">
+        <div className="mt-8 border-t border-brand-border pt-6 text-center text-xs text-brand-muted">
           &copy; {currentYear} {siteConfig.name}. ყველა უფლება დაცულია.
         </div>
       </div>

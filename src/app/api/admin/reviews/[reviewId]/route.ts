@@ -1,0 +1,65 @@
+import { revalidatePath } from "next/cache";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/admin-auth";
+
+interface AdminReviewRouteContext {
+  params: Promise<{ reviewId: string }>;
+}
+
+function revalidateReviewPaths(courseSlug: string) {
+  revalidatePath(`/courses/${courseSlug}`);
+  revalidatePath("/courses");
+  revalidatePath("/");
+  revalidatePath("/admin/reviews");
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: AdminReviewRouteContext
+) {
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) {
+      return auth.response;
+    }
+
+    const { reviewId } = await context.params;
+
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: {
+        id: true,
+        course: {
+          select: {
+            slug: true,
+          },
+        },
+      },
+    });
+
+    if (!review) {
+      return NextResponse.json(
+        { error: "შეფასება ვერ მოიძებნა" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.review.delete({
+      where: { id: review.id },
+    });
+
+    revalidateReviewPaths(review.course.slug);
+
+    return NextResponse.json({
+      success: true,
+      message: "შეფასება წარმატებით წაიშალა",
+    });
+  } catch (error) {
+    console.error("DELETE /api/admin/reviews/[reviewId] failed", error);
+    return NextResponse.json(
+      { error: "შეფასების წაშლა ვერ მოხერხდა" },
+      { status: 500 }
+    );
+  }
+}
