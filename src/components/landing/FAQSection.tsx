@@ -49,8 +49,11 @@ export function FAQSection() {
           transition={{ duration: 0.5 }}
           className="text-center"
         >
-          <Badge className="rounded-lg bg-brand-primary-light text-brand-primary">
-            FAQ
+          <Badge className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-brand-secondary backdrop-blur-sm">
+            <span className="inline-flex items-center gap-2 text-sm font-medium">
+              <span className="size-2 rounded-full bg-brand-primary" />
+              FAQ
+            </span>
           </Badge>
           <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-brand-secondary sm:text-4xl">
             ხშირად დასმული კითხვები

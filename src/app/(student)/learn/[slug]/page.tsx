@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { BookOpen, CheckCircle2, FileText, PlayCircle } from "lucide-react";
@@ -44,23 +45,38 @@ export default async function LearnOverviewPage({
 
   return (
     <div className="space-y-8">
-      <section className="rounded-3xl border border-brand-border bg-brand-surface p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-center gap-3">
+      <section className="relative overflow-hidden rounded-3xl border border-brand-border bg-brand-surface p-6 shadow-sm sm:p-8">
+        {course.thumbnailUrl ? (
+          <>
+            <div className="absolute inset-0">
+              <Image
+                src={course.thumbnailUrl}
+                alt={course.title}
+                fill
+                sizes="100vw"
+                className="object-cover object-top"
+              />
+            </div>
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.38)_0%,rgba(5,5,5,0.74)_38%,rgba(5,5,5,0.92)_70%,rgba(5,5,5,0.98)_100%)]" />
+          </>
+        ) : null}
+
+        <div className="relative flex flex-wrap items-center gap-3">
           <Badge variant="outline">ჩარიცხული კურსი</Badge>
           <Badge variant="outline" className="tabular-nums">
             {course.totalLessons} გაკვეთილი
           </Badge>
         </div>
 
-        <h1 className="mt-4 max-w-3xl text-balance font-display text-3xl font-bold text-brand-secondary sm:text-4xl">
+        <h1 className="relative mt-4 max-w-3xl text-balance font-display text-3xl font-bold text-brand-secondary sm:text-4xl">
           {course.title}
         </h1>
 
-        <p className="mt-3 max-w-3xl text-pretty text-base leading-7 text-brand-muted">
+        <p className="relative mt-3 max-w-3xl text-pretty text-base leading-7 text-brand-secondary/78">
           {course.shortDescription ?? course.description ?? "კურსის სასწავლო მასალა და პროგრესი."}
         </p>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="relative mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
           <div className="space-y-5">
             <ProgressBar value={course.progressPercentage} label="საერთო პროგრესი" />
 

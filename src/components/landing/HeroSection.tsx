@@ -3,11 +3,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function HeroSection() {
+type HeroSectionProps = {
+  isAuthenticated: boolean;
+};
+
+export function HeroSection({ isAuthenticated }: HeroSectionProps) {
   const reduceMotion = useReducedMotion();
+  const primaryCtaHref = isAuthenticated ? "/courses" : "/register";
 
   return (
     <section className="relative isolate overflow-hidden bg-[linear-gradient(180deg,#0A0A0A_0%,#1a1000_50%,#0A0A0A_100%)]">
@@ -48,29 +53,15 @@ export function HeroSection() {
       <div className="pointer-events-none absolute -right-20 top-20 size-72 rounded-full bg-brand-primary/10 blur-3xl" />
       <div className="pointer-events-none absolute -left-10 bottom-10 size-56 rounded-full bg-brand-accent/10 blur-3xl" />
 
-      {/* Diagonal accent line */}
-      <div className="pointer-events-none absolute left-0 top-0 h-px w-[200%] origin-top-left rotate-[15deg] bg-gradient-to-r from-transparent via-brand-primary/30 to-transparent" />
-
       <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_auto] lg:gap-16">
           {/* Text content */}
           <div className="max-w-2xl">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-primary/30 bg-brand-primary/10 px-3 py-1 text-xs font-medium text-brand-primary">
-                <Sparkles className="size-3" />
-                ახალი პლატფორმა
-              </span>
-            </motion.div>
-
             <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="mt-6 font-display text-4xl font-bold leading-[1.1] text-white sm:text-5xl lg:text-6xl"
+              className="font-display text-4xl font-bold leading-[1.1] text-white sm:text-5xl lg:text-6xl"
             >
               ისწავლე AI
               <br />
@@ -103,7 +94,7 @@ export function HeroSection() {
                 size="lg"
                 className="h-12 rounded-2xl bg-brand-accent px-6 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
               >
-                <Link href="/register">
+                <Link href={primaryCtaHref}>
                   დაიწყე სწავლა
                   <ArrowRight className="ml-1 size-4" />
                 </Link>

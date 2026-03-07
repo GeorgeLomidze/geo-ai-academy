@@ -3,13 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { navItems } from "@/lib/constants";
+import { navItems, studentNavItems } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 
 export function MobileNavToggle({
   isAuthenticated,
+  isAdmin = false,
 }: {
   isAuthenticated: boolean;
+  isAdmin?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -37,6 +39,30 @@ export function MobileNavToggle({
                 {item.label}
               </Link>
             ))}
+            {isAuthenticated && (
+              <>
+                <hr className="my-2 border-brand-border" />
+                {studentNavItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className="rounded-xl px-3 py-2.5 text-sm font-medium text-brand-muted transition-colors hover:bg-brand-primary-light hover:text-brand-primary"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                {isAdmin ? (
+                  <Link
+                    href="/admin"
+                    onClick={() => setOpen(false)}
+                    className="rounded-xl px-3 py-2.5 text-sm font-medium text-brand-muted transition-colors hover:bg-brand-primary-light hover:text-brand-primary"
+                  >
+                    ადმინის პანელი
+                  </Link>
+                ) : null}
+              </>
+            )}
             {!isAuthenticated && (
               <>
                 <hr className="my-2 border-brand-border" />

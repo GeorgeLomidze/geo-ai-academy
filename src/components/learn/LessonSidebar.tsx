@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BookOpen, CheckCircle2, FileText, PlayCircle, PanelRightClose, PanelRightOpen } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  CheckCircle2,
+  FileText,
+  PlayCircle,
+  PanelRightClose,
+  PanelRightOpen,
+} from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +24,7 @@ type LessonSidebarProps = {
   modules: LearningModule[];
   progressPercentage: number;
   currentLessonId?: string;
+  backHref?: string;
 };
 
 function getDefaultOpenModules(
@@ -44,6 +53,7 @@ export function LessonSidebar({
   modules,
   progressPercentage,
   currentLessonId,
+  backHref,
 }: LessonSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const defaultOpenModules = getDefaultOpenModules(modules, currentLessonId);
@@ -59,6 +69,15 @@ export function LessonSidebar({
           >
             {courseTitle}
           </Link>
+          {backHref ? (
+            <Link
+              href={backHref}
+              className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-brand-muted transition-colors duration-200 hover:text-brand-primary"
+            >
+              <ArrowLeft className="size-4" />
+              კურსზე დაბრუნება
+            </Link>
+          ) : null}
         </div>
 
         <Button

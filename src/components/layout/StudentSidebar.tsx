@@ -13,6 +13,11 @@ const studentNavItems = [
 
 export function StudentSidebar() {
   const pathname = usePathname();
+  const isLearnPage = pathname.startsWith("/learn/");
+
+  if (isLearnPage) {
+    return null;
+  }
 
   return (
     <>

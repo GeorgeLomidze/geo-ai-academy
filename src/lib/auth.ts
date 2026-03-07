@@ -13,9 +13,19 @@ export async function syncAuthUser(user: User) {
     throw new Error("ანგარიშის მონაცემები არასრულია");
   }
 
+  const providerName =
+    typeof user.user_metadata?.name === "string"
+      ? user.user_metadata.name
+      : null;
+  const providerAvatarUrl =
+    typeof user.user_metadata?.avatar_url === "string" &&
+    user.user_metadata.avatar_url.length > 0
+      ? user.user_metadata.avatar_url
+      : null;
+
   const existingUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { role: true },
+    select: { role: true, name: true, avatarUrl: true },
   });
 
   const role =
@@ -23,31 +33,24 @@ export async function syncAuthUser(user: User) {
       ? "ADMIN"
       : "STUDENT";
 
+  const persistedName = existingUser ? existingUser.name : providerName;
+  const persistedAvatarUrl = existingUser
+    ? existingUser.avatarUrl
+    : providerAvatarUrl;
+
   await prisma.user.upsert({
     where: { id: user.id },
     update: {
       email: user.email,
-      name:
-        typeof user.user_metadata?.name === "string"
-          ? user.user_metadata.name
-          : null,
-      avatarUrl:
-        typeof user.user_metadata?.avatar_url === "string"
-          ? user.user_metadata.avatar_url
-          : null,
+      name: persistedName,
+      avatarUrl: persistedAvatarUrl,
       role,
     },
     create: {
       id: user.id,
       email: user.email,
-      name:
-        typeof user.user_metadata?.name === "string"
-          ? user.user_metadata.name
-          : null,
-      avatarUrl:
-        typeof user.user_metadata?.avatar_url === "string"
-          ? user.user_metadata.avatar_url
-          : null,
+      name: persistedName,
+      avatarUrl: persistedAvatarUrl,
       role,
     },
   });

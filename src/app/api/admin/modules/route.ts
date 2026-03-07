@@ -17,6 +17,11 @@ const reorderModulesSchema = z.object({
   ),
 });
 
+const updateModuleSchema = z.object({
+  id: z.string().uuid("არასწორი მოდულის ID"),
+  title: z.string().min(1, "მოდულის სახელი აუცილებელია"),
+});
+
 const deleteModuleSchema = z.object({
   id: z.string().uuid("არასწორი მოდულის ID"),
 });
@@ -69,26 +74,48 @@ export async function PUT(request: NextRequest) {
   if (!auth.authorized) return auth.response;
 
   const body = await request.json().catch(() => null);
-  const result = reorderModulesSchema.safeParse(body);
+  const reorderResult = reorderModulesSchema.safeParse(body);
 
-  if (!result.success) {
+  if (reorderResult.success) {
+    await prisma.$transaction(
+      reorderResult.data.modules.map(({ id, sortOrder }) =>
+        prisma.module.update({
+          where: { id },
+          data: { sortOrder },
+        })
+      )
+    );
+
+    return NextResponse.json({ message: "თანმიმდევრობა განახლდა" });
+  }
+
+  const updateResult = updateModuleSchema.safeParse(body);
+  if (!updateResult.success) {
     return NextResponse.json(
-      { error: result.error.issues[0]?.message ?? "არასწორი მონაცემები" },
+      {
+        error:
+          updateResult.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      },
       { status: 400 }
     );
   }
 
-  // Update all modules in a transaction
-  await prisma.$transaction(
-    result.data.modules.map(({ id, sortOrder }) =>
-      prisma.module.update({
-        where: { id },
-        data: { sortOrder },
-      })
-    )
-  );
+  const existing = await prisma.module.findUnique({
+    where: { id: updateResult.data.id },
+  });
+  if (!existing) {
+    return NextResponse.json(
+      { error: "მოდული ვერ მოიძებნა" },
+      { status: 404 }
+    );
+  }
 
-  return NextResponse.json({ message: "თანმიმდევრობა განახლდა" });
+  const mod = await prisma.module.update({
+    where: { id: updateResult.data.id },
+    data: { title: updateResult.data.title },
+  });
+
+  return NextResponse.json(mod);
 }
 
 export async function DELETE(request: NextRequest) {

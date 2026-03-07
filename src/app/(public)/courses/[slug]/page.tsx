@@ -165,6 +165,27 @@ export default async function CourseDetailPage({
                 )}
               </div>
 
+              <div className="mt-6 flex max-w-xl items-center gap-4 rounded-2xl border border-brand-border bg-brand-surface/70 px-4 py-4 backdrop-blur-sm">
+                <div className="relative size-14 shrink-0 overflow-hidden rounded-full border border-brand-border">
+                  <Image
+                    src="/author.jpeg"
+                    alt="გიორგი ლომიძე"
+                    fill
+                    className="object-cover"
+                    sizes="56px"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-brand-secondary">
+                    გიორგი ლომიძე
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-brand-muted text-pretty">
+                    ვებ დეველოპერი / AI ტრენერი / 10+ წლიანი გამოცდილება
+                    ტექნოლოგიებში
+                  </p>
+                </div>
+              </div>
+
               {/* Stats row */}
               <div className="mt-8 flex flex-wrap items-center gap-6 text-sm text-brand-muted">
                 <span className="flex items-center gap-1.5">
@@ -279,7 +300,7 @@ export default async function CourseDetailPage({
 
                 <Accordion
                   type="multiple"
-                  className="mt-6 space-y-3"
+                  className="mt-6 space-y-4"
                   defaultValue={[course.modules[0]?.id ?? ""]}
                 >
                   {course.modules.map((module, moduleIndex) => (
@@ -297,13 +318,13 @@ export default async function CourseDetailPage({
                         </span>
                       </AccordionTrigger>
                       <AccordionContent className="px-5 pb-4">
-                        <ul className="space-y-1">
+                        <ul className="space-y-2 pt-1">
                           {module.lessons.map((lesson) => {
                             const isAccessible = lesson.isFree || isEnrolled;
                             return (
                               <li
                                 key={lesson.id}
-                                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-brand-primary-light/50"
+                                className="flex items-center gap-3 rounded-lg border border-brand-border/60 bg-brand-background/30 px-3 py-3 text-sm transition-colors hover:bg-brand-primary-light/40"
                               >
                                 {/* Lesson type icon */}
                                 {lesson.type === "VIDEO" ? (

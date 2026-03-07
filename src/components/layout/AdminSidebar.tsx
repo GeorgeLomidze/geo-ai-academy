@@ -13,8 +13,9 @@ import {
   PanelLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { adminNavItems, siteConfig } from "@/lib/constants";
+import { adminNavItems } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 
 const iconMap = {
   LayoutDashboard,
@@ -38,29 +39,31 @@ export function AdminSidebar() {
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+        <div
+          className={cn(
+            "flex h-16 items-center border-b border-sidebar-border",
+            collapsed ? "justify-center px-2" : "gap-2 px-3"
+          )}
+        >
           {!collapsed && (
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 font-display text-base font-bold text-brand-secondary"
-            >
-              <span className="flex size-7 items-center justify-center rounded-xl bg-brand-primary text-sm font-bold text-black">
-                G
-              </span>
-              {siteConfig.name}
-            </Link>
+            <div className="min-w-0 flex-1">
+              <BrandLogo className="w-full" imageClassName="w-full max-w-[190px]" />
+            </div>
           )}
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={() => setCollapsed(!collapsed)}
-            className="text-brand-muted hover:bg-sidebar-accent hover:text-brand-secondary"
+            className={cn(
+              "border border-white/10 bg-white/5 text-brand-secondary shadow-sm transition-colors duration-200 hover:border-brand-primary/30 hover:bg-sidebar-accent hover:text-brand-secondary",
+              collapsed && "size-9"
+            )}
             aria-label={collapsed ? "გვერდითი პანელის გახსნა" : "გვერდითი პანელის დახურვა"}
           >
             {collapsed ? (
-              <PanelLeft className="size-4" />
+              <PanelLeft className="size-4.5 text-brand-primary" />
             ) : (
-              <PanelLeftClose className="size-4" />
+              <PanelLeftClose className="size-4.5 text-brand-primary" />
             )}
           </Button>
         </div>

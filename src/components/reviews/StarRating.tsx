@@ -163,7 +163,7 @@ export function StarRating({
         </div>
 
         <div className="rounded-xl bg-brand-primary-light px-3 py-2 text-sm font-semibold tabular-nums text-brand-primary">
-          {displayValue > 0 ? `${formatRatingValue(displayValue)} / 5` : "აირჩიე"}
+          {displayValue > 0 ? formatRatingValue(displayValue) : "აირჩიე"}
         </div>
       </div>
     </fieldset>

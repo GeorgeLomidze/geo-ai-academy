@@ -101,7 +101,13 @@ export default async function StudentDashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const name = user?.user_metadata?.name ?? "სტუდენტი";
+  const profile = user
+    ? await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { name: true },
+      })
+    : null;
+  const name = profile?.name ?? user?.user_metadata?.name ?? "სტუდენტი";
   const dashboardData = user ? await getDashboardData(user.id) : null;
   const hasEnrollments = (dashboardData?.stats.totalEnrolled ?? 0) > 0;
 

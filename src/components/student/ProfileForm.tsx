@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 import { updateProfile, type ProfileState } from "@/app/(student)/profile/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AvatarUploader } from "@/components/student/AvatarUploader";
 
 const initialState: ProfileState = { success: false };
 
@@ -19,6 +21,19 @@ export function ProfileForm({
   email: string;
 }) {
   const [state, formAction, pending] = useActionState(updateProfile, initialState);
+  const [avatarUrl, setAvatarUrl] = useState(defaultAvatarUrl);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    setAvatarUrl(defaultAvatarUrl);
+  }, [defaultAvatarUrl]);
+
+  useEffect(() => {
+    if (state.success) {
+      router.refresh();
+    }
+  }, [router, state.success]);
 
   return (
     <div className="rounded-2xl border border-brand-border bg-brand-surface p-6">
@@ -70,16 +85,14 @@ export function ProfileForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="avatarUrl">ავატარის URL</Label>
-          <Input
-            id="avatarUrl"
-            name="avatarUrl"
-            type="url"
-            defaultValue={defaultAvatarUrl}
-            placeholder="https://example.com/avatar.jpg"
-            className="h-11 rounded-xl"
-            aria-invalid={!!state.fieldErrors?.avatarUrl}
+          <Label htmlFor="avatar-upload">ავატარი</Label>
+          <AvatarUploader
+            value={avatarUrl}
+            onChange={setAvatarUrl}
+            onUploadingChange={setAvatarUploading}
+            disabled={pending}
           />
+          <input type="hidden" name="avatarUrl" value={avatarUrl} />
           {state.fieldErrors?.avatarUrl && (
             <p className="text-xs text-brand-danger">
               {state.fieldErrors.avatarUrl}
@@ -90,7 +103,7 @@ export function ProfileForm({
         <Button
           type="submit"
           className="rounded-xl"
-          disabled={pending}
+          disabled={pending || avatarUploading}
         >
           {pending && <Loader2 className="size-4 animate-spin" />}
           შენახვა

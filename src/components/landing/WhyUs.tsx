@@ -77,8 +77,11 @@ export function WhyUs() {
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <Badge className="rounded-xl border-brand-primary/20 bg-brand-primary-light text-brand-primary">
-            უპირატესობები
+          <Badge className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-brand-secondary backdrop-blur-sm">
+            <span className="inline-flex items-center gap-2 text-sm font-medium">
+              <span className="size-2 rounded-full bg-brand-primary" />
+              უპირატესობები
+            </span>
           </Badge>
           <h2 className="mt-3 text-3xl text-white sm:text-4xl">
             რატომ GEO AI Academy?
@@ -101,10 +104,7 @@ export function WhyUs() {
             className="relative mx-auto flex size-[280px] items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(145deg,#ffcf33_0%,#f5a623_54%,#7a4a00_100%)] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.56)] sm:size-[320px] lg:absolute lg:left-1/2 lg:top-1/2 lg:z-10 lg:size-[360px] lg:-translate-x-1/2 lg:-translate-y-1/2 xl:size-[400px]"
           >
             <div className="relative flex size-full flex-col items-center justify-center rounded-full border border-brand-border bg-[radial-gradient(circle_at_50%_30%,#262626_0%,#0a0a0a_74%)] px-8 text-center">
-              <div className="inline-flex items-center rounded-full border border-brand-primary/18 bg-brand-primary-light px-3 py-1 text-xs font-semibold text-brand-primary">
-                GEO AI Academy
-              </div>
-              <h3 className="mt-5 text-3xl text-white sm:text-4xl">
+              <h3 className="text-3xl text-white sm:text-4xl">
                 გამორჩეული
                 <br />
                 სასწავლო სისტემა

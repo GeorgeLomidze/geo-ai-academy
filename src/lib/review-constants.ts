@@ -15,7 +15,7 @@ export const REVIEW_RATING_INPUT_VALUES = [
 export type ReviewRatingValue = (typeof REVIEW_RATING_VALUES)[number];
 
 export function formatRatingValue(value: number): string {
-  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+  return value.toFixed(1);
 }
 
 export function getRatingBreakdownKey(value: number): string {

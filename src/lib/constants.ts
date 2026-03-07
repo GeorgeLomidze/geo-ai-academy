@@ -7,6 +7,47 @@ export const siteConfig = {
 export const navItems = [
   { label: "მთავარი", href: "/" },
   { label: "კურსები", href: "/courses" },
+  { label: "ტრენერი", href: "/about" },
+  { label: "კონტაქტი", href: "/#contact" },
+] as const;
+
+export const studentNavItems = [
+  { label: "სამუშაო პანელი", href: "/dashboard" },
+  { label: "ჩემი კურსები", href: "/my-courses" },
+  { label: "პროფილი", href: "/profile" },
+] as const;
+
+export const socialLinks = [
+  {
+    label: "Facebook",
+    shortLabel: "FB",
+    href: "https://facebook.com",
+    icon: "facebook",
+  },
+  {
+    label: "YouTube",
+    shortLabel: "YT",
+    href: "https://youtube.com",
+    icon: "youtube",
+  },
+  {
+    label: "TikTok",
+    shortLabel: "TK",
+    href: "https://tiktok.com",
+    icon: "tiktok",
+  },
+  {
+    label: "LinkedIn",
+    shortLabel: "LN",
+    href: "https://linkedin.com",
+    icon: "linkedin",
+  },
+  {
+    label: "Instagram",
+    shortLabel: "IN",
+    href: "https://instagram.com",
+    icon: "instagram",
+  },
 ] as const;
 
 export const adminNavItems = [

@@ -1,11 +1,20 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod/v4";
+import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
 const profileSchema = z.object({
-  name: z.string().min(2, "სახელი უნდა შეიცავდეს მინიმუმ 2 სიმბოლოს"),
-  avatarUrl: z.union([z.url("გთხოვთ შეიყვანოთ სწორი URL"), z.literal("")]),
+  name: z
+    .string()
+    .trim()
+    .min(2, "სახელი უნდა შეიცავდეს მინიმუმ 2 სიმბოლოს"),
+  avatarUrl: z.union([
+    z.literal(""),
+    z.url("ავატარის მისამართი არასწორია"),
+    z.string().startsWith("/", "ავატარის ატვირთვა ვერ დადასტურდა"),
+  ]),
 });
 
 const passwordSchema = z
@@ -45,16 +54,36 @@ export async function updateProfile(
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "ავტორიზაცია აუცილებელია" };
+  }
+
   const { error } = await supabase.auth.updateUser({
     data: {
       name: result.data.name,
-      avatar_url: result.data.avatarUrl || undefined,
+      avatar_url: result.data.avatarUrl || null,
     },
   });
 
   if (error) {
     return { success: false, error: "პროფილის განახლება ვერ მოხერხდა" };
   }
+
+  await prisma.user.updateMany({
+    where: { id: user.id },
+    data: {
+      name: result.data.name,
+      avatarUrl: result.data.avatarUrl || null,
+    },
+  });
+
+  revalidatePath("/profile");
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/reviews");
 
   return { success: true };
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -29,6 +28,9 @@ import {
   FileText,
   Loader2,
   Eye,
+  Pencil,
+  Save,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +54,8 @@ type Module = {
   lessons: Lesson[];
 };
 
+type ModuleUpdate = Pick<Module, "id" | "title">;
+
 export function ModuleManager({
   courseId,
   initialModules,
@@ -59,7 +63,6 @@ export function ModuleManager({
   courseId: string;
   initialModules: Module[];
 }) {
-  const router = useRouter();
   const [modules, setModules] = useState(initialModules);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(
     new Set(initialModules.map((m) => m.id))
@@ -171,6 +174,16 @@ export function ModuleManager({
     );
   }
 
+  function handleModuleUpdated(updatedModule: ModuleUpdate) {
+    setModules((prev) =>
+      prev.map((module) =>
+        module.id === updatedModule.id
+          ? { ...module, title: updatedModule.title }
+          : module
+      )
+    );
+  }
+
   return (
     <div className="space-y-4">
       <DndContext
@@ -190,6 +203,7 @@ export function ModuleManager({
               isExpanded={expandedModules.has(mod.id)}
               onToggle={() => toggleModule(mod.id)}
               onDelete={() => handleDeleteModule(mod.id)}
+              onModuleUpdated={(updatedModule) => handleModuleUpdated(updatedModule)}
               onLessonAdded={(lesson) => handleLessonAdded(mod.id, lesson)}
               onLessonUpdated={(lesson) =>
                 handleLessonUpdated(mod.id, lesson)
@@ -263,6 +277,7 @@ function SortableModule({
   isExpanded,
   onToggle,
   onDelete,
+  onModuleUpdated,
   onLessonAdded,
   onLessonUpdated,
   onLessonDeleted,
@@ -272,6 +287,7 @@ function SortableModule({
   isExpanded: boolean;
   onToggle: () => void;
   onDelete: () => void;
+  onModuleUpdated: (module: ModuleUpdate) => void;
   onLessonAdded: (lesson: Lesson) => void;
   onLessonUpdated: (lesson: Lesson) => void;
   onLessonDeleted: (lessonId: string) => void;
@@ -287,12 +303,55 @@ function SortableModule({
 
   const [showLessonForm, setShowLessonForm] = useState(false);
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
+  const [isEditingModule, setIsEditingModule] = useState(false);
+  const [moduleTitle, setModuleTitle] = useState(mod.title);
+  const [savingModule, setSavingModule] = useState(false);
+  const [moduleError, setModuleError] = useState<string | null>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  async function handleModuleSave() {
+    const title = moduleTitle.trim();
+    if (!title) {
+      setModuleError("მოდულის სახელი აუცილებელია");
+      return;
+    }
+
+    setSavingModule(true);
+    setModuleError(null);
+
+    try {
+      const res = await fetch("/api/admin/modules", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: mod.id, title }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setModuleError(data?.error ?? "მოდულის განახლება ვერ მოხერხდა");
+        return;
+      }
+
+      onModuleUpdated(data);
+      setModuleTitle(data.title);
+      setIsEditingModule(false);
+    } catch {
+      setModuleError("კავშირის შეცდომა");
+    } finally {
+      setSavingModule(false);
+    }
+  }
+
+  function handleModuleEditCancel() {
+    setIsEditingModule(false);
+    setModuleTitle(mod.title);
+    setModuleError(null);
+  }
 
   async function handleDeleteLesson(lessonId: string) {
     const res = await fetch("/api/admin/lessons", {
@@ -336,24 +395,91 @@ function SortableModule({
         </button>
 
         <div className="min-w-0 flex-1">
-          <h3 className="font-medium text-brand-secondary">
-            <span className="text-brand-muted">მოდული {index + 1}:</span>{" "}
-            {mod.title}
-          </h3>
-          <p className="text-xs text-brand-muted">
-            {mod.lessons.length} გაკვეთილი
-          </p>
+          {isEditingModule ? (
+            <div className="space-y-3">
+              <Input
+                value={moduleTitle}
+                onChange={(event) => setModuleTitle(event.target.value)}
+                placeholder="მოდულის სახელი"
+                className="max-w-xl rounded-xl"
+                autoFocus
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void handleModuleSave();
+                  }
+                  if (event.key === "Escape") {
+                    handleModuleEditCancel();
+                  }
+                }}
+              />
+              {moduleError ? (
+                <p className="text-xs text-brand-danger">{moduleError}</p>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => void handleModuleSave()}
+                  disabled={savingModule}
+                  className="gap-1.5 rounded-lg"
+                >
+                  {savingModule ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Save className="size-3.5" />
+                  )}
+                  შენახვა
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleModuleEditCancel}
+                  className="gap-1.5 rounded-lg"
+                >
+                  <X className="size-3.5" />
+                  გაუქმება
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h3 className="font-medium text-brand-secondary">
+                <span className="text-brand-muted">მოდული {index + 1}:</span>{" "}
+                {mod.title}
+              </h3>
+              <p className="text-xs text-brand-muted">
+                {mod.lessons.length} გაკვეთილი
+              </p>
+            </>
+          )}
         </div>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onDelete}
-          className="size-8 shrink-0 rounded-lg p-0 text-brand-danger hover:bg-brand-danger/10"
-        >
-          <Trash2 className="size-4" />
-          <span className="sr-only">წაშლა</span>
-        </Button>
+        {!isEditingModule ? (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setModuleTitle(mod.title);
+                setModuleError(null);
+                setIsEditingModule(true);
+              }}
+              className="size-8 shrink-0 rounded-lg p-0"
+            >
+              <Pencil className="size-4" />
+              <span className="sr-only">რედაქტირება</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onDelete}
+              className="size-8 shrink-0 rounded-lg p-0 text-brand-danger hover:bg-brand-danger/10"
+            >
+              <Trash2 className="size-4" />
+              <span className="sr-only">წაშლა</span>
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       {/* Lessons */}

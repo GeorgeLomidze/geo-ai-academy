@@ -5,16 +5,11 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   LoaderCircle,
-  PlayCircle,
-  ShieldCheck,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 declare global {
   interface Window {
@@ -94,7 +89,6 @@ export function VideoPlayer({
   const [scriptReady, setScriptReady] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [completed, setCompleted] = useState(initialCompleted);
   const [paused, setPaused] = useState(true);
   const [transitioning, setTransitioning] = useState(false);
   const playerId = useId().replace(/:/g, "");
@@ -226,9 +220,6 @@ export function VideoPlayer({
         currentSeconds / duration >= 0.9
       ) {
         completionSavedRef.current = true;
-        if (isActiveRef.current) {
-          setCompleted(true);
-        }
         try {
           await persistProgress(currentSeconds, true);
           if (isActiveRef.current) {
@@ -237,7 +228,6 @@ export function VideoPlayer({
         } catch (progressError) {
           completionSavedRef.current = false;
           if (isActiveRef.current) {
-            setCompleted(false);
             setError(
               progressError instanceof Error
                 ? progressError.message
@@ -249,10 +239,6 @@ export function VideoPlayer({
     };
 
     const handleEnded = async () => {
-      if (isActiveRef.current) {
-        setCompleted(true);
-      }
-
       try {
         if (!completionSavedRef.current) {
           completionSavedRef.current = true;
@@ -265,7 +251,6 @@ export function VideoPlayer({
       } catch (progressError) {
         completionSavedRef.current = false;
         if (isActiveRef.current) {
-          setCompleted(false);
           setError(
             progressError instanceof Error
               ? progressError.message
@@ -320,28 +305,6 @@ export function VideoPlayer({
       />
 
       <div className="overflow-hidden rounded-[28px] border border-brand-border bg-brand-surface shadow-sm">
-        <div className="border-b border-brand-border bg-brand-background/70 px-5 py-4 backdrop-blur-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-brand-muted">ვიდეო გაკვეთილი</p>
-              <h2 className="mt-1 truncate text-base font-semibold text-brand-secondary">
-                {lessonTitle}
-              </h2>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="gap-1.5">
-                <ShieldCheck className="size-3.5 text-brand-primary" />
-                დაცული სტრიმი
-              </Badge>
-              <Badge variant="outline" className="gap-1.5">
-                <PlayCircle className="size-3.5 text-brand-primary" />
-                ავტომატური პროგრესი
-              </Badge>
-            </div>
-          </div>
-        </div>
-
         <div className="relative aspect-video bg-brand-surface-light">
           {!playerReady || transitioning ? (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-brand-background/86">
@@ -361,61 +324,38 @@ export function VideoPlayer({
           />
 
           {playerReady && paused && !transitioning ? (
-            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-4">
-              <div className="pointer-events-auto flex items-center gap-5 rounded-full border border-brand-border bg-brand-surface/90 px-4 py-3 shadow-sm backdrop-blur-md">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="rounded-full border-brand-border bg-brand-surface-light text-brand-secondary shadow-sm hover:bg-brand-surface"
-                  onClick={() => navigateToHref(prevLessonHref)}
-                  disabled={!prevLessonHref}
-                  aria-label="წინა გაკვეთილი"
-                >
-                  <ChevronLeft className="size-5" />
-                </Button>
-
-                <div className="flex items-center gap-2" aria-hidden="true">
-                  <span className="block size-1.5 rounded-full bg-brand-primary/35" />
-                  <span className="block h-10 w-px bg-brand-border" />
-                  <span className="block size-1.5 rounded-full bg-brand-primary/35" />
+            <div className="pointer-events-none absolute inset-0 z-20">
+              {prevLessonHref ? (
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 sm:left-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="pointer-events-auto size-12 rounded-full border-white/12 bg-brand-surface/90 text-brand-secondary shadow-sm backdrop-blur-md hover:bg-brand-surface"
+                    onClick={() => navigateToHref(prevLessonHref)}
+                    aria-label="წინა გაკვეთილი"
+                  >
+                    <ChevronLeft className="size-5" />
+                  </Button>
                 </div>
+              ) : null}
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="rounded-full border-brand-border bg-brand-surface-light text-brand-secondary shadow-sm hover:bg-brand-surface"
-                  onClick={() => navigateToHref(nextLessonHref ?? fallbackHref)}
-                  disabled={!nextLessonHref && !fallbackHref}
-                  aria-label="შემდეგი გაკვეთილი"
-                >
-                  <ChevronRight className="size-5" />
-                </Button>
-              </div>
+              {nextLessonHref || fallbackHref ? (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 sm:right-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="pointer-events-auto size-12 rounded-full border-white/12 bg-brand-surface/90 text-brand-secondary shadow-sm backdrop-blur-md hover:bg-brand-surface"
+                    onClick={() => navigateToHref(nextLessonHref ?? fallbackHref)}
+                    aria-label="შემდეგი გაკვეთილი"
+                  >
+                    <ChevronRight className="size-5" />
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : null}
-        </div>
-
-        <div className="border-t border-brand-border bg-brand-background/70 px-5 py-4 backdrop-blur-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-            <div className="flex items-center gap-2 text-brand-muted">
-              <span className={cn(
-                "inline-block size-2.5 rounded-full",
-                playerReady ? "bg-brand-success/100" : "bg-brand-primary"
-              )} />
-              {playerReady
-                ? "ვიდეო მზად არის და პროგრესი ინახება ავტომატურად"
-                : "ვიდეო მალე ჩაიტვირთება"}
-            </div>
-
-            {completed ? (
-              <div className="inline-flex items-center gap-2 rounded-full bg-brand-success/10 px-3 py-1 font-medium text-brand-success">
-                <CheckCircle2 className="size-4" />
-                დასრულებულია
-              </div>
-            ) : null}
-          </div>
         </div>
       </div>
 
