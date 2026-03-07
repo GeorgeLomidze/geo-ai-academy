@@ -30,7 +30,7 @@ export default async function AdminCoursesPage() {
     },
   });
 
-  const enriched = courses.map((course: typeof courses[number]) => ({
+  const enriched = courses.map((course) => ({
     ...course,
     modulesCount: course._count.modules,
     lessonsCount: course.modules.reduce((sum, m) => sum + m._count.lessons, 0),
