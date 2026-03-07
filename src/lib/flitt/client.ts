@@ -11,8 +11,11 @@ interface FlittCheckoutParams {
 
 interface FlittCheckoutResponse {
   response: {
-    checkout_url: string;
-    payment_id: string;
+    response_status?: string;
+    checkout_url?: string;
+    payment_id?: string;
+    error_message?: string;
+    error_code?: number;
   };
 }
 
@@ -74,18 +77,31 @@ export async function createCheckoutUrl({
   const res = await fetch("https://pay.flitt.com/api/checkout/url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...params, signature }),
+    body: JSON.stringify({ request: { ...params, signature } }),
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Flitt API error: ${res.status} ${text}`);
-  }
 
   const data = (await res.json()) as FlittCheckoutResponse;
 
+  if (!res.ok) {
+    throw new Error(
+      `Flitt API HTTP error: ${res.status} — ${data.response?.error_message ?? "unknown"}`,
+    );
+  }
+
+  if (data.response?.response_status === "failure" || data.response?.error_message) {
+    throw new Error(
+      `Flitt API error: ${data.response.error_message ?? "unknown"} (code: ${data.response.error_code ?? "none"})`,
+    );
+  }
+
+  if (!data.response?.checkout_url) {
+    throw new Error(
+      `Flitt API returned no checkout_url: ${JSON.stringify(data)}`,
+    );
+  }
+
   return {
     checkoutUrl: data.response.checkout_url,
-    paymentId: data.response.payment_id,
+    paymentId: data.response.payment_id ?? "",
   };
 }

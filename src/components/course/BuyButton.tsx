@@ -43,7 +43,10 @@ export function BuyButton({
 
       if (data?.checkoutUrl) {
         window.location.href = data.checkoutUrl;
+        return;
       }
+
+      setError(data?.error ?? "გადახდის ბმული ვერ მოიძებნა, სცადეთ თავიდან");
     } catch {
       setError("კავშირის შეცდომა, სცადეთ თავიდან");
     } finally {
