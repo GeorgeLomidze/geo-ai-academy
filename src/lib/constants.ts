@@ -56,5 +56,6 @@ export const adminNavItems = [
   { label: "შეკვეთები", href: "/admin/orders", icon: "ShoppingCart" },
   { label: "შეფასებები", href: "/admin/reviews", icon: "Star" },
   { label: "სტუდენტები", href: "/admin/students", icon: "Users" },
+  { label: "ემაილები", href: "/admin/emails", icon: "Mail" },
   { label: "პარამეტრები", href: "/admin/settings", icon: "Settings" },
 ] as const;

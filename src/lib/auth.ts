@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { sendWelcomeEmail } from "@/lib/email/send";
 
 type AuthResult =
   | { authenticated: true; userId: string }
@@ -25,8 +26,10 @@ export async function syncAuthUser(user: User) {
 
   const existingUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { role: true, name: true, avatarUrl: true },
+    select: { id: true, role: true, name: true, avatarUrl: true },
   });
+
+  const isNewUser = !existingUser;
 
   const role =
     user.user_metadata?.role === "admin" || existingUser?.role === "ADMIN"
@@ -54,6 +57,12 @@ export async function syncAuthUser(user: User) {
       role,
     },
   });
+
+  if (isNewUser) {
+    sendWelcomeEmail(user.email, persistedName ?? "მომხმარებელი").catch(
+      (err) => console.error("[Email] Welcome email failed:", err)
+    );
+  }
 }
 
 export async function requireAuth(request?: NextRequest): Promise<AuthResult> {

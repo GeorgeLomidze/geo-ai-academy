@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Star,
   Users,
+  Mail,
   Settings,
   PanelLeftClose,
   PanelLeft,
@@ -24,6 +25,7 @@ const iconMap = {
   ShoppingCart,
   Star,
   Users,
+  Mail,
   Settings,
 } as const;
 

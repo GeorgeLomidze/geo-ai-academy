@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendPurchaseEmail } from "@/lib/email/send";
 
 export async function fulfillOrder(
   orderId: string,
@@ -8,7 +9,15 @@ export async function fulfillOrder(
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { id: true, userId: true, courseId: true, status: true },
+    select: {
+      id: true,
+      userId: true,
+      courseId: true,
+      status: true,
+      amount: true,
+      user: { select: { email: true, name: true } },
+      course: { select: { title: true } },
+    },
   });
 
   console.log("[fulfillOrder] Order lookup result:", order ? JSON.stringify(order) : "NOT FOUND");
@@ -50,5 +59,13 @@ export async function fulfillOrder(
   ]);
 
   console.log("[fulfillOrder] Transaction complete — order PAID, enrollment created");
+
+  sendPurchaseEmail(
+    order.user.email,
+    order.user.name ?? "მომხმარებელი",
+    order.course.title,
+    String(order.amount)
+  ).catch((err) => console.error("[Email] Purchase email failed:", err));
+
   return true;
 }

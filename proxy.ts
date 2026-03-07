@@ -6,6 +6,15 @@ const protectedRoutes = ["/dashboard", "/profile", "/my-courses", "/learn"];
 const adminRoutes = ["/admin"];
 const authRoutes = ["/login", "/register"];
 
+function withResponseCookies(source: NextResponse, target: NextResponse) {
+  for (const cookie of source.cookies.getAll()) {
+    const { name, value, ...options } = cookie;
+    target.cookies.set(name, value, options);
+  }
+
+  return target;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -19,14 +28,17 @@ export async function proxy(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (isAuth && user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return withResponseCookies(
+      response,
+      NextResponse.redirect(new URL("/dashboard", request.url))
+    );
   }
 
   // Redirect unauthenticated users to login
   if ((isProtected || isAdmin) && !user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    return withResponseCookies(response, NextResponse.redirect(loginUrl));
   }
 
   // Check admin role
@@ -55,7 +67,10 @@ export async function proxy(request: NextRequest) {
         .single();
 
       if (profile?.role !== "ADMIN") {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
+        return withResponseCookies(
+          response,
+          NextResponse.redirect(new URL("/dashboard", request.url))
+        );
       }
     }
   }
@@ -64,5 +79,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/profile/:path*", "/my-courses/:path*", "/learn/:path*", "/login", "/register", "/api/((?!webhooks).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|api/webhooks|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml)$).*)",
+  ],
 };
