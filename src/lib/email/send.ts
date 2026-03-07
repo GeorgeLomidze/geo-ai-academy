@@ -73,32 +73,29 @@ export async function sendBulkEmail(
 ) {
   if (emails.length === 0) return { successCount: 0, errorCount: 0 };
 
-  // Resend batch API supports up to 100 emails per request
-  const batches: string[][] = [];
-  for (let i = 0; i < emails.length; i += 100) {
-    batches.push(emails.slice(i, i + 100));
-  }
-
   let successCount = 0;
   let errorCount = 0;
 
-  for (const batch of batches) {
-    console.log("[Email] Sending batch to:", batch);
-    const { data, error } = await resend.batch.send(
-      batch.map((to) => ({
+  for (const email of emails) {
+    console.log("[Email] Sending to:", email);
+    try {
+      const { data, error } = await resend.emails.send({
         from: emailConfig.from,
-        to,
+        to: email,
         subject,
         html: htmlContent,
-      }))
-    );
+      });
 
-    if (error) {
-      console.error("[Email] Batch send error:", JSON.stringify(error));
-      errorCount += batch.length;
-    } else {
-      console.log("[Email] Batch send success:", JSON.stringify(data));
-      successCount += batch.length;
+      if (error) {
+        console.error("[Email] Send failed for", email, ":", JSON.stringify(error));
+        errorCount++;
+      } else {
+        console.log("[Email] Send success for", email, ":", JSON.stringify(data));
+        successCount++;
+      }
+    } catch (err) {
+      console.error("[Email] Exception sending to", email, ":", err);
+      errorCount++;
     }
   }
 

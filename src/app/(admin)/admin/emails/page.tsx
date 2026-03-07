@@ -115,6 +115,10 @@ export default function AdminEmailsPage() {
         გაუგზავნეთ ემაილი სტუდენტებს
       </p>
 
+      <div className="mt-4 max-w-2xl rounded-xl border border-brand-warning/20 bg-brand-warning/5 px-4 py-3 text-sm text-brand-warning">
+        დომეინის ვერიფიკაციამდე ემაილები მხოლოდ ადმინის მისამართზე იგზავნება
+      </div>
+
       <div className="mt-6 max-w-2xl rounded-2xl border border-brand-border bg-brand-surface p-6">
         {result && (
           <div

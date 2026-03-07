@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
-import { Resend } from "resend";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendBulkEmail } from "@/lib/email/send";
@@ -17,29 +16,22 @@ export async function POST(request: NextRequest) {
   console.log("[Admin Emails] === START ===");
 
   const auth = await requireAuth(request);
-  console.log("[Admin Emails] Auth result:", auth.authenticated, auth.authenticated ? auth.userId : "N/A");
   if (!auth.authenticated) return auth.response;
 
   const dbUser = await prisma.user.findUnique({
     where: { id: auth.userId },
-    select: { role: true, email: true },
+    select: { role: true },
   });
-  console.log("[Admin Emails] DB user:", JSON.stringify(dbUser));
 
   if (dbUser?.role !== "ADMIN") {
-    console.log("[Admin Emails] Not admin, returning 403");
     return NextResponse.json(
       { error: "მხოლოდ ადმინისტრატორს აქვს წვდომა" },
       { status: 403 }
     );
   }
 
-  const body = await request.json();
-  console.log("[Admin Emails] Request body:", JSON.stringify(body));
-
-  const parsed = bulkEmailSchema.safeParse(body);
+  const parsed = bulkEmailSchema.safeParse(await request.json());
   if (!parsed.success) {
-    console.log("[Admin Emails] Validation error:", JSON.stringify(parsed.error.issues));
     const firstIssue = parsed.error.issues[0];
     return NextResponse.json(
       { error: firstIssue?.message ?? "არასწორი მონაცემები" },
@@ -47,20 +39,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { subject, body: emailBody, recipientType, courseId } = parsed.data;
-  console.log("[Admin Emails] Parsed:", { subject, recipientType, courseId });
-
-  // --- Direct Resend test ---
-  console.log("[Admin Emails] Testing Resend directly...");
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  const testResult = await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "GEO AI Academy <onboarding@resend.dev>",
-    to: "giolomidze8989@gmail.com",
-    subject: "Test from bulk email route",
-    html: "<p>Test email — if you see this, Resend works.</p>",
-  });
-  console.log("[Admin Emails] Resend test result:", JSON.stringify(testResult));
-  // --- End direct test ---
+  const { subject, body, recipientType, courseId } = parsed.data;
 
   let emails: string[];
 
@@ -70,19 +49,17 @@ export async function POST(request: NextRequest) {
       select: { user: { select: { email: true } } },
     });
     emails = enrollments.map((e) => e.user.email);
-    console.log("[Admin Emails] Course recipients:", emails.length, "courseId:", courseId, "emails:", emails);
+    console.log("[Admin Emails] Course recipients:", emails.length, emails);
   } else {
     const students = await prisma.user.findMany({
       where: { role: "STUDENT" },
       select: { email: true },
     });
-    console.log("[Admin Emails] Raw Prisma result:", JSON.stringify(students));
     emails = students.map((s) => s.email);
-    console.log("[Admin Emails] All student recipients:", emails.length, "emails:", emails);
+    console.log("[Admin Emails] All student recipients:", emails.length, emails);
   }
 
   if (emails.length === 0) {
-    console.log("[Admin Emails] No recipients found, returning 404");
     return NextResponse.json(
       { error: "მიმღებები ვერ მოიძებნა" },
       { status: 404 }
@@ -90,13 +67,12 @@ export async function POST(request: NextRequest) {
   }
 
   const html = emailLayout(
-    `<div style="font-size:15px;line-height:1.7;color:#e0e0e0;">${emailBody}</div>`
+    `<div style="font-size:15px;line-height:1.7;color:#e0e0e0;">${body}</div>`
   );
 
-  console.log("[Admin Emails] Calling sendBulkEmail with", emails.length, "recipients");
+  console.log("[Admin Emails] Sending to", emails.length, "recipients individually");
   const result = await sendBulkEmail(emails, subject, html);
-  console.log("[Admin Emails] sendBulkEmail result:", JSON.stringify(result));
-  console.log("[Admin Emails] === END ===");
+  console.log("[Admin Emails] Result:", JSON.stringify(result));
 
   return NextResponse.json({
     success: true,
