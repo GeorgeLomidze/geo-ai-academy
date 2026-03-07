@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { createStorageClient } from "@/lib/supabase/storage";
+import { createStorageClient, ensureBucket } from "@/lib/supabase/storage";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -54,6 +54,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     const supabase = createStorageClient();
+    await ensureBucket(supabase, "avatars");
+
     const { error } = await supabase.storage
       .from("avatars")
       .upload(filePath, buffer, {
@@ -62,6 +64,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (error) {
+      console.error("Supabase storage upload error:", error.message);
       return NextResponse.json(
         { error: "ავატარის ატვირთვა ვერ მოხერხდა" },
         { status: 500 }

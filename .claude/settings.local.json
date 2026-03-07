@@ -26,7 +26,8 @@
       "WebSearch",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npx vercel env ls:*)"
     ]
   }
 }

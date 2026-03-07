@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { requireAdmin } from "@/lib/admin-auth";
-import { createStorageClient } from "@/lib/supabase/storage";
+import { createStorageClient, ensureBucket } from "@/lib/supabase/storage";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -59,6 +59,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     const supabase = createStorageClient();
+    await ensureBucket(supabase, "course-thumbnails");
+
     const { error } = await supabase.storage
       .from("course-thumbnails")
       .upload(filename, buffer, {
@@ -67,6 +69,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (error) {
+      console.error("Supabase storage upload error:", error.message);
       return NextResponse.json(
         { error: "სურათის ატვირთვა ვერ მოხერხდა" },
         { status: 500 }
