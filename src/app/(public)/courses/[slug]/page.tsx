@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/accordion";
 import { PriceTag } from "@/components/course/PriceTag";
 import { EnrollButton } from "@/components/course/EnrollButton";
+import { BuyButton } from "@/components/course/BuyButton";
 import { StarRating } from "@/components/reviews/StarRating";
 import { ReviewsSection } from "@/components/reviews/ReviewsSection";
 
@@ -212,20 +213,21 @@ export default async function CourseDetailPage({
                     size="lg"
                     className="h-12 rounded-xl bg-brand-accent px-8 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
                   >
-                    <Link href={`/learn/${slug}`}>კურსის დაწყება</Link>
+                    <Link href={`/learn/${slug}`}>კურსის გაგრძელება</Link>
                   </Button>
                 ) : user ? (
-                  <>
+                  course.price > 0 ? (
+                    <BuyButton
+                      courseId={course.id}
+                      price={course.price}
+                      className="h-12 rounded-xl bg-brand-accent px-8 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
+                    />
+                  ) : (
                     <EnrollButton
                       courseId={course.id}
                       className="h-12 rounded-xl bg-brand-accent px-8 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
                     />
-                    <PriceTag
-                      price={course.price}
-                      size="lg"
-                      className="text-brand-secondary"
-                    />
-                  </>
+                  )
                 ) : (
                   <>
                     <Button
@@ -233,13 +235,12 @@ export default async function CourseDetailPage({
                       size="lg"
                       className="h-12 rounded-xl bg-brand-accent px-8 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
                     >
-                      <Link href="/register">კურსის შეძენა</Link>
+                      <Link href="/register">
+                        {course.price > 0
+                          ? `შეძენა ${course.price} ₾`
+                          : "უფასო კურსის დაწყება"}
+                      </Link>
                     </Button>
-                    <PriceTag
-                      price={course.price}
-                      size="lg"
-                      className="text-brand-secondary"
-                    />
                   </>
                 )}
               </div>
@@ -404,20 +405,32 @@ export default async function CourseDetailPage({
                       size="lg"
                       className="w-full rounded-xl bg-brand-accent text-base font-bold text-black transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
                     >
-                      <Link href={`/learn/${slug}`}>კურსის დაწყება</Link>
+                      <Link href={`/learn/${slug}`}>კურსის გაგრძელება</Link>
                     </Button>
                   ) : user ? (
-                    <EnrollButton
-                      courseId={course.id}
-                      className="w-full rounded-xl bg-brand-accent text-base font-bold text-black transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
-                    />
+                    course.price > 0 ? (
+                      <BuyButton
+                        courseId={course.id}
+                        price={course.price}
+                        className="w-full rounded-xl bg-brand-accent text-base font-bold text-black transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
+                      />
+                    ) : (
+                      <EnrollButton
+                        courseId={course.id}
+                        className="w-full rounded-xl bg-brand-accent text-base font-bold text-black transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
+                      />
+                    )
                   ) : (
                     <Button
                       asChild
                       size="lg"
                       className="w-full rounded-xl bg-brand-accent text-base font-bold text-black transition-all duration-200 hover:scale-[1.01] hover:bg-brand-accent-hover"
                     >
-                      <Link href="/register">კურსის შეძენა</Link>
+                      <Link href="/register">
+                        {course.price > 0
+                          ? `შეძენა ${course.price} ₾`
+                          : "უფასო კურსის დაწყება"}
+                      </Link>
                     </Button>
                   )}
                 </div>

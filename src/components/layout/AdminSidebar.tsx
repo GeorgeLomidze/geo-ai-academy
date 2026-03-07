@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   BookOpen,
+  ShoppingCart,
   Star,
   Users,
   Settings,
@@ -20,6 +21,7 @@ import { BrandLogo } from "@/components/layout/BrandLogo";
 const iconMap = {
   LayoutDashboard,
   BookOpen,
+  ShoppingCart,
   Star,
   Users,
   Settings,

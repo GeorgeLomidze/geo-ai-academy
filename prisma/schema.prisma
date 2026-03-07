@@ -22,6 +22,13 @@ enum LessonType {
   TEXT
 }
 
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -34,6 +41,7 @@ model User {
   enrollments    Enrollment[]
   lessonProgress LessonProgress[]
   reviews        Review[]
+  orders         Order[]
 
   @@map("users")
 }
@@ -54,6 +62,7 @@ model Course {
   modules     Module[]
   enrollments Enrollment[]
   reviews     Review[]
+  orders      Order[]
 
   @@map("courses")
 }
@@ -137,4 +146,24 @@ model Review {
   @@index([courseId, createdAt])
   @@index([userId])
   @@map("reviews")
+}
+
+model Order {
+  id             String      @id @default(uuid())
+  userId         String
+  courseId        String
+  amount         Decimal     @db.Decimal(10, 2)
+  currency       String      @default("GEL")
+  status         OrderStatus @default(PENDING)
+  flittOrderId   String?     @unique
+  flittPaymentId String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([courseId])
+  @@map("orders")
 }

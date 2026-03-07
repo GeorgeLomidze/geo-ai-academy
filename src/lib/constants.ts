@@ -53,6 +53,7 @@ export const socialLinks = [
 export const adminNavItems = [
   { label: "მიმოხილვა", href: "/admin", icon: "LayoutDashboard" },
   { label: "კურსები", href: "/admin/courses", icon: "BookOpen" },
+  { label: "შეკვეთები", href: "/admin/orders", icon: "ShoppingCart" },
   { label: "შეფასებები", href: "/admin/reviews", icon: "Star" },
   { label: "სტუდენტები", href: "/admin/students", icon: "Users" },
   { label: "პარამეტრები", href: "/admin/settings", icon: "Settings" },
