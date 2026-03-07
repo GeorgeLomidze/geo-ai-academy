@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import { randomUUID } from "crypto";
 import { requireAdmin } from "@/lib/admin-auth";
+import { createStorageClient } from "@/lib/supabase/storage";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -57,14 +56,28 @@ export async function POST(request: NextRequest) {
   try {
     const ext = EXT_MAP[file.type] ?? "jpg";
     const filename = `${randomUUID()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "courses");
-
-    await mkdir(uploadDir, { recursive: true });
-
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(uploadDir, filename), buffer);
 
-    return NextResponse.json({ url: `/uploads/courses/${filename}` });
+    const supabase = createStorageClient();
+    const { error } = await supabase.storage
+      .from("course-thumbnails")
+      .upload(filename, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) {
+      return NextResponse.json(
+        { error: "სურათის ატვირთვა ვერ მოხერხდა" },
+        { status: 500 }
+      );
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("course-thumbnails")
+      .getPublicUrl(filename);
+
+    return NextResponse.json({ url: publicUrlData.publicUrl });
   } catch {
     return NextResponse.json(
       { error: "სურათის ატვირთვა ვერ მოხერხდა" },

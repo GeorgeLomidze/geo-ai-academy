@@ -1,8 +1,6 @@
-import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { createStorageClient } from "@/lib/supabase/storage";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -52,20 +50,29 @@ export async function POST(request: NextRequest) {
 
   try {
     const extension = EXTENSION_MAP[file.type] ?? "jpg";
-    const filename = `${auth.userId}-${randomUUID()}.${extension}`;
-    const uploadDirectory = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "avatars"
-    );
-
-    await mkdir(uploadDirectory, { recursive: true });
-
+    const filePath = `${auth.userId}/avatar.${extension}`;
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(uploadDirectory, filename), buffer);
 
-    return NextResponse.json({ url: `/uploads/avatars/${filename}` });
+    const supabase = createStorageClient();
+    const { error } = await supabase.storage
+      .from("avatars")
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+    if (error) {
+      return NextResponse.json(
+        { error: "ავატარის ატვირთვა ვერ მოხერხდა" },
+        { status: 500 }
+      );
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(filePath);
+
+    return NextResponse.json({ url: publicUrlData.publicUrl });
   } catch {
     return NextResponse.json(
       { error: "ავატარის ატვირთვა ვერ მოხერხდა" },
