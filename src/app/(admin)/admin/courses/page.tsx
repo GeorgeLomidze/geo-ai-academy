@@ -13,10 +13,18 @@ import {
 } from "@/components/ui/table";
 import { CourseStatusBadge } from "@/components/admin/CourseStatusBadge";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { DeleteCourseButton } from "./delete-button";
 
+type CourseWithCounts = Prisma.CourseGetPayload<{
+  include: {
+    _count: { select: { modules: true } };
+    modules: { include: { _count: { select: { lessons: true } } } };
+  };
+}>;
+
 export default async function AdminCoursesPage() {
-  const courses = await prisma.course.findMany({
+  const courses: CourseWithCounts[] = await prisma.course.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
       _count: {
