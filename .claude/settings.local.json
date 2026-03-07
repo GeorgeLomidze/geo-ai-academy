@@ -30,7 +30,24 @@
       "Bash(npx vercel env ls:*)",
       "Bash(psql:*)",
       "Bash(npx tsx:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy status)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy diff --stat)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy log --oneline -5)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy add prisma/schema.prisma prisma/migrations/20260307151429_add_orders/ src/app/\\\\\\(public\\\\\\)/courses/[slug]/page.tsx src/components/layout/AdminSidebar.tsx src/lib/constants.ts src/app/\\\\\\(admin\\\\\\)/admin/orders/ src/app/\\\\\\(student\\\\\\)/checkout/ src/app/api/checkout/ src/app/api/webhooks/ src/components/course/BuyButton.tsx src/lib/flitt/ src/lib/orders.ts)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy commit -m \"$\\(cat <<''EOF''\nAdd Flitt payment integration for course purchases\n\nImplement checkout flow with Flitt redirect method: Order model, API client with SHA1 signature,\ncheckout/webhook routes, BuyButton component, success/failed pages, and admin orders dashboard.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy push)",
+      "WebFetch(domain:docs.flitt.com)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy log --oneline -3)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy add src/lib/flitt/client.ts src/components/course/BuyButton.tsx)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy commit -m \"$\\(cat <<''EOF''\nFix Flitt checkout by wrapping request body and handling API errors\n\nFlitt API requires params inside a { request: { ... } } wrapper — without it,\nthe API returns HTTP 200 with response_status \"failure\" which was silently ignored.\nAdded proper error handling for Flitt error responses and a fallback error in BuyButton.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy add src/app/api/checkout/success/route.ts src/app/api/checkout/failed/route.ts src/app/api/checkout/route.ts)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy commit -m \"$\\(cat <<''EOF''\nHandle Flitt POST redirect via API routes that 302 to success/failed pages\n\nFlitt redirects back with POST, causing 405 on the Next.js pages. Added\n/api/checkout/success and /api/checkout/failed POST handlers that extract\norder_id and redirect \\(302 GET\\) to the actual pages.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy add src/lib/flitt/fulfill.ts src/app/api/checkout/success/route.ts src/app/api/checkout/failed/route.ts src/app/api/webhooks/flitt/route.ts proxy.ts)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy commit -m \"$\\(cat <<''EOF''\nAdd fallback enrollment on checkout redirect and fix webhook reliability\n\nThe Flitt server callback can''t reach localhost, so enrollment never happened.\nExtracted fulfillOrder into shared lib used by both webhook and success redirect.\nThe success POST handler now verifies payment and creates enrollment as fallback.\nExcluded /api/webhooks from proxy matcher to avoid session overhead on S2S calls.\nAdded logging to webhook for debugging.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy add src/app/api/checkout/success/route.ts src/lib/flitt/fulfill.ts)",
+      "Bash(git -C /Users/gio/CODING/geo-ai-academy commit -m \"$\\(cat <<''EOF''\nFix checkout success handler body parsing and add full logging\n\nThe previous formData\\(\\).catch\\(\\).clone\\(\\).json\\(\\) pattern silently failed because\nthe body stream was consumed on the first read attempt. Now reads as raw text\nfirst, then parses as JSON or form-urlencoded. Removed signature gate from\nsuccess redirect — just fulfill if order_status is approved. Added console.log\nat every step for Vercel log debugging.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(DATABASE_URL=\"postgresql://postgres.urqbuboquoyezsoamrby:Giorgi.2026.geo-ai-academy@aws-1-eu-central-1.pooler.supabase.com:5432/postgres\" npx tsx:*)"
     ]
   }
 }
