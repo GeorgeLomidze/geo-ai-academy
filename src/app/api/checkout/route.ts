@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       currency: "GEL",
       description: `GEO AI Academy — ${course.title}`,
       callbackUrl: `${baseUrl}/api/webhooks/flitt`,
-      responseUrl: `${baseUrl}/checkout/success`,
+      responseUrl: `${baseUrl}/api/checkout/success`,
     });
 
     await prisma.order.update({
