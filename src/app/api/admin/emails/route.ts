@@ -47,12 +47,14 @@ export async function POST(request: NextRequest) {
       select: { user: { select: { email: true } } },
     });
     emails = enrollments.map((e) => e.user.email);
+    console.log("[Admin Emails] Course recipients:", emails.length, "courseId:", courseId);
   } else {
     const students = await prisma.user.findMany({
       where: { role: "STUDENT" },
       select: { email: true },
     });
     emails = students.map((s) => s.email);
+    console.log("[Admin Emails] All student recipients:", emails.length, emails);
   }
 
   if (emails.length === 0) {

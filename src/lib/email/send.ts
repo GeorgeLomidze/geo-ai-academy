@@ -83,7 +83,8 @@ export async function sendBulkEmail(
   let errorCount = 0;
 
   for (const batch of batches) {
-    const { error } = await resend.batch.send(
+    console.log("[Email] Sending batch to:", batch);
+    const { data, error } = await resend.batch.send(
       batch.map((to) => ({
         from: emailConfig.from,
         to,
@@ -93,9 +94,10 @@ export async function sendBulkEmail(
     );
 
     if (error) {
-      console.error("[Email] Batch send error:", error);
+      console.error("[Email] Batch send error:", JSON.stringify(error));
       errorCount += batch.length;
     } else {
+      console.log("[Email] Batch send success:", JSON.stringify(data));
       successCount += batch.length;
     }
   }
