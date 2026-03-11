@@ -2,12 +2,72 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@font-face {
+  font-family: "Margo";
+  src: url("/fonts/margo-32328915633.ttf") format("truetype");
+  font-display: swap;
+  unicode-range: U+10A0-10FF, U+1C90-1CBF;
+}
+
+@font-face {
+  font-family: "Montserrat Alternates";
+  src: url("/fonts/MontserratAlternates-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF,
+    U+0100-024F,
+    U+1E00-1EFF,
+    U+2000-206F;
+}
+
+@font-face {
+  font-family: "Montserrat Alternates";
+  src: url("/fonts/MontserratAlternates-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF,
+    U+0100-024F,
+    U+1E00-1EFF,
+    U+2000-206F;
+}
+
+@font-face {
+  font-family: "Montserrat Alternates";
+  src: url("/fonts/MontserratAlternates-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF,
+    U+0100-024F,
+    U+1E00-1EFF,
+    U+2000-206F;
+}
+
+@font-face {
+  font-family: "BPG Boxo Boxo";
+  src: url("/fonts/bpg-boxo-boxo-webfont.ttf") format("truetype");
+  font-display: swap;
+  unicode-range: U+10A0-10FF, U+1C90-1CBF;
+}
+
+@font-face {
+  font-family: "BPG Caps";
+  src: url("/fonts/bpg-web-001-caps-webfont.ttf") format("truetype");
+  font-display: swap;
+  unicode-range: U+10A0-10FF, U+1C90-1CBF;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   /* Fonts */
-  --font-sans: var(--font-inter);
-  --font-display: var(--font-space-grotesk);
+  --font-latin: "Montserrat Alternates", sans-serif;
+  --font-sans: "BPG Boxo Boxo", var(--font-latin), sans-serif;
+  --font-display: "BPG Caps", var(--font-latin), sans-serif;
+  --font-ui: "BPG Caps", var(--font-latin), sans-serif;
+  --font-nav: "Margo", var(--font-latin), sans-serif;
 
   /* shadcn color mappings */
   --color-background: var(--background);
@@ -127,7 +187,12 @@
     @apply font-display font-bold text-brand-secondary text-balance;
   }
   p {
-    @apply text-pretty;
+    @apply font-sans text-pretty;
+  }
+  h1 + p,
+  h2 + p,
+  h3 + p {
+    font-family: var(--font-nav);
   }
 }
 
@@ -147,6 +212,14 @@
 @layer utilities {
   .focus-ring {
     @apply outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-primary;
+  }
+
+  .font-ui {
+    font-family: var(--font-ui);
+  }
+
+  .font-nav {
+    font-family: var(--font-nav);
   }
 
   .brand-scrollbar {

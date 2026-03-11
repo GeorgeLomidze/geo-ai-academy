@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   BookOpen,
   ShoppingCart,
   Star,
+  MessageSquareText,
   Users,
   Mail,
   Settings,
@@ -24,6 +25,7 @@ const iconMap = {
   BookOpen,
   ShoppingCart,
   Star,
+  MessageSquareText,
   Users,
   Mail,
   Settings,
@@ -32,6 +34,49 @@ const iconMap = {
 export function AdminSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [qaUnreadCount, setQaUnreadCount] = useState(0);
+
+  useEffect(() => {
+    async function refreshNotifications() {
+      try {
+        const response = await fetch("/api/admin/notifications", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { unreadCount?: number };
+        setQaUnreadCount(data.unreadCount ?? 0);
+      } catch {
+        // Silent failure: the sidebar should remain usable without notifications.
+      }
+    }
+
+    void refreshNotifications();
+
+    const intervalId = window.setInterval(() => {
+      void refreshNotifications();
+    }, 30000);
+
+    const handleFocus = () => {
+      void refreshNotifications();
+    };
+
+    const handleSync = () => {
+      void refreshNotifications();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("qa:notifications-sync", handleSync);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("qa:notifications-sync", handleSync);
+    };
+  }, []);
 
   return (
     <>
@@ -80,6 +125,7 @@ export function AdminSidebar() {
               item.href === "/admin"
                 ? pathname === "/admin"
                 : pathname.startsWith(item.href);
+            const hasUnreadQA = item.href === "/admin/qa" && qaUnreadCount > 0;
 
             return (
               <Link
@@ -87,7 +133,7 @@ export function AdminSidebar() {
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl border-l-2 border-transparent px-3 py-2.5 text-sm font-medium transition-colors",
+                  "font-nav relative flex items-center gap-3 rounded-xl border-l-2 border-transparent px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
                     ? "border-l-brand-primary bg-sidebar-primary text-sidebar-primary-foreground"
                     : "text-brand-muted hover:bg-sidebar-accent hover:text-brand-secondary"
@@ -95,7 +141,15 @@ export function AdminSidebar() {
                 title={collapsed ? item.label : undefined}
               >
                 <Icon className="size-5 shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && (
+                  <span>{item.label}</span>
+                )}
+                {hasUnreadQA ? (
+                  <>
+                    <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-emerald-400" />
+                    <span className="absolute right-2.5 top-2.5 size-2 animate-ping rounded-full bg-emerald-400/70" />
+                  </>
+                ) : null}
               </Link>
             );
           })}
@@ -110,13 +164,14 @@ export function AdminSidebar() {
             item.href === "/admin"
               ? pathname === "/admin"
               : pathname.startsWith(item.href);
+          const hasUnreadQA = item.href === "/admin/qa" && qaUnreadCount > 0;
 
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors",
+                "font-nav relative flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium transition-colors",
                 isActive
                   ? "text-brand-primary"
                   : "text-brand-muted hover:text-brand-primary"
@@ -124,6 +179,12 @@ export function AdminSidebar() {
             >
               <Icon className="size-5" />
               <span>{item.label}</span>
+              {hasUnreadQA ? (
+                <>
+                  <span className="absolute right-3 top-2 size-2 rounded-full bg-emerald-400" />
+                  <span className="absolute right-3 top-2 size-2 animate-ping rounded-full bg-emerald-400/70" />
+                </>
+              ) : null}
             </Link>
           );
         })}
