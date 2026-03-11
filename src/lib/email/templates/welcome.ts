@@ -7,7 +7,7 @@ export function welcomeEmailHtml(name: string): string {
       მოგესალმებით, ${name}! 👋
     </h1>
     <p style="margin:0 0 12px;">
-      მადლობა, რომ შეუერთდით <strong>GEO AI Academy</strong>-ს — პლატფორმას, სადაც AI ტექნოლოგიებს ქართულად ისწავლით.
+      მადლობა, რომ შეუერთდით <strong>GEO AI Academy</strong>-ს - პლატფორმას, სადაც AI ტექნოლოგიებს ქართულად ისწავლით.
     </p>
     <p style="margin:0 0 8px;">აი, რა შეგიძლიათ გააკეთოთ:</p>
     <ul style="margin:0 0 16px;padding-left:20px;">

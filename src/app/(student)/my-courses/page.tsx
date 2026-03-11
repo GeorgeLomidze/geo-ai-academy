@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { summarizeLessonCompletion } from "@/lib/learn-shared";
 
 export const metadata = {
-  title: "ჩემი კურსები — GEO AI Academy",
+  title: "ჩემი კურსები - GEO AI Academy",
 };
 
 async function getEnrolledCourses(userId: string) {

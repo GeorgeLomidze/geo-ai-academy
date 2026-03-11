@@ -73,7 +73,7 @@ export async function generateMetadata({ params }: CourseDetailPageProps) {
   const course = await getCourse(slug);
   if (!course) return { title: "კურსი ვერ მოიძებნა" };
   return {
-    title: `${course.title} — GEO AI Academy`,
+    title: `${course.title} - GEO AI Academy`,
     description: course.shortDescription ?? course.description ?? undefined,
   };
 }

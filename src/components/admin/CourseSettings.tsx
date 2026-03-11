@@ -115,15 +115,15 @@ export function CourseSettings({ course }: CourseSettingsProps) {
         <div className="mt-4 rounded-xl bg-brand-primary-light/50 p-3">
           <ul className="space-y-1 text-xs text-brand-muted">
             <li>
-              <strong className="text-brand-secondary">დრაფტი</strong> —
+              <strong className="text-brand-secondary">დრაფტი</strong> -
               კურსი არ ჩანს სტუდენტებისთვის
             </li>
             <li>
               <strong className="text-brand-secondary">გამოქვეყნებული</strong>{" "}
-              — კურსი ხილულია კატალოგში
+              - კურსი ხილულია კატალოგში
             </li>
             <li>
-              <strong className="text-brand-secondary">დაარქივებული</strong> —
+              <strong className="text-brand-secondary">დაარქივებული</strong> -
               კურსი დამალულია, მაგრამ ჩარიცხული სტუდენტები კვლავ ხედავენ
             </li>
           </ul>

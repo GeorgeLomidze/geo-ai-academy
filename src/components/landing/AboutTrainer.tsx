@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { TrainerPortrait } from "@/components/landing/TrainerPortrait";
 
 export function AboutTrainer() {
   return (
@@ -14,16 +14,7 @@ export function AboutTrainer() {
       <div className="relative z-10 mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,520px)_1fr] lg:gap-20">
           <div className="flex justify-center lg:justify-start lg:-ml-8">
-            <div className="relative h-[420px] w-full max-w-[420px] overflow-hidden rounded-xl border border-white/10 shadow-2xl sm:h-[500px] sm:max-w-[460px] lg:h-[540px] lg:max-w-[500px]">
-              <Image
-                src="/Trainer.jpeg"
-                alt="გიორგი ლომიძე — AI ტრენერი"
-                fill
-                priority
-                sizes="(max-width: 640px) 90vw, (max-width: 1024px) 460px, 500px"
-                className="object-cover object-center"
-              />
-            </div>
+            <TrainerPortrait />
           </div>
 
           <div className="max-w-2xl">
@@ -44,7 +35,7 @@ export function AboutTrainer() {
             <p className="mt-8 max-w-xl text-base leading-8 text-[#D1D1D1] sm:text-lg">
               მე ვარ AI ტექნოლოგიების ტრენერი და კონტენტ-კრეატორი. ვეხმარები
               ადამიანებს ხელოვნური ინტელექტის ინსტრუმენტების პრაქტიკულ
-              გამოყენებაში — ფოტო, ვიდეო და აუდიო კონტენტის შესაქმნელად.
+              გამოყენებაში - ფოტო, ვიდეო და აუდიო კონტენტის შესაქმნელად.
             </p>
 
             <Link

@@ -4,7 +4,7 @@ import { CourseGrid } from "@/components/course/CourseGrid";
 import { getPublicCourses } from "@/lib/public-courses";
 
 export const metadata = {
-  title: "კურსების კატალოგი — GEO AI Academy",
+  title: "კურსების კატალოგი - GEO AI Academy",
   description: "შეარჩიე შენთვის სასურველი კურსი და დაიწყე სწავლა",
 };
 

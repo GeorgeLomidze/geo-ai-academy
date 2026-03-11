@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       orderId: order.id,
       amount: course.price,
       currency: "GEL",
-      description: `GEO AI Academy — ${course.title}`,
+      description: `GEO AI Academy - ${course.title}`,
       callbackUrl: `${baseUrl}/api/webhooks/flitt`,
       responseUrl: `${baseUrl}/api/checkout/success`,
     });

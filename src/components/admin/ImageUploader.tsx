@@ -134,7 +134,7 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
                 აირჩიეთ სურათი
               </p>
               <p className="text-xs text-brand-muted">
-                JPEG, PNG, WebP — მაქსიმუმ 5MB
+                JPEG, PNG, WebP - მაქსიმუმ 5MB
               </p>
             </>
           )}
