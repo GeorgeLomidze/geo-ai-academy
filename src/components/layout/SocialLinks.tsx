@@ -2,7 +2,10 @@ import { Facebook, Instagram, Linkedin, Music2, Youtube } from "lucide-react";
 import { socialLinks } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
+type SocialLinkItem = (typeof socialLinks)[number];
+
 type SocialLinksProps = {
+  items?: readonly SocialLinkItem[];
   className?: string;
   itemClassName?: string;
   iconClassName?: string;
@@ -19,6 +22,7 @@ const iconMap = {
 } as const;
 
 export function SocialLinks({
+  items = socialLinks,
   className,
   itemClassName,
   iconClassName,
@@ -27,7 +31,7 @@ export function SocialLinks({
 }: SocialLinksProps) {
   return (
     <div className={cn("flex flex-wrap gap-3", className)}>
-      {socialLinks.map((item) => {
+      {items.map((item) => {
         const Icon = iconMap[item.icon];
 
         return (

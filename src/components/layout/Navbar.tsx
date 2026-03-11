@@ -31,7 +31,7 @@ function getInitials(name: string | null | undefined, email: string): string {
 }
 
 const desktopNavLinkClass = cn(
-  "group relative inline-flex items-center py-2 text-sm font-medium text-brand-muted transition-colors duration-200",
+  "font-nav group relative inline-flex items-center py-2 text-sm font-medium text-brand-muted transition-colors duration-200",
   "hover:text-brand-secondary focus-visible:text-brand-secondary focus-visible:outline-none"
 );
 
@@ -90,10 +90,10 @@ export async function Navbar() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="hidden text-left md:block">
-                    <p className="max-w-32 truncate text-sm font-medium text-brand-secondary">
+                    <p className="font-nav max-w-32 truncate text-sm font-medium text-brand-secondary">
                       {displayName}
                     </p>
-                    <p className="max-w-32 truncate text-xs text-brand-muted">
+                    <p className="font-nav max-w-32 truncate text-xs text-brand-muted">
                       პროფილი
                     </p>
                   </div>

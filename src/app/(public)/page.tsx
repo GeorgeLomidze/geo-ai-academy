@@ -19,7 +19,19 @@ export default async function HomePage() {
       <WhyUs />
       <FAQSection />
       <CTASection />
-      <ContactSection />
+      <ContactSection
+        user={
+          user
+            ? {
+                name:
+                  typeof user.user_metadata?.name === "string"
+                    ? user.user_metadata.name
+                    : "",
+                email: user.email ?? "",
+              }
+            : null
+        }
+      />
     </>
   );
 }

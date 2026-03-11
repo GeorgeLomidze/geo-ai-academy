@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -66,27 +65,18 @@ export async function syncAuthUser(user: User) {
 }
 
 export async function requireAuth(request?: NextRequest): Promise<AuthResult> {
-  const supabase = request
-    ? createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return request.cookies.getAll();
-            },
-            setAll() {
-              // Route Handlers can't set cookies on the request;
-              // the proxy already handles session refresh.
-            },
-          },
-        }
-      )
-    : await createClient();
+  void request;
+  const supabase = await createClient();
+  const authHeader = request?.headers.get("authorization");
+  const accessToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : null;
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = accessToken
+    ? await supabase.auth.getUser(accessToken)
+    : await supabase.auth.getUser();
 
   if (!user) {
     return {

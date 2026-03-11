@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Bell, ChevronRight, Settings, UserCircle } from "lucide-react";
+import { ChevronRight, Settings, UserCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminNotifications } from "@/lib/qa";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -10,8 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { SignOutButton } from "@/components/layout/SignOutButton";
+import { UnreadQAIndicator } from "@/components/layout/UnreadQAIndicator";
 import { prisma } from "@/lib/prisma";
 
 export async function AdminTopbar() {
@@ -20,12 +22,15 @@ export async function AdminTopbar() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const profile = user
-    ? await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { name: true, avatarUrl: true },
-      })
-    : null;
+  const [profile, notificationData] = user
+    ? await Promise.all([
+        prisma.user.findUnique({
+          where: { id: user.id },
+          select: { name: true, avatarUrl: true },
+        }),
+        getAdminNotifications(),
+      ])
+    : [null, { notifications: [], unreadCount: 0 }];
 
   const name = profile?.name ?? user?.user_metadata?.name ?? "ადმინისტრატორი";
   const email = user?.email ?? "";
@@ -41,19 +46,18 @@ export async function AdminTopbar() {
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-brand-border bg-brand-background px-4 sm:px-6">
       <div />
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-brand-muted hover:bg-brand-surface"
-          aria-label="შეტყობინებები"
-        >
-          <Bell className="size-5" />
-          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-brand-danger" />
-        </Button>
+        <NotificationBell
+          initialNotifications={notificationData.notifications}
+          initialUnreadCount={notificationData.unreadCount}
+        />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 outline-none ring-offset-2 transition-colors duration-200 hover:border-brand-primary/30 hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-brand-primary">
+            <button className="relative flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 outline-none ring-offset-2 transition-colors duration-200 hover:border-brand-primary/30 hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-brand-primary">
+              <UnreadQAIndicator
+                initialVisible={notificationData.unreadCount > 0}
+                className="right-2 top-2"
+              />
               <Avatar data-size="lg">
                 <AvatarImage
                   src={avatarUrl}

@@ -95,7 +95,7 @@ export function VideoPlayer({
 
   const iframeSrc = useMemo(() => {
     const separator = signedEmbedUrl.includes("?") ? "&" : "?";
-    return `${signedEmbedUrl}${separator}player=${playerId}`;
+    return `${signedEmbedUrl}${separator}player=${playerId}&autoplay=false`;
   }, [playerId, signedEmbedUrl]);
 
   const persistProgress = useEffectEvent(async (
@@ -187,9 +187,17 @@ export function VideoPlayer({
 
       setPlayerReady(true);
       setPaused(true);
+      player.pause?.();
       if (initialWatchedSeconds > 0) {
         player.setCurrentTime?.(initialWatchedSeconds);
       }
+      window.setTimeout(() => {
+        if (!isActiveRef.current) {
+          return;
+        }
+        player.pause?.();
+        setPaused(true);
+      }, 120);
     };
 
     const handlePlay = () => {

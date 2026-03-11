@@ -46,23 +46,24 @@ export async function sendPurchaseEmail(
 export async function sendContactNotification(
   senderName: string,
   senderEmail: string,
+  subjectLine: string,
   message: string
 ) {
   if (!emailConfig.adminEmail) {
-    console.error("[Email] ADMIN_EMAIL not configured");
-    return;
+    throw new Error("ADMIN_EMAIL not configured");
   }
 
   const { error } = await resend.emails.send({
     from: emailConfig.from,
     to: emailConfig.adminEmail,
-    subject: contactNotificationSubject,
-    html: contactNotificationHtml(senderName, senderEmail, message),
+    subject: `${contactNotificationSubject}: ${subjectLine}`,
+    html: contactNotificationHtml(senderName, senderEmail, subjectLine, message),
     replyTo: senderEmail,
   });
 
   if (error) {
     console.error("[Email] Failed to send contact notification:", error);
+    throw error;
   }
 }
 

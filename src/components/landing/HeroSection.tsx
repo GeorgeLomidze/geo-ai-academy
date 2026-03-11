@@ -4,7 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import { SocialLinks } from "@/components/layout/SocialLinks";
 import { Button } from "@/components/ui/button";
+import { socialLinks } from "@/lib/constants";
 
 type HeroSectionProps = {
   isAuthenticated: boolean;
@@ -13,6 +15,13 @@ type HeroSectionProps = {
 export function HeroSection({ isAuthenticated }: HeroSectionProps) {
   const reduceMotion = useReducedMotion();
   const primaryCtaHref = isAuthenticated ? "/courses" : "/register";
+  const heroSocialLinks = [
+    socialLinks.find((item) => item.shortLabel === "YT"),
+    socialLinks.find((item) => item.shortLabel === "FB"),
+    socialLinks.find((item) => item.shortLabel === "IN"),
+    socialLinks.find((item) => item.shortLabel === "TK"),
+    socialLinks.find((item) => item.shortLabel === "LN"),
+  ].filter((item) => item !== undefined);
 
   return (
     <section className="relative isolate overflow-hidden bg-[linear-gradient(180deg,#0A0A0A_0%,#1a1000_50%,#0A0A0A_100%)]">
@@ -109,33 +118,22 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
               </Button>
             </motion.div>
 
-            {/* Social proof strip */}
+            {/* Social links */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.5 }}
-              className="mt-12 flex items-center gap-6 border-t border-brand-border pt-6"
+              className="mt-12 border-t border-brand-border pt-6"
             >
-              <div>
-                <p className="font-display text-2xl font-bold text-white">
-                  500+
-                </p>
-                <p className="text-xs text-brand-muted">სტუდენტი</p>
-              </div>
-              <div className="h-8 w-px bg-brand-border" />
-              <div>
-                <p className="font-display text-2xl font-bold text-white">
-                  12+
-                </p>
-                <p className="text-xs text-brand-muted">კურსი</p>
-              </div>
-              <div className="h-8 w-px bg-brand-border" />
-              <div>
-                <p className="font-display text-2xl font-bold text-white">
-                  98%
-                </p>
-                <p className="text-xs text-brand-muted">კმაყოფილება</p>
-              </div>
+              <p className="text-sm text-brand-muted">
+                გვიპოვე სოციალურ ქსელებში
+              </p>
+              <SocialLinks
+                items={heroSocialLinks}
+                className="mt-4 gap-3"
+                itemClassName="group inline-flex size-12 items-center justify-center rounded-full border border-brand-border bg-brand-surface/55 text-white shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-accent hover:bg-brand-surface-light hover:shadow-md"
+                iconClassName="size-5 text-brand-secondary transition-transform duration-200 ease-out group-hover:scale-110 group-hover:text-brand-accent"
+              />
             </motion.div>
           </div>
 

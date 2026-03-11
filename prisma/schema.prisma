@@ -42,6 +42,8 @@ model User {
   lessonProgress LessonProgress[]
   reviews        Review[]
   orders         Order[]
+  questions      Question[]       @relation("UserQuestions")
+  answers        Answer[]         @relation("UserAnswers")
 
   @@map("users")
 }
@@ -96,6 +98,7 @@ model Lesson {
 
   module   Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   progress LessonProgress[]
+  questions Question[]
 
   @@map("lessons")
 }
@@ -166,4 +169,53 @@ model Order {
   @@index([userId])
   @@index([courseId])
   @@map("orders")
+}
+
+model Question {
+  id          String    @id @default(uuid())
+  content     String    @db.Text
+  imageUrl    String?
+  userId      String
+  lessonId    String
+  adminReadAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user      User     @relation("UserQuestions", fields: [userId], references: [id], onDelete: Cascade)
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  answers   Answer[]
+
+  @@index([lessonId])
+  @@index([userId])
+  @@map("questions")
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  content    String   @db.Text
+  imageUrl   String?
+  userId     String
+  questionId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation("UserAnswers", fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@index([userId])
+  @@map("answers")
+}
+
+model AdminNotification {
+  id        String   @id @default(uuid())
+  type      String   @default("NEW_QUESTION")
+  title     String
+  message   String
+  linkUrl   String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([isRead])
+  @@map("admin_notifications")
 }

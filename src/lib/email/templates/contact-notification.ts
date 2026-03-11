@@ -3,8 +3,13 @@ import { emailLayout } from "./layout";
 export function contactNotificationHtml(
   senderName: string,
   senderEmail: string,
+  subject: string,
   message: string
 ): string {
+  const escapedSubject = subject
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
   const escapedMessage = message
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -26,6 +31,12 @@ export function contactNotificationHtml(
         <td style="padding:16px 20px;border-bottom:1px solid #1a1a1a;">
           <span style="font-size:12px;color:#888888;">ელფოსტა</span><br />
           <a href="mailto:${senderEmail}" style="font-size:15px;color:#6C5CE7;text-decoration:none;">${senderEmail}</a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:16px 20px;border-bottom:1px solid #1a1a1a;">
+          <span style="font-size:12px;color:#888888;">თემა</span><br />
+          <span style="font-size:15px;font-weight:600;color:#ffffff;">${escapedSubject}</span>
         </td>
       </tr>
       <tr>

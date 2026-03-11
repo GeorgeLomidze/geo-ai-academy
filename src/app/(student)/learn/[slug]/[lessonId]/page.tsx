@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { getSignedEmbedUrl } from "@/lib/bunny/signed-url";
 import { getLearningLessonData } from "@/lib/learn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LessonSidebar } from "@/components/learn/LessonSidebar";
+import { QASection } from "@/components/learn/QASection";
 import { TextLesson } from "@/components/learn/TextLesson";
 import { TextLessonCompleteButton } from "@/components/learn/TextLessonCompleteButton";
 import { VideoPlayer } from "@/components/learn/VideoPlayer";
@@ -28,6 +30,13 @@ export default async function LearnLessonPage({
     redirect("/login");
   }
 
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true },
+  });
+
+  const isAdmin = profile?.role === "ADMIN" || user.user_metadata?.role === "admin";
+
   const { course, enrolled, lesson, prevLesson, nextLesson } = await getLearningLessonData(
     user.id,
     slug,
@@ -38,7 +47,7 @@ export default async function LearnLessonPage({
     notFound();
   }
 
-  if (!enrolled) {
+  if (!enrolled && !isAdmin) {
     redirect(`/courses/${slug}`);
   }
 
@@ -128,6 +137,10 @@ export default async function LearnLessonPage({
             </div>
           </section>
         )}
+
+        <div id="qa-section">
+          <QASection lessonId={lesson.id} />
+        </div>
       </div>
 
       <div className="space-y-5 xl:sticky xl:top-24">

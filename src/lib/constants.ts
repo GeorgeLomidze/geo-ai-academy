@@ -55,6 +55,7 @@ export const adminNavItems = [
   { label: "კურსები", href: "/admin/courses", icon: "BookOpen" },
   { label: "შეკვეთები", href: "/admin/orders", icon: "ShoppingCart" },
   { label: "შეფასებები", href: "/admin/reviews", icon: "Star" },
+  { label: "კითხვა-პასუხი", href: "/admin/qa", icon: "MessageSquareText" },
   { label: "სტუდენტები", href: "/admin/students", icon: "Users" },
   { label: "ემაილები", href: "/admin/emails", icon: "Mail" },
   { label: "პარამეტრები", href: "/admin/settings", icon: "Settings" },
