@@ -1,17 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import {
   ArrowUpRight,
   CheckCircle,
-  LogIn,
   Loader2,
   Mail,
   MapPin,
 } from "lucide-react";
 import { z } from "zod/v4";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +34,7 @@ const contactTextareaClassName =
 
 const contactSchema = z.object({
   name: z.string().min(2, "სახელი უნდა შეიცავდეს მინიმუმ 2 სიმბოლოს"),
+  email: z.email("გთხოვთ შეიყვანოთ სწორი ელ-ფოსტა"),
   subject: z
     .string()
     .min(2, "თემა უნდა შეიცავდეს მინიმუმ 2 სიმბოლოს"),
@@ -45,8 +43,8 @@ const contactSchema = z.object({
     .min(10, "შეტყობინება უნდა შეიცავდეს მინიმუმ 10 სიმბოლოს"),
 });
 
-type FieldErrors = Partial<Record<"name" | "subject" | "message", string>>;
-type EditableField = "name" | "subject" | "message";
+type FieldErrors = Partial<Record<"name" | "email" | "subject" | "message", string>>;
+type EditableField = "name" | "email" | "subject" | "message";
 
 type ContactSectionProps = {
   user: {
@@ -101,22 +99,12 @@ export function ContactSection({ user }: ContactSectionProps) {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
       const response = await fetch("/api/contact", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(session?.access_token
-            ? { Authorization: `Bearer ${session.access_token}` }
-            : {}),
-        },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: formData.name,
+          email: formData.email,
           subject: formData.subject,
           message: formData.message,
         }),
@@ -129,7 +117,13 @@ export function ContactSection({ user }: ContactSectionProps) {
       }
 
       setSuccess(true);
-      setFormData((prev) => ({ ...prev, subject: "", message: "" }));
+      setFormData((prev) => ({
+        ...prev,
+        name: user?.name ?? "",
+        email: user?.email ?? "",
+        subject: "",
+        message: "",
+      }));
     } catch {
       setServerError("შეტყობინების გაგზავნა ვერ მოხერხდა");
     } finally {
@@ -196,118 +190,99 @@ export function ContactSection({ user }: ContactSectionProps) {
 
           <div className="relative self-start p-1">
             <div className="w-full rounded-2xl bg-white/[0.03] p-5 sm:p-6">
-              {!user ? (
-                <div className="grid gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-5">
-                  <div
-                    role="status"
-                    className="rounded-lg border border-brand-primary/20 bg-brand-primary/10 px-4 py-3 text-sm text-brand-secondary"
-                  >
-                    კონტაქტის ფორმით მოსაწერად საჭიროა ავტორიზაცია.
+              <form onSubmit={handleSubmit} className="grid min-h-0 gap-4">
+                {serverError && (
+                  <div role="alert" className="rounded-lg border border-brand-danger/20 bg-brand-danger/10 px-4 py-3 text-sm text-brand-danger">
+                    {serverError}
                   </div>
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Button asChild className="h-12 rounded-[0.9rem] px-6 text-sm font-semibold">
-                      <Link href="/login">
-                        <LogIn className="size-4" />
-                        შესვლა
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      variant="outline"
-                      className="h-12 rounded-[0.9rem] px-6 text-sm font-semibold"
-                    >
-                      <Link href="/register">რეგისტრაცია</Link>
-                    </Button>
+                )}
+
+                {success && (
+                  <div role="status" className="flex items-center gap-2 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+                    <CheckCircle className="size-4 shrink-0" />
+                    შეტყობინება წარმატებით გაიგზავნა
                   </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="grid min-h-0 gap-4">
-                  {serverError && (
-                    <div role="alert" className="rounded-lg border border-brand-danger/20 bg-brand-danger/10 px-4 py-3 text-sm text-brand-danger">
-                      {serverError}
-                    </div>
-                  )}
+                )}
 
-                  {success && (
-                    <div role="status" className="flex items-center gap-2 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
-                      <CheckCircle className="size-4 shrink-0" />
-                      შეტყობინება წარმატებით გაიგზავნა
-                    </div>
-                  )}
-
-                  <div className="grid gap-4">
-                    <div>
-                      <Input
-                        id="contact-name"
-                        name="name"
-                        aria-label="სახელი"
-                        placeholder="სახელი"
-                        value={formData.name}
-                        onChange={(e) => updateField("name", e.target.value)}
-                        className={contactFieldClassName}
-                        aria-invalid={!!errors.name}
-                      />
-                      {errors.name && (
-                        <p className="mt-1 text-xs text-brand-danger">{errors.name}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Input
-                        id="contact-email"
-                        name="email"
-                        type="email"
-                        aria-label="ელფოსტა"
-                        placeholder="ელფოსტა"
-                        value={formData.email}
-                        readOnly
-                        className={contactFieldClassName}
-                        aria-readonly="true"
-                      />
-                    </div>
-                    <div>
-                      <Input
-                        id="contact-subject"
-                        name="subject"
-                        aria-label="თემა"
-                        placeholder="subject / თემა"
-                        value={formData.subject}
-                        onChange={(e) => updateField("subject", e.target.value)}
-                        className={contactFieldClassName}
-                        aria-invalid={!!errors.subject}
-                      />
-                      {errors.subject && (
-                        <p className="mt-1 text-xs text-brand-danger">{errors.subject}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-1">
-                    <Textarea
-                      id="contact-message"
-                      name="message"
-                      rows={5}
-                      aria-label="შეტყობინება"
-                      placeholder="შეტყობინება"
-                      value={formData.message}
-                      onChange={(e) => updateField("message", e.target.value)}
-                      className={contactTextareaClassName}
-                      aria-invalid={!!errors.message}
+                <div className="grid gap-4">
+                  <div>
+                    <Input
+                      id="contact-name"
+                      name="name"
+                      aria-label="სახელი"
+                      placeholder="სახელი"
+                      value={formData.name}
+                      onChange={(e) => updateField("name", e.target.value)}
+                      className={contactFieldClassName}
+                      aria-invalid={!!errors.name}
+                      required
                     />
-                    {errors.message && (
-                      <p className="text-xs text-brand-danger">{errors.message}</p>
+                    {errors.name && (
+                      <p className="mt-1 text-xs text-brand-danger">{errors.name}</p>
                     )}
                   </div>
+                  <div>
+                    <Input
+                      id="contact-email"
+                      name="email"
+                      type="email"
+                      aria-label="ელფოსტა"
+                      placeholder="ელფოსტა"
+                      value={formData.email}
+                      onChange={(e) => updateField("email", e.target.value)}
+                      className={contactFieldClassName}
+                      aria-invalid={!!errors.email}
+                      required
+                    />
+                    {errors.email && (
+                      <p className="mt-1 text-xs text-brand-danger">{errors.email}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Input
+                      id="contact-subject"
+                      name="subject"
+                      aria-label="თემა"
+                      placeholder="subject / თემა"
+                      value={formData.subject}
+                      onChange={(e) => updateField("subject", e.target.value)}
+                      className={contactFieldClassName}
+                      aria-invalid={!!errors.subject}
+                      required
+                    />
+                    {errors.subject && (
+                      <p className="mt-1 text-xs text-brand-danger">{errors.subject}</p>
+                    )}
+                  </div>
+                </div>
 
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="h-12 w-full rounded-[0.9rem] bg-brand-accent px-6 text-sm font-semibold text-black shadow-none transition-colors duration-200 hover:bg-brand-accent-hover"
-                  >
-                    {loading && <Loader2 className="size-4 animate-spin" />}
-                    გაგზავნა
-                  </Button>
-                </form>
-              )}
+                <div className="grid gap-1">
+                  <Textarea
+                    id="contact-message"
+                    name="message"
+                    rows={5}
+                    aria-label="შეტყობინება"
+                    placeholder="შეტყობინება"
+                    value={formData.message}
+                    onChange={(e) => updateField("message", e.target.value)}
+                    className={contactTextareaClassName}
+                    aria-invalid={!!errors.message}
+                    required
+                  />
+                  {errors.message && (
+                    <p className="text-xs text-brand-danger">{errors.message}</p>
+                  )}
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="h-12 w-full rounded-[0.9rem] bg-brand-accent px-6 text-sm font-semibold text-black shadow-none transition-colors duration-200 hover:bg-brand-accent-hover"
+                >
+                  {loading && <Loader2 className="size-4 animate-spin" />}
+                  გაგზავნა
+                </Button>
+              </form>
             </div>
           </div>
         </div>

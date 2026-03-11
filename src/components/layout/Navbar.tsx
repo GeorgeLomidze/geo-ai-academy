@@ -176,7 +176,11 @@ export async function Navbar() {
             </DropdownMenu>
           ) : (
             <div className="hidden items-center gap-2 md:flex">
-              <Button variant="ghost" asChild>
+              <Button
+                variant="outline"
+                asChild
+                className="rounded-full border-brand-primary/55 bg-brand-primary/5 px-5 text-brand-secondary transition-[transform,background-color,border-color,color] duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-primary hover:bg-brand-primary/12 hover:text-brand-secondary"
+              >
                 <Link href="/login">შესვლა</Link>
               </Button>
               <Button asChild>
