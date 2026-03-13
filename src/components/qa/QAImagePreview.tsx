@@ -1,6 +1,6 @@
 "use client";
 
-import { Expand, ImageIcon } from "lucide-react";
+import { Expand } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -28,16 +28,9 @@ export function QAImagePreview({ src, alt }: QAImagePreviewProps) {
             alt={alt}
             className="h-28 w-auto max-w-full object-cover"
           />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/55 px-3 py-2 text-xs text-white">
-            <span className="inline-flex items-center gap-1.5">
-              <ImageIcon className="size-3.5" />
-              სურათი
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-white/85">
-              გადიდება
-              <Expand className="size-3.5" />
-            </span>
-          </div>
+          <span className="pointer-events-none absolute right-2.5 bottom-2.5 inline-flex size-9 items-center justify-center rounded-full border border-white/15 bg-black/70 text-white shadow-lg transition-transform duration-200 group-hover:scale-105">
+            <Expand className="size-4" />
+          </span>
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl border-white/10 bg-[#111111] p-3 sm:p-5">

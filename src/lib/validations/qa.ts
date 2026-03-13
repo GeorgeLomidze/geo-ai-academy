@@ -41,39 +41,73 @@ const imageUrlSchema = z
     { message: "სურათის ბმული არასწორია" }
   );
 
+const imageUrlsSchema = z
+  .array(z.string().trim())
+  .max(6, "მაქსიმუმ 6 სურათის დამატებაა შესაძლებელი")
+  .transform((values) =>
+    values
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+  )
+  .refine(
+    (values) => values.every((value) => z.url().safeParse(value).success),
+    { message: "სურათის ბმული არასწორია" }
+  );
+
+function buildImageFieldsSchema() {
+  return z
+    .object({
+      imageUrl: imageUrlSchema.optional(),
+      imageUrls: imageUrlsSchema.optional(),
+    })
+    .transform(({ imageUrl, imageUrls }) => {
+      const normalizedImageUrls = imageUrls ?? (imageUrl ? [imageUrl] : []);
+
+      return {
+        imageUrl: normalizedImageUrls[0] ?? null,
+        imageUrls: normalizedImageUrls,
+      };
+    });
+}
+
 export const questionListQuerySchema = z.object({
   lessonId: lessonIdSchema,
 });
 
-export const questionCreateSchema = z.object({
-  lessonId: lessonIdSchema,
-  content: contentSchema,
-  imageUrl: imageUrlSchema.optional(),
-});
+export const questionCreateSchema = z
+  .object({
+    lessonId: lessonIdSchema,
+    content: contentSchema,
+  })
+  .and(buildImageFieldsSchema());
 
-export const questionUpdateSchema = z.object({
-  content: contentSchema,
-  imageUrl: imageUrlSchema.optional(),
-});
+export const questionUpdateSchema = z
+  .object({
+    content: contentSchema,
+  })
+  .and(buildImageFieldsSchema());
 
-export const answerCreateSchema = z.object({
-  questionId: questionIdSchema,
-  content: contentSchema,
-  imageUrl: imageUrlSchema.optional(),
-});
+export const answerCreateSchema = z
+  .object({
+    questionId: questionIdSchema,
+    content: contentSchema,
+  })
+  .and(buildImageFieldsSchema());
 
-export const answerUpdateSchema = z.object({
-  content: contentSchema,
-  imageUrl: imageUrlSchema.optional(),
-});
+export const answerUpdateSchema = z
+  .object({
+    content: contentSchema,
+  })
+  .and(buildImageFieldsSchema());
 
 export const notificationUpdateSchema = z
   .object({
     id: z.string().trim().uuid("შეტყობინების ID არასწორია").optional(),
+    questionId: z.string().trim().uuid("კითხვის ID არასწორია").optional(),
     markAllRead: z.boolean().optional(),
   })
-  .refine((value) => value.markAllRead || value.id, {
-    message: "მიუთითეთ შეტყობინება ან ყველა წაკითხულად მონიშვნა",
+  .refine((value) => value.markAllRead || value.id || value.questionId, {
+    message: "მიუთითეთ შეტყობინება, კითხვა ან ყველა წაკითხულად მონიშვნა",
     path: ["id"],
   });
 

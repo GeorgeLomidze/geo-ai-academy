@@ -53,8 +53,10 @@ function hasExpectedModelFields(client: PrismaClient) {
 
   return (
     questionFields.includes("imageUrl") &&
+    questionFields.includes("imageUrls") &&
     questionFields.includes("adminReadAt") &&
-    answerFields.includes("imageUrl")
+    answerFields.includes("imageUrl") &&
+    answerFields.includes("imageUrls")
   );
 }
 
@@ -87,6 +89,8 @@ function hasExpectedDelegates(client: PrismaClient) {
     typeof client.answer !== "undefined" &&
     "adminNotification" in client &&
     typeof client.adminNotification !== "undefined" &&
+    "userNotification" in client &&
+    typeof client.userNotification !== "undefined" &&
     hasExpectedModelFields(client)
   );
 }
@@ -128,10 +132,28 @@ export function getPrisma() {
   return getPrismaClient();
 }
 
+type OptionalNotificationDelegateName = "adminNotification" | "userNotification";
+
+function getOptionalDelegate<Name extends OptionalNotificationDelegateName>(
+  name: Name
+) {
+  const client = getPrismaClient() as PrismaClient & Record<Name, unknown>;
+  const delegate = Reflect.get(client as object, name, client);
+  return delegate as PrismaClient[Name] | undefined;
+}
+
+export function getAdminNotificationDelegate() {
+  return getOptionalDelegate("adminNotification");
+}
+
+export function getUserNotificationDelegate() {
+  return getOptionalDelegate("userNotification");
+}
+
 export const prisma = new Proxy({} as PrismaClient, {
-  get(_target, property, receiver) {
+  get(_target, property) {
     const client = getPrismaClient();
-    const value = Reflect.get(client as object, property, receiver);
+    const value = Reflect.get(client as object, property, client);
 
     return typeof value === "function" ? value.bind(client) : value;
   },

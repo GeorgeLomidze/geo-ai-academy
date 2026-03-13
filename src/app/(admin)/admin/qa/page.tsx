@@ -24,6 +24,7 @@ async function getAdminQAData(courseId?: string) {
         id: true,
         content: true,
         imageUrl: true,
+        imageUrls: true,
         adminReadAt: true,
         createdAt: true,
         user: {
@@ -56,6 +57,7 @@ async function getAdminQAData(courseId?: string) {
             id: true,
             content: true,
             imageUrl: true,
+            imageUrls: true,
             createdAt: true,
             user: {
               select: {
@@ -81,6 +83,12 @@ async function getAdminQAData(courseId?: string) {
     id: question.id,
     content: question.content,
     imageUrl: question.imageUrl,
+    imageUrls:
+      question.imageUrls.length > 0
+        ? question.imageUrls
+        : question.imageUrl
+          ? [question.imageUrl]
+          : [],
     createdAt: question.createdAt.toISOString(),
     isUnread: question.adminReadAt === null,
     student: {
@@ -102,6 +110,12 @@ async function getAdminQAData(courseId?: string) {
       id: answer.id,
       content: answer.content,
       imageUrl: answer.imageUrl,
+      imageUrls:
+        answer.imageUrls.length > 0
+          ? answer.imageUrls
+          : answer.imageUrl
+            ? [answer.imageUrl]
+            : [],
       createdAt: answer.createdAt.toISOString(),
       user: {
         name: answer.user.name,
@@ -192,6 +206,7 @@ export default async function AdminQAPage({ searchParams }: AdminQAPageProps) {
           </div>
         ) : (
           <AdminQATable
+            key={`${courseId}:${questionId}:${questions.length}`}
             questions={questions}
             initialExpandedQuestionId={questionId || null}
           />

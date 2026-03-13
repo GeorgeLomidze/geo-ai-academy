@@ -1,11 +1,17 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getAdminNotificationDelegate, prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getAdminNotifications } from "@/lib/qa";
+import { getAdminNotifications, getQuestionIdFromNotificationLink } from "@/lib/qa";
 import {
   getZodFieldErrors,
   notificationUpdateSchema,
 } from "@/lib/validations/qa";
+
+function revalidateAdminNotificationPaths() {
+  revalidatePath("/admin");
+  revalidatePath("/admin/qa");
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -54,22 +60,105 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (parsed.data.markAllRead) {
-      await prisma.adminNotification.updateMany({
-        where: { isRead: false },
-        data: { isRead: true },
-      });
-    } else if (parsed.data.id) {
-      await prisma.adminNotification.update({
-        where: { id: parsed.data.id },
-        data: { isRead: true },
+    const adminNotification = getAdminNotificationDelegate();
+
+    if (!adminNotification) {
+      return NextResponse.json({
+        success: true,
+        notifications: [],
+        unreadCount: 0,
       });
     }
+
+    if (parsed.data.markAllRead) {
+      const now = new Date();
+
+      await Promise.all([
+        adminNotification.updateMany({
+          where: { isRead: false },
+          data: { isRead: true },
+        }),
+        prisma.question.updateMany({
+          where: { adminReadAt: null },
+          data: { adminReadAt: now },
+        }),
+      ]);
+    } else if (parsed.data.questionId) {
+      const question = await prisma.question.findUnique({
+        where: { id: parsed.data.questionId },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!question) {
+        return NextResponse.json(
+          { error: "კითხვა ვერ მოიძებნა" },
+          { status: 404 }
+        );
+      }
+
+      await Promise.all([
+        prisma.question.updateMany({
+          where: {
+            id: parsed.data.questionId,
+            adminReadAt: null,
+          },
+          data: { adminReadAt: new Date() },
+        }),
+        adminNotification.updateMany({
+          where: {
+            isRead: false,
+            linkUrl: {
+              contains: parsed.data.questionId,
+            },
+          },
+          data: { isRead: true },
+        }),
+      ]);
+    } else if (parsed.data.id) {
+      const notification = await adminNotification.findUnique({
+        where: { id: parsed.data.id },
+        select: {
+          id: true,
+          linkUrl: true,
+        },
+      });
+
+      if (!notification) {
+        return NextResponse.json(
+          { error: "შეტყობინება ვერ მოიძებნა" },
+          { status: 404 }
+        );
+      }
+
+      const questionId = getQuestionIdFromNotificationLink(notification.linkUrl);
+
+      await Promise.all([
+        adminNotification.update({
+          where: { id: parsed.data.id },
+          data: { isRead: true },
+        }),
+        questionId
+          ? prisma.question.updateMany({
+              where: {
+                id: questionId,
+                adminReadAt: null,
+              },
+              data: { adminReadAt: new Date() },
+            })
+          : Promise.resolve(),
+      ]);
+    }
+
+    revalidateAdminNotificationPaths();
 
     return NextResponse.json({
       success: true,
       message: parsed.data.markAllRead
         ? "ყველა შეტყობინება წაკითხულად მოინიშნა"
+        : parsed.data.questionId
+          ? "კითხვა წაკითხულად მოინიშნა"
         : "შეტყობინება წაკითხულად მოინიშნა",
       ...(await getAdminNotifications(12)),
     });

@@ -1,8 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getUserNotificationDelegate, prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { sendQuestionAnsweredEmail } from "@/lib/email/send";
 import {
+  buildQuestionNotificationPreview,
   getEnrollmentAccessForLesson,
   getUserRole,
   serializeAnswer,
@@ -11,6 +13,7 @@ import {
   answerCreateSchema,
   getZodFieldErrors,
 } from "@/lib/validations/qa";
+import { siteConfig } from "@/lib/constants";
 
 function revalidateQARelatedPaths(courseSlug: string, lessonId: string) {
   revalidatePath(`/learn/${courseSlug}/${lessonId}`);
@@ -46,14 +49,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { questionId, content, imageUrl } = parsed.data;
+    const { questionId, content, imageUrl, imageUrls } = parsed.data;
     const [role, question] = await Promise.all([
       getUserRole(auth.userId),
       prisma.question.findUnique({
         where: { id: questionId },
         select: {
           id: true,
+          userId: true,
+          content: true,
           lessonId: true,
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+          lesson: {
+            select: {
+              title: true,
+              module: {
+                select: {
+                  course: {
+                    select: {
+                      slug: true,
+                      title: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       }),
     ]);
@@ -87,6 +113,7 @@ export async function POST(request: NextRequest) {
       data: {
         content,
         imageUrl,
+        imageUrls,
         questionId,
         userId: auth.userId,
       },
@@ -94,6 +121,7 @@ export async function POST(request: NextRequest) {
         id: true,
         content: true,
         imageUrl: true,
+        imageUrls: true,
         userId: true,
         questionId: true,
         createdAt: true,
@@ -108,6 +136,54 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    if (question.userId !== auth.userId) {
+      const answerAuthor = await prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: {
+          name: true,
+          email: true,
+        },
+      });
+
+      const userNotification = getUserNotificationDelegate();
+
+      if (userNotification) {
+        await userNotification.create({
+          data: {
+            userId: question.userId,
+            type: isAdmin ? "ADMIN_ANSWER" : "NEW_ANSWER",
+            title:
+              answerAuthor?.name ??
+              answerAuthor?.email ??
+              (isAdmin ? "ადმინისტრატორი" : "მომხმარებელი"),
+            message: buildQuestionNotificationPreview(content),
+            linkUrl: `/learn/${access.course.slug}/${access.lesson.id}#qa-section`,
+            questionId,
+            answerId: answer.id,
+          },
+        });
+      }
+
+      if (question.user.email) {
+        try {
+          await sendQuestionAnsweredEmail({
+            email: question.user.email,
+            recipientName: question.user.name,
+            answererName:
+              answerAuthor?.name ??
+              answerAuthor?.email ??
+              (isAdmin ? "ტრენერი" : "მომხმარებელი"),
+            answerPreview: buildQuestionNotificationPreview(content),
+            courseName: access.course.title,
+            lessonUrl: `${siteConfig.url}/learn/${access.course.slug}/${access.lesson.id}#qa-section`,
+            answeredByAdmin: isAdmin,
+          });
+        } catch (emailError) {
+          console.error("POST /api/answers email send failed", emailError);
+        }
+      }
+    }
 
     revalidateQARelatedPaths(access.course.slug, access.lesson.id);
 

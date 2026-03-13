@@ -1,6 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import {
+  getAdminNotificationDelegate,
+  getUserNotificationDelegate,
+  prisma,
+} from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { getUserRole, serializeQuestion } from "@/lib/qa";
 import {
@@ -91,11 +95,13 @@ export async function PUT(
       data: {
         content: parsed.data.content,
         imageUrl: parsed.data.imageUrl,
+        imageUrls: parsed.data.imageUrls,
       },
       select: {
         id: true,
         content: true,
         imageUrl: true,
+        imageUrls: true,
         adminReadAt: true,
         userId: true,
         lessonId: true,
@@ -115,6 +121,7 @@ export async function PUT(
             id: true,
             content: true,
             imageUrl: true,
+            imageUrls: true,
             userId: true,
             questionId: true,
             createdAt: true,
@@ -206,8 +213,10 @@ export async function PATCH(
       data: { adminReadAt: new Date() },
     });
 
-    if ("adminNotification" in prisma && typeof prisma.adminNotification !== "undefined") {
-      await prisma.adminNotification.updateMany({
+    const adminNotification = getAdminNotificationDelegate();
+
+    if (adminNotification) {
+      await adminNotification.updateMany({
         where: {
           isRead: false,
           linkUrl: {
@@ -288,15 +297,27 @@ export async function DELETE(
       where: { id: questionId },
     });
 
-    if ("adminNotification" in prisma && typeof prisma.adminNotification !== "undefined") {
-      await prisma.adminNotification.deleteMany({
-        where: {
-          linkUrl: {
-            contains: questionId,
-          },
-        },
-      });
-    }
+    const adminNotification = getAdminNotificationDelegate();
+    const userNotification = getUserNotificationDelegate();
+
+    await Promise.all([
+      adminNotification
+        ? adminNotification.deleteMany({
+            where: {
+              linkUrl: {
+                contains: questionId,
+              },
+            },
+          })
+        : Promise.resolve(),
+      userNotification
+        ? userNotification.deleteMany({
+            where: {
+              questionId,
+            },
+          })
+        : Promise.resolve(),
+    ]);
 
     revalidateQARelatedPaths(question.lesson.module.course.slug, question.lessonId);
 

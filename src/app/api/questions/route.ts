@@ -1,8 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getAdminNotificationDelegate, prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { sendAdminNewQuestionEmail } from "@/lib/email/send";
 import {
+  buildQuestionNotificationPreview,
   getEnrollmentAccessForLesson,
   getSerializedQuestionsForLesson,
   getUserRole,
@@ -13,6 +15,7 @@ import {
   questionCreateSchema,
   questionListQuerySchema,
 } from "@/lib/validations/qa";
+import { siteConfig } from "@/lib/constants";
 
 function revalidateQARelatedPaths(courseSlug: string, lessonId: string) {
   revalidatePath(`/learn/${courseSlug}/${lessonId}`);
@@ -115,7 +118,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { lessonId, content, imageUrl } = parsed.data;
+    const { lessonId, content, imageUrl, imageUrls } = parsed.data;
     const [role, access, author] = await Promise.all([
       getUserRole(auth.userId),
       getEnrollmentAccessForLesson(auth.userId, lessonId),
@@ -148,6 +151,7 @@ export async function POST(request: NextRequest) {
       data: {
         content,
         imageUrl,
+        imageUrls,
         lessonId,
         userId: auth.userId,
         adminReadAt: null,
@@ -156,6 +160,7 @@ export async function POST(request: NextRequest) {
         id: true,
         content: true,
         imageUrl: true,
+        imageUrls: true,
         adminReadAt: true,
         userId: true,
         lessonId: true,
@@ -175,6 +180,7 @@ export async function POST(request: NextRequest) {
             id: true,
             content: true,
             imageUrl: true,
+            imageUrls: true,
             userId: true,
             questionId: true,
             createdAt: true,
@@ -193,18 +199,32 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      if ("adminNotification" in prisma && typeof prisma.adminNotification !== "undefined") {
-        await prisma.adminNotification.create({
+      const adminNotification = getAdminNotificationDelegate();
+
+      if (adminNotification) {
+        await adminNotification.create({
           data: {
             type: "NEW_QUESTION",
-            title: "ახალი კითხვა გაკვეთილზე",
-            message: `${author?.name ?? author?.email ?? "სტუდენტი"}-მ დასვა კითხვა გაკვეთილზე "${access.lesson.title}"`,
+            title: author?.name ?? author?.email ?? "სტუდენტი",
+            message: buildQuestionNotificationPreview(content),
             linkUrl: `/admin/qa?questionId=${question.id}`,
           },
         });
       }
     } catch (notificationError) {
       console.error("POST /api/questions notification create failed", notificationError);
+    }
+
+    try {
+      await sendAdminNewQuestionEmail({
+        studentName: author?.name ?? author?.email ?? "სტუდენტი",
+        courseName: access.course.title,
+        lessonName: access.lesson.title,
+        questionPreview: buildQuestionNotificationPreview(content),
+        adminQaUrl: `${siteConfig.url}/admin/qa?questionId=${question.id}`,
+      });
+    } catch (emailError) {
+      console.error("POST /api/questions email send failed", emailError);
     }
 
     revalidateQARelatedPaths(access.course.slug, lessonId);

@@ -65,6 +65,7 @@ export function DeleteQAItemButton({
 
       setOpen(false);
       await onDeleted?.();
+      window.dispatchEvent(new Event("notifications:changed"));
 
       if (refreshAfterDelete) {
         startTransition(() => {

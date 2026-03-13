@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getUserNotificationDelegate, prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { getUserRole, serializeAnswer } from "@/lib/qa";
 import {
@@ -95,11 +95,13 @@ export async function PUT(
       data: {
         content: parsed.data.content,
         imageUrl: parsed.data.imageUrl,
+        imageUrls: parsed.data.imageUrls,
       },
       select: {
         id: true,
         content: true,
         imageUrl: true,
+        imageUrls: true,
         userId: true,
         questionId: true,
         createdAt: true,
@@ -192,6 +194,16 @@ export async function DELETE(
     await prisma.answer.delete({
       where: { id: answerId },
     });
+
+    const userNotification = getUserNotificationDelegate();
+
+    if (userNotification) {
+      await userNotification.deleteMany({
+        where: {
+          answerId,
+        },
+      });
+    }
 
     revalidateQARelatedPaths(
       answer.question.lesson.module.course.slug,

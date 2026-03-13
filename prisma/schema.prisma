@@ -44,6 +44,7 @@ model User {
   orders         Order[]
   questions      Question[]       @relation("UserQuestions")
   answers        Answer[]         @relation("UserAnswers")
+  notifications  UserNotification[]
 
   @@map("users")
 }
@@ -175,6 +176,7 @@ model Question {
   id          String    @id @default(uuid())
   content     String    @db.Text
   imageUrl    String?
+  imageUrls   String[]  @default([])
   userId      String
   lessonId    String
   adminReadAt DateTime?
@@ -194,6 +196,7 @@ model Answer {
   id         String   @id @default(uuid())
   content    String   @db.Text
   imageUrl   String?
+  imageUrls  String[] @default([])
   userId     String
   questionId String
   createdAt  DateTime @default(now())
@@ -218,4 +221,24 @@ model AdminNotification {
 
   @@index([isRead])
   @@map("admin_notifications")
+}
+
+model UserNotification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   @default("NEW_ANSWER")
+  title     String
+  message   String
+  linkUrl   String?
+  questionId String?
+  answerId  String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([questionId])
+  @@index([answerId])
+  @@map("user_notifications")
 }

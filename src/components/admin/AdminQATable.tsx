@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Fragment } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronUp, ExternalLink, MessageSquareText } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format-relative-time";
+import { useAdminNotifications } from "@/components/layout/AdminNotificationsProvider";
 import { DeleteQAItemButton } from "@/components/qa/DeleteQAItemButton";
-import { QAImagePreview } from "@/components/qa/QAImagePreview";
+import { QAImageGallery } from "@/components/qa/QAImageGallery";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export type AdminQAAnswerRecord = {
   id: string;
   content: string;
   imageUrl: string | null;
+  imageUrls: string[];
   createdAt: string;
   user: {
     name: string | null;
@@ -35,6 +38,7 @@ export type AdminQAQuestionRecord = {
   id: string;
   content: string;
   imageUrl: string | null;
+  imageUrls: string[];
   createdAt: string;
   isUnread: boolean;
   student: {
@@ -77,72 +81,53 @@ export function AdminQATable({
   questions,
   initialExpandedQuestionId = null,
 }: AdminQATableProps) {
+  const { markQuestionAsRead: syncQuestionRead, refreshNotifications } = useAdminNotifications();
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(
     initialExpandedQuestionId
   );
-  const [unreadQuestionIds, setUnreadQuestionIds] = useState(
-    Object.fromEntries(
-      questions
-        .filter((question) => question.isUnread)
-        .map((question) => [question.id, true])
-    ) as Record<string, boolean>
-  );
+  const [readQuestionIds, setReadQuestionIds] = useState<Record<string, boolean>>({});
 
-  async function markQuestionAsRead(questionId: string) {
-    if (!unreadQuestionIds[questionId]) {
+  async function handleMarkQuestionAsRead(questionId: string) {
+    const currentQuestion = questions.find((question) => question.id === questionId);
+
+    if (!currentQuestion?.isUnread || readQuestionIds[questionId]) {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/questions/${questionId}`, {
-        method: "PATCH",
-      });
+    const success = await syncQuestionRead(questionId);
 
-      if (!response.ok) {
-        return;
-      }
-
-      setUnreadQuestionIds((current) => {
-        const next = { ...current };
-        delete next[questionId];
-        return next;
-      });
-      window.dispatchEvent(new Event("qa:notifications-sync"));
-    } catch {
-      // Keep the unread badge if the request fails.
+    if (success) {
+      setReadQuestionIds((current) => ({ ...current, [questionId]: true }));
     }
   }
 
   useEffect(() => {
-    if (!initialExpandedQuestionId) {
+    const initialQuestion = questions.find(
+      (question) => question.id === initialExpandedQuestionId
+    );
+
+    if (
+      !initialExpandedQuestionId ||
+      !initialQuestion?.isUnread ||
+      readQuestionIds[initialExpandedQuestionId]
+    ) {
       return;
     }
 
-    if (!unreadQuestionIds[initialExpandedQuestionId]) {
-      return;
-    }
+    let isMounted = true;
 
-    void fetch(`/api/questions/${initialExpandedQuestionId}`, {
-      method: "PATCH",
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return null;
-        }
+    void syncQuestionRead(initialExpandedQuestionId).then((success) => {
+      if (!success || !isMounted) {
+        return;
+      }
 
-        setUnreadQuestionIds((current) => {
-          const next = { ...current };
-          delete next[initialExpandedQuestionId];
-          return next;
-        });
-        window.dispatchEvent(new Event("qa:notifications-sync"));
+      setReadQuestionIds((current) => ({ ...current, [initialExpandedQuestionId]: true }));
+    });
 
-        return response;
-      })
-      .catch(() => {
-        // Ignore initial read sync failures and keep the unread badge.
-      });
-  }, [initialExpandedQuestionId, unreadQuestionIds]);
+    return () => {
+      isMounted = false;
+    };
+  }, [initialExpandedQuestionId, questions, readQuestionIds, syncQuestionRead]);
 
   if (questions.length === 0) {
     return (
@@ -192,13 +177,24 @@ export function AdminQATable({
       <TableBody>
         {questions.map((question) => {
           const expanded = expandedQuestionId === question.id;
-          const isUnread = Boolean(unreadQuestionIds[question.id]);
+          const isUnread = question.isUnread && !readQuestionIds[question.id];
           const lessonQAHref = `/learn/${question.course.slug}/${question.lesson.id}#qa-section`;
 
           return (
             <Fragment key={question.id}>
-              <TableRow key={question.id} className="border-brand-border align-top">
-                <TableCell className="px-4">
+              <TableRow
+                key={question.id}
+                className={cn(
+                  "border-brand-border align-top",
+                  isUnread && "bg-amber-500/5"
+                )}
+              >
+                <TableCell
+                  className={cn(
+                    "px-4",
+                    isUnread && "border-l-2 border-l-amber-400/80"
+                  )}
+                >
                   <div className="flex items-center gap-3">
                     <Avatar>
                       <AvatarImage
@@ -210,7 +206,10 @@ export function AdminQATable({
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-brand-secondary">
+                      <p className="flex items-center gap-2 font-medium text-brand-secondary">
+                        {isUnread ? (
+                          <span className="size-2 rounded-full bg-amber-400" />
+                        ) : null}
                         {question.student.name ?? "უსახელო სტუდენტი"}
                       </p>
                       <p className="text-xs text-brand-muted">
@@ -232,7 +231,7 @@ export function AdminQATable({
                         variant="outline"
                         className={
                           isUnread
-                            ? "rounded-full border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                            ? "rounded-full border-amber-400/40 bg-amber-400/10 text-amber-200"
                             : "rounded-full text-brand-muted"
                         }
                       >
@@ -267,7 +266,7 @@ export function AdminQATable({
                         );
 
                         if (!expanded) {
-                          void markQuestionAsRead(question.id);
+                          void handleMarkQuestionAsRead(question.id);
                         }
                       }}
                     >
@@ -289,6 +288,7 @@ export function AdminQATable({
                       dialogDescription="ეს კითხვა და მასთან დაკავშირებული პასუხები წაიშლება."
                       iconOnly
                       label="კითხვის წაშლა"
+                      onDeleted={() => refreshNotifications(true)}
                     />
                   </div>
                 </TableCell>
@@ -313,14 +313,12 @@ export function AdminQATable({
                         <p className="mt-3 whitespace-pre-wrap text-pretty text-sm leading-7 text-brand-secondary">
                           {question.content}
                         </p>
-                        {question.imageUrl ? (
-                          <div className="mt-4">
-                            <QAImagePreview
-                              src={question.imageUrl}
-                              alt="კითხვის მიმაგრებული სურათი"
-                            />
-                          </div>
-                        ) : null}
+                        <div className="mt-4">
+                          <QAImageGallery
+                            images={question.imageUrls}
+                            altPrefix="კითხვის მიმაგრებული სურათი"
+                          />
+                        </div>
                       </div>
 
                       <div className="mt-6 space-y-3">
@@ -368,14 +366,12 @@ export function AdminQATable({
                                   <p className="mt-3 whitespace-pre-wrap text-pretty text-sm leading-7 text-brand-secondary/90">
                                     {answer.content}
                                   </p>
-                                  {answer.imageUrl ? (
-                                    <div className="mt-4">
-                                      <QAImagePreview
-                                        src={answer.imageUrl}
-                                        alt="პასუხის მიმაგრებული სურათი"
-                                      />
-                                    </div>
-                                  ) : null}
+                                  <div className="mt-4">
+                                    <QAImageGallery
+                                      images={answer.imageUrls}
+                                      altPrefix="პასუხის მიმაგრებული სურათი"
+                                    />
+                                  </div>
                                 </div>
                               </div>
 
@@ -385,6 +381,7 @@ export function AdminQATable({
                                 dialogDescription="ეს პასუხი წაიშლება და ვეღარ აღდგება."
                                 iconOnly
                                 label="პასუხის წაშლა"
+                                onDeleted={() => refreshNotifications(true)}
                               />
                             </div>
                           ))

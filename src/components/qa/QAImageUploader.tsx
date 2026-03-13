@@ -7,24 +7,27 @@ import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
 interface QAImageUploaderProps {
-  value: string;
-  onChange: (url: string) => void;
+  value: string[];
+  onChange: (urls: string[]) => void;
   error?: string | null;
+  maxImages?: number;
 }
 
 export function QAImageUploader({
   value,
   onChange,
   error = null,
+  maxImages = 6,
 }: QAImageUploaderProps) {
   const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const canAddMore = value.length < maxImages;
 
   async function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) {
       return;
     }
 
@@ -32,29 +35,38 @@ export function QAImageUploader({
     setUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
       const supabase = createSupabaseClient();
       const {
         data: { session },
       } = await supabase.auth.getSession();
+      const uploadedUrls: string[] = [];
+      const remainingSlots = maxImages - value.length;
 
-      const response = await fetch("/api/qa/upload-image", {
-        method: "POST",
-        credentials: "include",
-        headers: session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : undefined,
-        body: formData,
-      });
+      for (const file of files.slice(0, remainingSlots)) {
+        const formData = new FormData();
+        formData.append("file", file);
 
-      const data = (await response.json()) as { url?: string; error?: string };
+        const response = await fetch("/api/qa/upload-image", {
+          method: "POST",
+          credentials: "include",
+          headers: session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : undefined,
+          body: formData,
+        });
 
-      if (!response.ok || !data.url) {
-        throw new Error(data.error ?? "სურათის ატვირთვა ვერ მოხერხდა");
+        const data = (await response.json()) as { url?: string; error?: string };
+
+        if (!response.ok || !data.url) {
+          throw new Error(data.error ?? "სურათის ატვირთვა ვერ მოხერხდა");
+        }
+
+        uploadedUrls.push(data.url);
       }
 
-      onChange(data.url);
+      if (uploadedUrls.length > 0) {
+        onChange([...value, ...uploadedUrls]);
+      }
     } catch (nextError) {
       setUploadError(
         nextError instanceof Error
@@ -69,8 +81,8 @@ export function QAImageUploader({
     }
   }
 
-  function handleRemove() {
-    onChange("");
+  function handleRemove(imageUrl: string) {
+    onChange(value.filter((currentUrl) => currentUrl !== imageUrl));
     setUploadError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -80,9 +92,23 @@ export function QAImageUploader({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-start gap-3">
-        {value ? (
-          <QAImagePreview src={value} alt="Q&A მიმაგრებული სურათი" />
-        ) : null}
+        {value.map((imageUrl, index) => (
+          <div key={`${imageUrl}-${index}`} className="space-y-2">
+            <QAImagePreview
+              src={imageUrl}
+              alt={`Q&A მიმაგრებული სურათი ${index + 1}`}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              className="rounded-xl text-brand-danger hover:bg-brand-danger/10 hover:text-brand-danger"
+              onClick={() => handleRemove(imageUrl)}
+            >
+              <Trash2 className="size-4" />
+              წაშლა
+            </Button>
+          </div>
+        ))}
 
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor={inputId}>
@@ -90,47 +116,36 @@ export function QAImageUploader({
               ref={fileInputRef}
               id={inputId}
               type="file"
+              multiple
               accept="image/jpeg,image/png,image/webp,image/avif"
               className="sr-only"
               onChange={handleFileSelect}
-              disabled={uploading}
+              disabled={uploading || !canAddMore}
             />
             <Button
               type="button"
               variant="outline"
               className="rounded-xl"
-              disabled={uploading}
+              disabled={uploading || !canAddMore}
               asChild
             >
               <span>
                 {uploading ? (
                   <Loader2 className="size-4 animate-spin" />
-                ) : value ? (
+                ) : value.length > 0 ? (
                   <RefreshCcw className="size-4" />
                 ) : (
                   <ImagePlus className="size-4" />
                 )}
-                {value ? "სურათის შეცვლა" : "სურათის დამატება"}
+                {value.length > 0 ? "მეტი სურათის დამატება" : "სურათების დამატება"}
               </span>
             </Button>
           </label>
-
-          {value ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="rounded-xl text-brand-danger hover:bg-brand-danger/10 hover:text-brand-danger"
-              onClick={handleRemove}
-            >
-              <Trash2 className="size-4" />
-              წაშლა
-            </Button>
-          ) : null}
         </div>
       </div>
 
       <p className="text-xs text-brand-muted">
-        სურვილის შემთხვევაში დაურთე screenshot ან ფოტო. მაქსიმუმ 5MB.
+        სურვილის შემთხვევაში დაურთე screenshot ან ფოტო. მაქსიმუმ {maxImages} სურათი, თითოეული 5MB-მდე.
       </p>
 
       {uploadError || error ? (

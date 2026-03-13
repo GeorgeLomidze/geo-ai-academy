@@ -7,7 +7,7 @@ import { formatRelativeTime } from "@/lib/format-relative-time";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { DeleteQAItemButton } from "@/components/qa/DeleteQAItemButton";
-import { QAImagePreview } from "@/components/qa/QAImagePreview";
+import { QAImageGallery } from "@/components/qa/QAImageGallery";
 import { QAImageUploader } from "@/components/qa/QAImageUploader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -94,20 +94,20 @@ function QuestionItem({
   const [answerError, setAnswerError] = useState<string | null>(null);
   const [editingQuestion, setEditingQuestion] = useState(false);
   const [questionContent, setQuestionContent] = useState(question.content);
-  const [questionImageUrl, setQuestionImageUrl] = useState(question.imageUrl ?? "");
+  const [questionImageUrls, setQuestionImageUrls] = useState(question.imageUrls);
   const [questionPending, setQuestionPending] = useState(false);
   const [questionError, setQuestionError] = useState<string | null>(null);
   const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null);
   const [editingAnswerContent, setEditingAnswerContent] = useState("");
-  const [answerImageUrl, setAnswerImageUrl] = useState("");
-  const [editingAnswerImageUrl, setEditingAnswerImageUrl] = useState("");
+  const [answerImageUrls, setAnswerImageUrls] = useState<string[]>([]);
+  const [editingAnswerImageUrls, setEditingAnswerImageUrls] = useState<string[]>([]);
   const [editingAnswerPending, setEditingAnswerPending] = useState(false);
   const [editingAnswerError, setEditingAnswerError] = useState<string | null>(null);
 
   useEffect(() => {
     setQuestionContent(question.content);
-    setQuestionImageUrl(question.imageUrl ?? "");
-  }, [question.content, question.imageUrl]);
+    setQuestionImageUrls(question.imageUrls);
+  }, [question.content, question.imageUrls]);
 
   async function handleAnswerSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -126,7 +126,7 @@ function QuestionItem({
         body: JSON.stringify({
           questionId: question.id,
           content: answerContent,
-          imageUrl: answerImageUrl || null,
+          imageUrls: answerImageUrls,
         }),
       });
 
@@ -138,7 +138,7 @@ function QuestionItem({
       }
 
       setAnswerContent("");
-      setAnswerImageUrl("");
+      setAnswerImageUrls([]);
       setAnswerOpen(false);
       await onChanged();
     } catch {
@@ -164,7 +164,7 @@ function QuestionItem({
         },
         body: JSON.stringify({
           content: questionContent,
-          imageUrl: questionImageUrl || null,
+          imageUrls: questionImageUrls,
         }),
       });
 
@@ -205,7 +205,7 @@ function QuestionItem({
         },
         body: JSON.stringify({
           content: editingAnswerContent,
-          imageUrl: editingAnswerImageUrl || null,
+          imageUrls: editingAnswerImageUrls,
         }),
       });
 
@@ -294,8 +294,8 @@ function QuestionItem({
             aria-label="კითხვის რედაქტირება"
           />
           <QAImageUploader
-            value={questionImageUrl}
-            onChange={setQuestionImageUrl}
+            value={questionImageUrls}
+            onChange={setQuestionImageUrls}
           />
           {questionError ? (
             <p role="alert" className="text-sm text-brand-danger">
@@ -314,7 +314,7 @@ function QuestionItem({
               onClick={() => {
                 setEditingQuestion(false);
                 setQuestionContent(question.content);
-                setQuestionImageUrl(question.imageUrl ?? "");
+                setQuestionImageUrls(question.imageUrls);
                 setQuestionError(null);
               }}
             >
@@ -327,12 +327,10 @@ function QuestionItem({
           <p className="whitespace-pre-wrap text-pretty text-sm leading-7 text-brand-secondary/90">
             {question.content}
           </p>
-          {question.imageUrl ? (
-            <QAImagePreview
-              src={question.imageUrl}
-              alt="კითხვის მიმაგრებული სურათი"
-            />
-          ) : null}
+          <QAImageGallery
+            images={question.imageUrls}
+            altPrefix="კითხვის მიმაგრებული სურათი"
+          />
         </div>
       )}
 
@@ -368,8 +366,8 @@ function QuestionItem({
             aria-label="პასუხის ტექსტი"
           />
           <QAImageUploader
-            value={answerImageUrl}
-            onChange={setAnswerImageUrl}
+            value={answerImageUrls}
+            onChange={setAnswerImageUrls}
           />
           {answerError ? (
             <p role="alert" className="text-sm text-brand-danger">
@@ -388,7 +386,7 @@ function QuestionItem({
               onClick={() => {
                 setAnswerOpen(false);
                 setAnswerContent("");
-                setAnswerImageUrl("");
+                setAnswerImageUrls([]);
                 setAnswerError(null);
               }}
             >
@@ -439,7 +437,7 @@ function QuestionItem({
                       onClick={() => {
                         setEditingAnswerId(answer.id);
                         setEditingAnswerContent(answer.content);
-                        setEditingAnswerImageUrl(answer.imageUrl ?? "");
+                        setEditingAnswerImageUrls(answer.imageUrls);
                         setEditingAnswerError(null);
                       }}
                     >
@@ -470,8 +468,8 @@ function QuestionItem({
                     aria-label="პასუხის რედაქტირება"
                   />
                   <QAImageUploader
-                    value={editingAnswerImageUrl}
-                    onChange={setEditingAnswerImageUrl}
+                    value={editingAnswerImageUrls}
+                    onChange={setEditingAnswerImageUrls}
                   />
                   {editingAnswerError ? (
                     <p role="alert" className="text-sm text-brand-danger">
@@ -490,7 +488,7 @@ function QuestionItem({
                       onClick={() => {
                         setEditingAnswerId(null);
                         setEditingAnswerContent("");
-                        setEditingAnswerImageUrl("");
+                        setEditingAnswerImageUrls([]);
                         setEditingAnswerError(null);
                       }}
                     >
@@ -503,12 +501,10 @@ function QuestionItem({
                   <p className="whitespace-pre-wrap text-pretty text-sm leading-7 text-brand-secondary/90">
                     {answer.content}
                   </p>
-                  {answer.imageUrl ? (
-                    <QAImagePreview
-                      src={answer.imageUrl}
-                      alt="პასუხის მიმაგრებული სურათი"
-                    />
-                  ) : null}
+                  <QAImageGallery
+                    images={answer.imageUrls}
+                    altPrefix="პასუხის მიმაგრებული სურათი"
+                  />
                 </div>
               )}
             </div>
@@ -524,7 +520,7 @@ export function QASection({ lessonId }: QASectionProps) {
   const [questions, setQuestions] = useState<SerializedQuestion[]>([]);
   const [questionCount, setQuestionCount] = useState(0);
   const [content, setContent] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -598,7 +594,7 @@ export function QASection({ lessonId }: QASectionProps) {
         body: JSON.stringify({
           lessonId,
           content,
-          imageUrl: imageUrl || null,
+          imageUrls,
         }),
       });
 
@@ -611,7 +607,7 @@ export function QASection({ lessonId }: QASectionProps) {
       }
 
       setContent("");
-      setImageUrl("");
+      setImageUrls([]);
       await loadQuestions();
     } catch {
       setSubmitError("კავშირის შეცდომა, სცადეთ თავიდან");
@@ -668,20 +664,21 @@ export function QASection({ lessonId }: QASectionProps) {
             aria-invalid={!!fieldErrors.content}
           />
           <QAImageUploader
-            value={imageUrl}
+            value={imageUrls}
             onChange={(nextValue) => {
-              setImageUrl(nextValue);
+              setImageUrls(nextValue);
               setFieldErrors((current) => {
-                if (!current.imageUrl) {
+                if (!current.imageUrls && !current.imageUrl) {
                   return current;
                 }
 
                 const next = { ...current };
+                delete next.imageUrls;
                 delete next.imageUrl;
                 return next;
               });
             }}
-            error={fieldErrors.imageUrl}
+            error={fieldErrors.imageUrls ?? fieldErrors.imageUrl}
           />
           {fieldErrors.content ? (
             <p role="alert" className="text-sm text-brand-danger">

@@ -1,21 +1,14 @@
 import Link from "next/link";
-import { ChevronRight, User, LayoutDashboard, Shield, Sparkles, BookOpen } from "lucide-react";
+import type { NotificationDropdownItem } from "@/components/layout/NotificationDropdownSection";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
-import { navItems, studentNavItems } from "@/lib/constants";
+import { getAdminNotifications, getUserNotifications } from "@/lib/qa";
+import { navItems } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SignOutButton } from "@/components/layout/SignOutButton";
 import { BrandLogo } from "@/components/layout/BrandLogo";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { NavbarAccountMenu } from "@/components/layout/NavbarAccountMenu";
+import { PublicNavLink } from "@/components/layout/PublicNavLink";
 import { MobileNavToggle } from "@/components/layout/MobileNavToggle";
 
 function getInitials(name: string | null | undefined, email: string): string {
@@ -52,6 +45,21 @@ export async function Navbar() {
   const displayName =
     profile?.name ?? user?.user_metadata?.name ?? user?.email ?? "მომხმარებელი";
   const avatarUrl = profile?.avatarUrl ?? undefined;
+  const initialNotificationData = user
+    ? isAdmin
+      ? await getAdminNotifications(12)
+      : await getUserNotifications(user.id, 12)
+    : { notifications: [], unreadCount: 0 };
+  const initialNotificationItems: NotificationDropdownItem[] = isAdmin
+    ? []
+    : initialNotificationData.notifications.map((notification) => ({
+        id: notification.id,
+        title: notification.authorName,
+        description: notification.questionPreview,
+        href: notification.linkUrl ?? "/dashboard",
+        isRead: notification.isRead,
+        createdAt: notification.createdAt,
+      }));
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-brand-border bg-brand-background/80 backdrop-blur-xl">
@@ -66,114 +74,32 @@ export async function Navbar() {
         <div className="flex items-center gap-3 md:gap-6">
           <div className="hidden items-center gap-6 md:flex" aria-label="მთავარი ნავიგაცია">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className={desktopNavLinkClass}>
+              <PublicNavLink
+                key={item.href}
+                href={item.href}
+                className={desktopNavLinkClass}
+              >
                 {item.label}
                 <span
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-px origin-right scale-x-0 bg-brand-primary transition-transform duration-200 group-hover:origin-left group-hover:scale-x-100 group-focus-visible:origin-left group-focus-visible:scale-x-100"
                 />
-              </Link>
+              </PublicNavLink>
             ))}
           </div>
 
           {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 outline-none ring-offset-2 transition-colors duration-200 hover:border-brand-primary/30 hover:bg-white/8 focus-visible:ring-2 focus-visible:ring-brand-primary">
-                  <Avatar data-size="lg">
-                    <AvatarImage
-                      src={avatarUrl}
-                      alt={displayName}
-                    />
-                    <AvatarFallback className="bg-brand-primary-light text-brand-primary">
-                      {getInitials(displayName, user.email ?? "")}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="hidden text-left md:block">
-                    <p className="font-nav max-w-32 truncate text-sm font-medium text-brand-secondary">
-                      {displayName}
-                    </p>
-                    <p className="font-nav max-w-32 truncate text-xs text-brand-muted">
-                      პროფილი
-                    </p>
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                sideOffset={10}
-                className="w-72 rounded-2xl border-white/10 bg-[#111111] p-2 text-brand-secondary shadow-2xl"
-              >
-                <DropdownMenuLabel className="rounded-xl border border-white/10 bg-white/[0.03] p-4 font-normal">
-                  <div className="flex items-start gap-3">
-                    <Avatar data-size="lg">
-                      <AvatarImage
-                        src={avatarUrl}
-                        alt={displayName}
-                      />
-                      <AvatarFallback className="bg-brand-primary-light text-brand-primary">
-                        {getInitials(displayName, user.email ?? "")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-brand-secondary">
-                        {displayName}
-                      </p>
-                      <p className="truncate text-xs text-brand-muted">{user.email}</p>
-                      <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-brand-primary/20 bg-brand-primary-light px-3 py-1 text-xs font-medium text-brand-primary">
-                        <Sparkles className="size-3.5" />
-                        {isAdmin ? "ადმინის წვდომა" : "სტუდენტის ანგარიში"}
-                      </div>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={studentNavItems[0].href}
-                    className="rounded-xl px-3 py-3 focus:bg-white/5 focus:text-brand-secondary"
-                  >
-                    <LayoutDashboard />
-                    {studentNavItems[0].label}
-                    <ChevronRight className="ml-auto size-4 text-brand-muted" />
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={studentNavItems[1].href}
-                    className="rounded-xl px-3 py-3 focus:bg-white/5 focus:text-brand-secondary"
-                  >
-                    <BookOpen />
-                    {studentNavItems[1].label}
-                    <ChevronRight className="ml-auto size-4 text-brand-muted" />
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={studentNavItems[2].href}
-                    className="rounded-xl px-3 py-3 focus:bg-white/5 focus:text-brand-secondary"
-                  >
-                    <User />
-                    {studentNavItems[2].label}
-                    <ChevronRight className="ml-auto size-4 text-brand-muted" />
-                  </Link>
-                </DropdownMenuItem>
-                {isAdmin ? (
-                  <DropdownMenuItem asChild>
-                    <Link
-                      href="/admin"
-                      className="rounded-xl px-3 py-3 focus:bg-white/5 focus:text-brand-secondary"
-                    >
-                      <Shield />
-                      ადმინის პანელი
-                      <ChevronRight className="ml-auto size-4 text-brand-muted" />
-                    </Link>
-                  </DropdownMenuItem>
-                ) : null}
-                <DropdownMenuSeparator />
-                <SignOutButton className="rounded-xl px-3 py-3 text-brand-danger focus:bg-brand-danger/10 focus:text-brand-danger" />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <NavbarAccountMenu
+              displayName={displayName}
+              email={user.email ?? ""}
+              avatarUrl={avatarUrl}
+              initials={getInitials(displayName, user.email ?? "")}
+              isAdmin={isAdmin}
+              notificationEndpoint={isAdmin ? "/api/admin/notifications" : "/api/notifications"}
+              initialUnreadCount={initialNotificationData.unreadCount}
+              initialNotificationItems={initialNotificationItems}
+              showNotificationList={!isAdmin}
+            />
           ) : (
             <div className="hidden items-center gap-2 md:flex">
               <Button

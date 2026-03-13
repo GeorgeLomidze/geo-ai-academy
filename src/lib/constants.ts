@@ -21,31 +21,31 @@ export const socialLinks = [
   {
     label: "Facebook",
     shortLabel: "FB",
-    href: "https://facebook.com",
+    href: "https://www.facebook.com/profile.php?id=61579584744515",
     icon: "facebook",
   },
   {
     label: "YouTube",
     shortLabel: "YT",
-    href: "https://youtube.com",
+    href: "https://www.youtube.com/@GEOAITECH",
     icon: "youtube",
   },
   {
     label: "TikTok",
     shortLabel: "TK",
-    href: "https://tiktok.com",
+    href: "https://www.tiktok.com/@george.lomidze0",
     icon: "tiktok",
   },
   {
     label: "LinkedIn",
     shortLabel: "LN",
-    href: "https://linkedin.com",
+    href: "https://www.linkedin.com/in/george-lomidze-062b0a366?utm_source=share_via&utm_content=profile&utm_medium=member_ios",
     icon: "linkedin",
   },
   {
     label: "Instagram",
     shortLabel: "IN",
-    href: "https://instagram.com",
+    href: "https://www.instagram.com/giorgilomidze_ai/",
     icon: "instagram",
   },
 ] as const;

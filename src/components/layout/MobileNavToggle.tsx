@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { navItems, studentNavItems } from "@/lib/constants";
+import { PublicNavLink } from "@/components/layout/PublicNavLink";
 import { Button } from "@/components/ui/button";
 
 export function MobileNavToggle({
@@ -30,14 +31,14 @@ export function MobileNavToggle({
         <div className="absolute left-0 top-16 z-50 w-full border-b border-brand-border bg-brand-background/95 p-4 shadow-lg backdrop-blur-xl">
           <div className="flex flex-col gap-1">
             {navItems.map((item) => (
-              <Link
+              <PublicNavLink
                 key={item.href}
                 href={item.href}
-                onClick={() => setOpen(false)}
+                onNavigate={() => setOpen(false)}
                 className="font-nav rounded-xl px-3 py-2.5 text-sm font-medium text-brand-muted transition-colors hover:bg-brand-primary-light hover:text-brand-primary"
               >
                 {item.label}
-              </Link>
+              </PublicNavLink>
             ))}
             {isAuthenticated && (
               <>

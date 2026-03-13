@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -17,8 +17,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminNavItems } from "@/lib/constants";
+import { useAdminNotifications } from "@/components/layout/AdminNotificationsProvider";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { UnreadCountBadge } from "@/components/layout/UnreadCountBadge";
 
 const iconMap = {
   LayoutDashboard,
@@ -34,49 +36,7 @@ const iconMap = {
 export function AdminSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [qaUnreadCount, setQaUnreadCount] = useState(0);
-
-  useEffect(() => {
-    async function refreshNotifications() {
-      try {
-        const response = await fetch("/api/admin/notifications", {
-          cache: "no-store",
-        });
-
-        if (!response.ok) {
-          return;
-        }
-
-        const data = (await response.json()) as { unreadCount?: number };
-        setQaUnreadCount(data.unreadCount ?? 0);
-      } catch {
-        // Silent failure: the sidebar should remain usable without notifications.
-      }
-    }
-
-    void refreshNotifications();
-
-    const intervalId = window.setInterval(() => {
-      void refreshNotifications();
-    }, 30000);
-
-    const handleFocus = () => {
-      void refreshNotifications();
-    };
-
-    const handleSync = () => {
-      void refreshNotifications();
-    };
-
-    window.addEventListener("focus", handleFocus);
-    window.addEventListener("qa:notifications-sync", handleSync);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("qa:notifications-sync", handleSync);
-    };
-  }, []);
+  const { unreadCount: qaUnreadCount } = useAdminNotifications();
 
   return (
     <>
@@ -145,10 +105,10 @@ export function AdminSidebar() {
                   <span>{item.label}</span>
                 )}
                 {hasUnreadQA ? (
-                  <>
-                    <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-emerald-400" />
-                    <span className="absolute right-2.5 top-2.5 size-2 animate-ping rounded-full bg-emerald-400/70" />
-                  </>
+                  <UnreadCountBadge
+                    count={qaUnreadCount}
+                    className={collapsed ? "absolute right-2 top-2" : "ml-auto"}
+                  />
                 ) : null}
               </Link>
             );
@@ -180,10 +140,10 @@ export function AdminSidebar() {
               <Icon className="size-5" />
               <span>{item.label}</span>
               {hasUnreadQA ? (
-                <>
-                  <span className="absolute right-3 top-2 size-2 rounded-full bg-emerald-400" />
-                  <span className="absolute right-3 top-2 size-2 animate-ping rounded-full bg-emerald-400/70" />
-                </>
+                <UnreadCountBadge
+                  count={qaUnreadCount}
+                  className="absolute right-2 top-1.5"
+                />
               ) : null}
             </Link>
           );
