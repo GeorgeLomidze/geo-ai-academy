@@ -46,6 +46,12 @@ export type LearningLessonDetail = {
   moduleTitle: string;
   completed: boolean;
   watchedSeconds: number;
+  attachments: {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    fileType: string;
+  }[];
 };
 
 export function calculateCourseProgress(

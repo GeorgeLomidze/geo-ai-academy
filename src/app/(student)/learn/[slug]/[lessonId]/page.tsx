@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LessonSidebar } from "@/components/learn/LessonSidebar";
+import { LessonAttachmentsSection } from "@/components/learn/LessonAttachmentsSection";
 import { QASection } from "@/components/learn/QASection";
 import { TextLesson } from "@/components/learn/TextLesson";
 import { TextLessonCompleteButton } from "@/components/learn/TextLessonCompleteButton";
@@ -144,6 +145,8 @@ export default async function LearnLessonPage({
             </div>
           </section>
         )}
+
+        <LessonAttachmentsSection attachments={lesson.attachments} />
 
         <ErrorBoundary
           actionHref={`/learn/${slug}`}

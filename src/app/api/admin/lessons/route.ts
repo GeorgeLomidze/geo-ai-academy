@@ -6,6 +6,7 @@ import {
   parseJsonBody,
   validationErrorResponse,
 } from "@/lib/api-error";
+import { serializeLessonAttachment } from "@/lib/lesson-attachments";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -85,9 +86,17 @@ export async function POST(request: NextRequest) {
         isFree,
         sortOrder: nextSortOrder,
       },
+      include: {
+        attachments: {
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
-    return NextResponse.json(lesson, { status: 201 });
+    return NextResponse.json({
+      ...lesson,
+      attachments: lesson.attachments.map(serializeLessonAttachment),
+    }, { status: 201 });
   } catch (error) {
     return handleApiError(error, "POST /api/admin/lessons failed");
   }
@@ -117,9 +126,17 @@ export async function PUT(request: NextRequest) {
     const lesson = await prisma.lesson.update({
       where: { id },
       data,
+      include: {
+        attachments: {
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
-    return NextResponse.json(lesson);
+    return NextResponse.json({
+      ...lesson,
+      attachments: lesson.attachments.map(serializeLessonAttachment),
+    });
   } catch (error) {
     return handleApiError(error, "PUT /api/admin/lessons failed");
   }

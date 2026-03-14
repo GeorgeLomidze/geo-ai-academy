@@ -50,21 +50,35 @@ function hasExpectedModelFields(client: PrismaClient) {
 
   const questionFields = getFieldNames(models?.Question);
   const answerFields = getFieldNames(models?.Answer);
+  const lessonFields = getFieldNames(models?.Lesson);
+  const lessonAttachmentFields = getFieldNames(models?.LessonAttachment);
 
   return (
     questionFields.includes("imageUrl") &&
     questionFields.includes("imageUrls") &&
     questionFields.includes("adminReadAt") &&
     answerFields.includes("imageUrl") &&
-    answerFields.includes("imageUrls")
+    answerFields.includes("imageUrls") &&
+    lessonFields.includes("attachments") &&
+    lessonAttachmentFields.includes("fileUrl") &&
+    lessonAttachmentFields.includes("lessonId")
   );
 }
 
 function loadPrismaClientClass(forceFresh = false) {
-  const modulePath = runtimeRequire.resolve("@prisma/client");
-
   if (forceFresh) {
-    delete runtimeRequire.cache[modulePath];
+    for (const moduleId of [
+      "@prisma/client",
+      "@prisma/client/default",
+      ".prisma/client/default",
+      ".prisma/client/index",
+    ]) {
+      try {
+        delete runtimeRequire.cache[runtimeRequire.resolve(moduleId)];
+      } catch {
+        // Ignore missing cache entries for module variants that are not loaded.
+      }
+    }
   }
 
   const prismaModule = runtimeRequire("@prisma/client") as typeof import("@prisma/client");
@@ -87,6 +101,8 @@ function hasExpectedDelegates(client: PrismaClient) {
     typeof client.question !== "undefined" &&
     "answer" in client &&
     typeof client.answer !== "undefined" &&
+    "lessonAttachment" in client &&
+    typeof client.lessonAttachment !== "undefined" &&
     "adminNotification" in client &&
     typeof client.adminNotification !== "undefined" &&
     "userNotification" in client &&
@@ -109,14 +125,13 @@ function getPrismaClient() {
     return cached;
   }
 
-  if (cached) {
-    cached.$disconnect().catch(() => {});
-  }
+  // Avoid disconnecting the previous dev client during hot reload.
+  // In-flight requests can still hold delegate references, and closing the
+  // underlying pool early causes "Cannot use a pool after calling end".
+  const shouldForceFreshModule = Boolean(cached);
+  let nextClient = createPrismaClient(shouldForceFreshModule);
 
-  let nextClient = createPrismaClient();
-
-  if (!hasExpectedDelegates(nextClient)) {
-    nextClient.$disconnect().catch(() => {});
+  if (!hasExpectedDelegates(nextClient) && !shouldForceFreshModule) {
     nextClient = createPrismaClient(true);
   }
 
@@ -158,10 +173,3 @@ export const prisma = new Proxy({} as PrismaClient, {
     return typeof value === "function" ? value.bind(client) : value;
   },
 });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = getPrismaClient();
-  globalForPrisma.prismaConnectionKey = normalizeConnectionString(
-    process.env.DATABASE_URL!
-  );
-}

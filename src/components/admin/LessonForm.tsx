@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
+import type { LessonAttachmentRecord } from "@/lib/lesson-attachments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LessonAttachmentsManager } from "./LessonAttachmentsManager";
 import { VideoUploader } from "./VideoUploader";
 
 type Lesson = {
@@ -25,6 +27,7 @@ type Lesson = {
   duration: number;
   isFree: boolean;
   sortOrder: number;
+  attachments: LessonAttachmentRecord[];
 };
 
 type LessonFormProps = {
@@ -32,6 +35,7 @@ type LessonFormProps = {
   lesson?: Lesson;
   onSaved: (lesson: Lesson) => void;
   onCancel: () => void;
+  onAttachmentsChange?: (attachments: LessonAttachmentRecord[]) => void;
 };
 
 export function LessonForm({
@@ -39,6 +43,7 @@ export function LessonForm({
   lesson,
   onSaved,
   onCancel,
+  onAttachmentsChange,
 }: LessonFormProps) {
   const isEditing = !!lesson;
 
@@ -196,6 +201,12 @@ export function LessonForm({
           უფასო გაკვეთილები ხელმისაწვდომია ყველასთვის
         </span>
       </div>
+
+      <LessonAttachmentsManager
+        lessonId={lesson?.id ?? null}
+        initialAttachments={lesson?.attachments ?? []}
+        onChange={onAttachmentsChange}
+      />
 
       {/* Actions */}
       <div className="flex items-center gap-3">

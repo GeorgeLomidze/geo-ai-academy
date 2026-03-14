@@ -213,6 +213,15 @@ export async function getLearningLessonData(
           title: true,
         },
       },
+      attachments: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          fileName: true,
+          fileSize: true,
+          fileType: true,
+        },
+      },
       progress: {
         where: { userId },
         select: {
@@ -246,6 +255,7 @@ export async function getLearningLessonData(
     moduleTitle: rawLesson.module.title,
     completed: lessonProgress?.completed ?? false,
     watchedSeconds: lessonProgress?.watchedSeconds ?? 0,
+    attachments: rawLesson.attachments,
   };
 
   const currentIndex = course.orderedLessons.findIndex(

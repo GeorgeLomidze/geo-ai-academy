@@ -1,5 +1,6 @@
 "use client";
 
+import type { LessonAttachmentRecord } from "@/lib/lesson-attachments";
 import { useState } from "react";
 import {
   DndContext,
@@ -45,6 +46,7 @@ type Lesson = {
   duration: number;
   isFree: boolean;
   sortOrder: number;
+  attachments: LessonAttachmentRecord[];
 };
 
 type Module = {
@@ -561,6 +563,15 @@ function SortableModule({
                 onCancel={() => {
                   setShowLessonForm(false);
                   setEditingLesson(null);
+                }}
+                onAttachmentsChange={(attachments) => {
+                  if (!editingLesson) {
+                    return;
+                  }
+
+                  const updatedLesson = { ...editingLesson, attachments };
+                  setEditingLesson(updatedLesson);
+                  onLessonUpdated(updatedLesson);
                 }}
               />
             </div>

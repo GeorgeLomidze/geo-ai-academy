@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
+import { serializeLessonAttachment } from "@/lib/lesson-attachments";
 import { prisma } from "@/lib/prisma";
 import { CourseNav } from "@/components/admin/CourseNav";
 import { ModuleManager } from "@/components/admin/ModuleManager";
@@ -18,6 +19,11 @@ export default async function CourseModulesPage({ params }: Props) {
         include: {
           lessons: {
             orderBy: { sortOrder: "asc" },
+            include: {
+              attachments: {
+                orderBy: { createdAt: "asc" },
+              },
+            },
           },
         },
       },
@@ -25,6 +31,14 @@ export default async function CourseModulesPage({ params }: Props) {
   });
 
   if (!course) notFound();
+
+  const serializedModules = course.modules.map((module) => ({
+    ...module,
+    lessons: module.lessons.map((lesson) => ({
+      ...lesson,
+      attachments: lesson.attachments.map(serializeLessonAttachment),
+    })),
+  }));
 
   return (
     <div>
@@ -38,7 +52,7 @@ export default async function CourseModulesPage({ params }: Props) {
       </div>
 
       <div className="mt-6">
-        <ModuleManager courseId={courseId} initialModules={course.modules} />
+        <ModuleManager courseId={courseId} initialModules={serializedModules} />
       </div>
     </div>
   );
