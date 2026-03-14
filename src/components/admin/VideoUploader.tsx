@@ -48,9 +48,12 @@ export function VideoUploader({
         body: JSON.stringify({ title: file.name }),
       });
 
+      const createData = await createRes.json();
+
       if (!createRes.ok) {
-        const data = await createRes.json();
-        throw new Error(data.error ?? "ვიდეოს შექმნა ვერ მოხერხდა");
+        setError(createData.error ?? "ვიდეოს შექმნა ვერ მოხერხდა");
+        setUploading(false);
+        return;
       }
 
       const {
@@ -58,7 +61,7 @@ export function VideoUploader({
         uploadUrl,
         tusHeaders,
         thumbnailUrl: thumb,
-      } = await createRes.json();
+      } = createData;
 
       // 2. Upload using TUS protocol via dynamic import
       const { Upload: TusUpload } = await import("tus-js-client");
@@ -84,17 +87,15 @@ export function VideoUploader({
           setLastFile(null);
           onUploadComplete(newVideoId);
         },
-        onError(err) {
-          setError(err.message ?? "ატვირთვა ვერ მოხერხდა");
+        onError() {
+          setError("ვიდეოს ატვირთვა ვერ მოხერხდა");
           setUploading(false);
         },
       });
 
       upload.start();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "ატვირთვა ვერ მოხერხდა"
-      );
+    } catch {
+      setError("ვიდეოს ატვირთვა ვერ მოხერხდა");
       setUploading(false);
     }
   }

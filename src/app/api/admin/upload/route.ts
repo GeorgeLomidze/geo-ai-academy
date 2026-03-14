@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
+import {
+  handleApiError,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { requireAdmin } from "@/lib/admin-auth";
 import { createVideo } from "@/lib/bunny/client";
 import { getTusUploadUrl } from "@/lib/bunny/upload";
@@ -10,20 +15,19 @@ const uploadSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (!auth.authorized) return auth.response;
-
-  const body = await request.json().catch(() => null);
-  const result = uploadSchema.safeParse(body);
-
-  if (!result.success) {
-    return NextResponse.json(
-      { error: result.error.issues[0]?.message ?? "არასწორი მონაცემები" },
-      { status: 400 }
-    );
-  }
-
   try {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) return auth.response;
+
+    const body = await parseJsonBody(request);
+    const result = uploadSchema.safeParse(body);
+
+    if (!result.success) {
+      return validationErrorResponse({
+        title: result.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
+    }
+
     const video = await createVideo(result.data.title);
     const { uploadUrl, headers } = getTusUploadUrl(video.guid);
 
@@ -33,9 +37,7 @@ export async function POST(request: NextRequest) {
       tusHeaders: headers,
       thumbnailUrl: getVideoThumbnailUrl(video.guid),
     });
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "ვიდეოს შექმნა ვერ მოხერხდა";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error, "POST /api/admin/upload failed");
   }
 }

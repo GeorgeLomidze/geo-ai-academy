@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
+import {
+  forbiddenResponse,
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 
@@ -21,14 +28,14 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth(request);
     if (!auth.authenticated) return auth.response;
 
-    const body = await request.json().catch(() => null);
+    const body = await parseJsonBody(request);
     const parsed = progressSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message ?? "არასწორი მონაცემები" },
-        { status: 400 }
-      );
+      return validationErrorResponse({
+        [String(parsed.error.issues[0]?.path[0] ?? "lessonId")]:
+          parsed.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
     }
 
     const { lessonId, watchedSeconds, completed } = parsed.data;
@@ -55,17 +62,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!lesson) {
-      return NextResponse.json(
-        { error: "გაკვეთილი ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     if (lesson.module.course.enrollments.length === 0) {
-      return NextResponse.json(
-        { error: "ამ გაკვეთილზე წვდომა არ გაქვთ" },
-        { status: 403 }
-      );
+      return forbiddenResponse();
     }
 
     const existingProgress = await prisma.lessonProgress.findUnique({
@@ -112,10 +113,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, progress });
   } catch (error) {
-    console.error("POST /api/progress failed", error);
-    return NextResponse.json(
-      { error: "პროგრესის განახლება ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "POST /api/progress failed");
   }
 }

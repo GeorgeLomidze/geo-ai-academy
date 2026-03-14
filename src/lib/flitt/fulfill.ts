@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { sendPurchaseEmail } from "@/lib/email/send";
+import { logDebug } from "@/lib/logger";
 
 export async function fulfillOrder(
   orderId: string,
   flittPaymentId?: string,
 ): Promise<boolean> {
-  console.log("[fulfillOrder] Starting — orderId:", orderId, "paymentId:", flittPaymentId);
+  logDebug("[fulfillOrder] Starting", { orderId });
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -20,19 +21,15 @@ export async function fulfillOrder(
     },
   });
 
-  console.log("[fulfillOrder] Order lookup result:", order ? JSON.stringify(order) : "NOT FOUND");
-
   if (!order) {
     console.error("[fulfillOrder] Order not found:", orderId);
     return false;
   }
 
   if (order.status === "PAID") {
-    console.log("[fulfillOrder] Order already PAID, skipping");
+    logDebug("[fulfillOrder] Already fulfilled", { orderId });
     return true;
   }
-
-  console.log("[fulfillOrder] Updating order to PAID and creating enrollment for user:", order.userId, "course:", order.courseId);
 
   await prisma.$transaction([
     prisma.order.update({
@@ -58,7 +55,7 @@ export async function fulfillOrder(
     }),
   ]);
 
-  console.log("[fulfillOrder] Transaction complete — order PAID, enrollment created");
+  logDebug("[fulfillOrder] Completed", { orderId });
 
   sendPurchaseEmail(
     order.user.email,

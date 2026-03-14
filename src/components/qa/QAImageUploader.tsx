@@ -58,7 +58,8 @@ export function QAImageUploader({
         const data = (await response.json()) as { url?: string; error?: string };
 
         if (!response.ok || !data.url) {
-          throw new Error(data.error ?? "სურათის ატვირთვა ვერ მოხერხდა");
+          setUploadError(data.error ?? "სურათის ატვირთვა ვერ მოხერხდა");
+          return;
         }
 
         uploadedUrls.push(data.url);
@@ -67,12 +68,8 @@ export function QAImageUploader({
       if (uploadedUrls.length > 0) {
         onChange([...value, ...uploadedUrls]);
       }
-    } catch (nextError) {
-      setUploadError(
-        nextError instanceof Error
-          ? nextError.message
-          : "სურათის ატვირთვა ვერ მოხერხდა"
-      );
+    } catch {
+      setUploadError("სურათის ატვირთვა ვერ მოხერხდა");
     } finally {
       setUploading(false);
       if (fileInputRef.current) {

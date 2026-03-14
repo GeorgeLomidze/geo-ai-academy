@@ -1,5 +1,12 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  forbiddenResponse,
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { getAdminNotificationDelegate, prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { sendAdminNewQuestionEmail } from "@/lib/email/send";
@@ -36,13 +43,7 @@ export async function GET(request: NextRequest) {
 
     if (!parsed.success) {
       const fieldErrors = getZodFieldErrors(parsed.error);
-      return NextResponse.json(
-        {
-          error: Object.values(fieldErrors)[0] ?? "არასწორი მოთხოვნის პარამეტრები",
-          fieldErrors,
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse(fieldErrors);
     }
 
     const { lessonId } = parsed.data;
@@ -52,18 +53,12 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (!access) {
-      return NextResponse.json(
-        { error: "გაკვეთილი ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     const isAdmin = role === "ADMIN";
     if (!isAdmin && !access.enrolled) {
-      return NextResponse.json(
-        { error: "კითხვა-პასუხის ნახვა მხოლოდ ჩაწერილ სტუდენტებს შეუძლიათ" },
-        { status: 403 }
-      );
+      return forbiddenResponse();
     }
 
     const questions = await getSerializedQuestionsForLesson(
@@ -81,11 +76,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("GET /api/questions failed", error);
-    return NextResponse.json(
-      { error: "კითხვა-პასუხის ჩატვირთვა ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "GET /api/questions failed");
   }
 }
 
@@ -96,26 +87,12 @@ export async function POST(request: NextRequest) {
       return auth.response;
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: "არასწორი მოთხოვნა" },
-        { status: 400 }
-      );
-    }
+    const body = await parseJsonBody(request);
 
     const parsed = questionCreateSchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors = getZodFieldErrors(parsed.error);
-      return NextResponse.json(
-        {
-          error: Object.values(fieldErrors)[0] ?? "არასწორი მონაცემები",
-          fieldErrors,
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse(fieldErrors);
     }
 
     const { lessonId, content, imageUrl, imageUrls } = parsed.data;
@@ -134,17 +111,11 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!access) {
-      return NextResponse.json(
-        { error: "გაკვეთილი ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     if (role === "ADMIN" || !access.enrolled) {
-      return NextResponse.json(
-        { error: "კითხვის დასმა მხოლოდ ჩაწერილ სტუდენტებს შეუძლიათ" },
-        { status: 403 }
-      );
+      return forbiddenResponse();
     }
 
     const question = await prisma.question.create({
@@ -238,10 +209,6 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/questions failed", error);
-    return NextResponse.json(
-      { error: "კითხვის დამატება ვერ მოხერხდა, სცადეთ თავიდან" },
-      { status: 500 }
-    );
+    return handleApiError(error, "POST /api/questions failed");
   }
 }

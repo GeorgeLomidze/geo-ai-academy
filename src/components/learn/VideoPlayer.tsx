@@ -157,13 +157,9 @@ export function VideoPlayer({
         if (isActiveRef.current) {
           setError(null);
         }
-      } catch (progressError) {
+      } catch {
         if (isActiveRef.current) {
-          setError(
-            progressError instanceof Error
-              ? progressError.message
-              : "პროგრესის შენახვა ვერ მოხერხდა"
-          );
+          setError("პროგრესის შენახვა ვერ მოხერხდა");
         }
       }
     }, 350);
@@ -233,14 +229,10 @@ export function VideoPlayer({
           if (isActiveRef.current) {
             setError(null);
           }
-        } catch (progressError) {
+        } catch {
           completionSavedRef.current = false;
           if (isActiveRef.current) {
-            setError(
-              progressError instanceof Error
-                ? progressError.message
-                : "გაკვეთილის დასრულება ვერ მოხერხდა"
-            );
+            setError("გაკვეთილის დასრულება ვერ მოხერხდა");
           }
         }
       }
@@ -256,14 +248,10 @@ export function VideoPlayer({
           setError(null);
           moveToNextLesson();
         }
-      } catch (progressError) {
+      } catch {
         completionSavedRef.current = false;
         if (isActiveRef.current) {
-          setError(
-            progressError instanceof Error
-              ? progressError.message
-              : "გაკვეთილის დასრულება ვერ მოხერხდა"
-          );
+          setError("გაკვეთილის დასრულება ვერ მოხერხდა");
         }
       }
     };

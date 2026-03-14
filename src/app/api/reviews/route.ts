@@ -1,6 +1,13 @@
 import { revalidatePath } from "next/cache";
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  forbiddenResponse,
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import {
@@ -51,13 +58,7 @@ export async function GET(request: NextRequest) {
 
     if (!parsed.success) {
       const fieldErrors = getZodFieldErrors(parsed.error);
-      return NextResponse.json(
-        {
-          error: Object.values(fieldErrors)[0] ?? "არასწორი მოთხოვნის პარამეტრები",
-          fieldErrors,
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse(fieldErrors);
     }
 
     const currentUserId = await getOptionalUserId(request);
@@ -69,10 +70,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!course) {
-      return NextResponse.json(
-        { error: "კურსი ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     const [summary, result] = await Promise.all([
@@ -95,11 +93,7 @@ export async function GET(request: NextRequest) {
       totalReviews: result.totalReviews,
     });
   } catch (error) {
-    console.error("GET /api/reviews failed", error);
-    return NextResponse.json(
-      { error: "შეფასებების მიღება ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "GET /api/reviews failed");
   }
 }
 
@@ -110,26 +104,12 @@ export async function POST(request: NextRequest) {
       return auth.response;
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: "არასწორი მოთხოვნა" },
-        { status: 400 }
-      );
-    }
+    const body = await parseJsonBody(request);
 
     const parsed = reviewUpsertSchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors = getZodFieldErrors(parsed.error);
-      return NextResponse.json(
-        {
-          error: Object.values(fieldErrors)[0] ?? "არასწორი მონაცემები",
-          fieldErrors,
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse(fieldErrors);
     }
 
     const { courseId, rating, comment } = parsed.data;
@@ -164,19 +144,11 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!course) {
-      return NextResponse.json(
-        { error: "კურსი ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     if (!enrollment) {
-      return NextResponse.json(
-        {
-          error: "შეფასების დატოვება მხოლოდ ჩაწერილ სტუდენტებს შეუძლიათ",
-        },
-        { status: 403 }
-      );
+      return forbiddenResponse();
     }
 
     const review = await prisma.review.upsert({
@@ -228,10 +200,6 @@ export async function POST(request: NextRequest) {
       { status: existingReview ? 200 : 201 }
     );
   } catch (error) {
-    console.error("POST /api/reviews failed", error);
-    return NextResponse.json(
-      { error: "შეფასების შენახვა ვერ მოხერხდა, სცადეთ თავიდან" },
-      { status: 500 }
-    );
+    return handleApiError(error, "POST /api/reviews failed");
   }
 }

@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { handleApiError, notFoundResponse } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -39,10 +40,7 @@ export async function DELETE(
     });
 
     if (!review) {
-      return NextResponse.json(
-        { error: "შეფასება ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     await prisma.review.delete({
@@ -56,10 +54,6 @@ export async function DELETE(
       message: "შეფასება წარმატებით წაიშალა",
     });
   } catch (error) {
-    console.error("DELETE /api/admin/reviews/[reviewId] failed", error);
-    return NextResponse.json(
-      { error: "შეფასების წაშლა ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "DELETE /api/admin/reviews/[reviewId] failed");
   }
 }

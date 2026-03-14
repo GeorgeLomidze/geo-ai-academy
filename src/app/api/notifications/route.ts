@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { getUserNotificationDelegate } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { getUserNotifications } from "@/lib/qa";
@@ -17,11 +23,7 @@ export async function GET(request: NextRequest) {
     const result = await getUserNotifications(auth.userId, 12);
     return NextResponse.json(result);
   } catch (error) {
-    console.error("GET /api/notifications failed", error);
-    return NextResponse.json(
-      { error: "შეტყობინებების ჩატვირთვა ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "GET /api/notifications failed");
   }
 }
 
@@ -32,26 +34,12 @@ export async function PUT(request: NextRequest) {
       return auth.response;
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: "არასწორი მოთხოვნა" },
-        { status: 400 }
-      );
-    }
+    const body = await parseJsonBody(request);
 
     const parsed = notificationUpdateSchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors = getZodFieldErrors(parsed.error);
-      return NextResponse.json(
-        {
-          error: Object.values(fieldErrors)[0] ?? "არასწორი მონაცემები",
-          fieldErrors,
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse(fieldErrors);
     }
 
     const userNotification = getUserNotificationDelegate();
@@ -82,10 +70,7 @@ export async function PUT(request: NextRequest) {
       });
 
       if (!notification || notification.userId !== auth.userId) {
-        return NextResponse.json(
-          { error: "შეტყობინება ვერ მოიძებნა" },
-          { status: 404 }
-        );
+        return notFoundResponse();
       }
 
       await userNotification.update({
@@ -99,10 +84,6 @@ export async function PUT(request: NextRequest) {
       ...(await getUserNotifications(auth.userId, 12)),
     });
   } catch (error) {
-    console.error("PUT /api/notifications failed", error);
-    return NextResponse.json(
-      { error: "შეტყობინების განახლება ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "PUT /api/notifications failed");
   }
 }

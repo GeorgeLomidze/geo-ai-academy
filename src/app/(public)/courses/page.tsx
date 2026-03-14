@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { CourseCard } from "@/components/course/CourseCard";
 import { CourseGrid } from "@/components/course/CourseGrid";
+import { ErrorBoundary } from "@/components/error/ErrorBoundary";
+import { Button } from "@/components/ui/button";
 import { getPublicCourses } from "@/lib/public-courses";
 
 export const metadata = {
@@ -26,21 +29,27 @@ export default async function CoursesPage() {
 
       {/* Courses grid or empty state */}
       {courses.length > 0 ? (
-        <CourseGrid className="mt-12">
-          {courses.map((course) => (
-            <CourseCard
-              key={course.id}
-              title={course.title}
-              slug={course.slug}
-              shortDescription={course.shortDescription}
-              thumbnailUrl={course.thumbnailUrl}
-              price={course.price}
-              lessonCount={course.lessonCount}
-              averageRating={course.averageRating}
-              totalReviews={course.totalReviews}
-            />
-          ))}
-        </CourseGrid>
+        <ErrorBoundary
+          actionHref="/"
+          actionLabel="მთავარ გვერდზე დაბრუნება"
+          className="mt-12 min-h-[20rem] px-0 py-0 sm:px-0 sm:py-0"
+        >
+          <CourseGrid className="mt-12">
+            {courses.map((course) => (
+              <CourseCard
+                key={course.id}
+                title={course.title}
+                slug={course.slug}
+                shortDescription={course.shortDescription}
+                thumbnailUrl={course.thumbnailUrl}
+                price={course.price}
+                lessonCount={course.lessonCount}
+                averageRating={course.averageRating}
+                totalReviews={course.totalReviews}
+              />
+            ))}
+          </CourseGrid>
+        </ErrorBoundary>
       ) : (
         <div className="mt-20 flex flex-col items-center text-center">
           <div className="flex size-20 items-center justify-center rounded-2xl bg-brand-primary-light">
@@ -52,6 +61,9 @@ export default async function CoursesPage() {
           <p className="mt-2 max-w-md text-brand-muted">
             ჩვენ ვმუშაობთ ახალ კურსებზე. მალე შეძლებ სწავლის დაწყებას.
           </p>
+          <Button asChild className="mt-6 rounded-xl">
+            <Link href="/">მთავარ გვერდზე დაბრუნება</Link>
+          </Button>
         </div>
       )}
     </div>

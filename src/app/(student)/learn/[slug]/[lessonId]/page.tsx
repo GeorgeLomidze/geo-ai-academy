@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { getSignedEmbedUrl } from "@/lib/bunny/signed-url";
 import { getLearningLessonData } from "@/lib/learn";
+import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LessonSidebar } from "@/components/learn/LessonSidebar";
@@ -71,16 +72,22 @@ export default async function LearnLessonPage({
       <div className="space-y-6">
         {lesson.type === "VIDEO" ? (
           signedEmbedUrl ? (
-            <VideoPlayer
-              lessonId={lesson.id}
-              lessonTitle={lesson.title}
-              signedEmbedUrl={signedEmbedUrl}
-              initialWatchedSeconds={lesson.watchedSeconds}
-              initialCompleted={lesson.completed}
-              prevLessonHref={prevLesson?.href ?? null}
-              nextLessonHref={nextLesson?.href ?? null}
-              fallbackHref={`/learn/${slug}`}
-            />
+            <ErrorBoundary
+              actionHref={`/learn/${slug}`}
+              actionLabel="კურსის გვერდზე დაბრუნება"
+              className="min-h-[24rem] px-0 py-0 sm:px-0 sm:py-0"
+            >
+              <VideoPlayer
+                lessonId={lesson.id}
+                lessonTitle={lesson.title}
+                signedEmbedUrl={signedEmbedUrl}
+                initialWatchedSeconds={lesson.watchedSeconds}
+                initialCompleted={lesson.completed}
+                prevLessonHref={prevLesson?.href ?? null}
+                nextLessonHref={nextLesson?.href ?? null}
+                fallbackHref={`/learn/${slug}`}
+              />
+            </ErrorBoundary>
           ) : (
             <div className="rounded-3xl border border-brand-border bg-brand-background px-6 py-16 text-center">
               <p className="text-sm text-brand-danger">{videoError}</p>
@@ -138,21 +145,33 @@ export default async function LearnLessonPage({
           </section>
         )}
 
-        <div id="qa-section">
-          <QASection lessonId={lesson.id} />
-        </div>
+        <ErrorBoundary
+          actionHref={`/learn/${slug}`}
+          actionLabel="კურსის გვერდზე დაბრუნება"
+          className="min-h-[22rem] px-0 py-0 sm:px-0 sm:py-0"
+        >
+          <div id="qa-section">
+            <QASection lessonId={lesson.id} />
+          </div>
+        </ErrorBoundary>
       </div>
 
-      <div className="space-y-5 xl:sticky xl:top-24">
-        <LessonSidebar
-          courseTitle={course.title}
-          courseSlug={course.slug}
-          modules={course.modules}
-          progressPercentage={course.progressPercentage}
-          currentLessonId={lesson.id}
-          backHref={`/learn/${slug}`}
-        />
-      </div>
+      <ErrorBoundary
+        actionHref={`/learn/${slug}`}
+        actionLabel="კურსის გვერდზე დაბრუნება"
+        className="min-h-[22rem] px-0 py-0 sm:px-0 sm:py-0"
+      >
+        <div className="space-y-5 xl:sticky xl:top-24">
+          <LessonSidebar
+            courseTitle={course.title}
+            courseSlug={course.slug}
+            modules={course.modules}
+            progressPercentage={course.progressPercentage}
+            currentLessonId={lesson.id}
+            backHref={`/learn/${slug}`}
+          />
+        </div>
+      </ErrorBoundary>
     </div>
   );
 }

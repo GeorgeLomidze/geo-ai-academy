@@ -1,43 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  badRequestResponse,
+  forbiddenResponse,
+  handleApiError,
+  serverErrorResponse,
+} from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { verifyFlittSignature } from "@/lib/flitt/client";
 import { fulfillOrder } from "@/lib/flitt/fulfill";
+import { logDebug } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
-  console.log("[Flitt webhook] Received request");
-
   try {
     const secretKey = process.env.FLITT_SECRET_KEY;
     if (!secretKey) {
       console.error("[Flitt webhook] FLITT_SECRET_KEY not configured");
-      return NextResponse.json({ status: "error" }, { status: 500 });
+      return serverErrorResponse();
     }
 
     let body: Record<string, string>;
     try {
       body = await request.json();
     } catch {
-      console.error("[Flitt webhook] Failed to parse JSON body");
-      return NextResponse.json({ status: "error" }, { status: 400 });
+      return badRequestResponse();
     }
-
-    console.log("[Flitt webhook] Body:", JSON.stringify(body));
 
     const { signature, ...params } = body;
 
     if (!signature || !verifyFlittSignature(params, signature, secretKey)) {
-      console.error("[Flitt webhook] Invalid signature");
-      return NextResponse.json({ status: "error" }, { status: 403 });
+      return forbiddenResponse();
     }
 
     const orderId = params.order_id;
     const orderStatus = params.order_status;
     const flittPaymentId = params.payment_id;
 
-    console.log("[Flitt webhook] order_id:", orderId, "order_status:", orderStatus);
+    logDebug("[Flitt webhook] Valid request received", { orderId, orderStatus });
 
     if (!orderId || !orderStatus) {
-      return NextResponse.json({ status: "error" }, { status: 400 });
+      return badRequestResponse();
     }
 
     if (orderStatus === "approved") {
@@ -61,7 +62,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ status: "ok" });
   } catch (error) {
-    console.error("[Flitt webhook] Error:", error);
-    return NextResponse.json({ status: "ok" });
+    return handleApiError(error, "POST /api/webhooks/flitt failed");
   }
 }

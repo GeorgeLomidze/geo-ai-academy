@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
+import {
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -40,111 +46,111 @@ const deleteLessonSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (!auth.authorized) return auth.response;
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) return auth.response;
 
-  const body = await request.json().catch(() => null);
-  const result = createLessonSchema.safeParse(body);
+    const body = await parseJsonBody(request);
+    const result = createLessonSchema.safeParse(body);
 
-  if (!result.success) {
-    return NextResponse.json(
-      { error: result.error.issues[0]?.message ?? "არასწორი მონაცემები" },
-      { status: 400 }
-    );
+    if (!result.success) {
+      return validationErrorResponse({
+        [String(result.error.issues[0]?.path[0] ?? "title")]:
+          result.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
+    }
+
+    const { title, moduleId, type, content, bunnyVideoId, duration, isFree } =
+      result.data;
+
+    const mod = await prisma.module.findUnique({ where: { id: moduleId } });
+    if (!mod) {
+      return notFoundResponse();
+    }
+
+    const maxSort = await prisma.lesson.aggregate({
+      where: { moduleId },
+      _max: { sortOrder: true },
+    });
+    const nextSortOrder = (maxSort._max.sortOrder ?? 0) + 1;
+
+    const lesson = await prisma.lesson.create({
+      data: {
+        title,
+        moduleId,
+        type,
+        content: content ?? null,
+        bunnyVideoId: bunnyVideoId ?? null,
+        duration,
+        isFree,
+        sortOrder: nextSortOrder,
+      },
+    });
+
+    return NextResponse.json(lesson, { status: 201 });
+  } catch (error) {
+    return handleApiError(error, "POST /api/admin/lessons failed");
   }
-
-  const { title, moduleId, type, content, bunnyVideoId, duration, isFree } =
-    result.data;
-
-  // Verify module exists
-  const mod = await prisma.module.findUnique({ where: { id: moduleId } });
-  if (!mod) {
-    return NextResponse.json(
-      { error: "მოდული ვერ მოიძებნა" },
-      { status: 404 }
-    );
-  }
-
-  // Get next sortOrder within the module
-  const maxSort = await prisma.lesson.aggregate({
-    where: { moduleId },
-    _max: { sortOrder: true },
-  });
-  const nextSortOrder = (maxSort._max.sortOrder ?? 0) + 1;
-
-  const lesson = await prisma.lesson.create({
-    data: {
-      title,
-      moduleId,
-      type,
-      content: content ?? null,
-      bunnyVideoId: bunnyVideoId ?? null,
-      duration,
-      isFree,
-      sortOrder: nextSortOrder,
-    },
-  });
-
-  return NextResponse.json(lesson, { status: 201 });
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (!auth.authorized) return auth.response;
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) return auth.response;
 
-  const body = await request.json().catch(() => null);
-  const result = updateLessonSchema.safeParse(body);
+    const body = await parseJsonBody(request);
+    const result = updateLessonSchema.safeParse(body);
 
-  if (!result.success) {
-    return NextResponse.json(
-      { error: result.error.issues[0]?.message ?? "არასწორი მონაცემები" },
-      { status: 400 }
-    );
+    if (!result.success) {
+      return validationErrorResponse({
+        [String(result.error.issues[0]?.path[0] ?? "id")]:
+          result.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
+    }
+
+    const { id, ...data } = result.data;
+    const existing = await prisma.lesson.findUnique({ where: { id } });
+    if (!existing) {
+      return notFoundResponse();
+    }
+
+    const lesson = await prisma.lesson.update({
+      where: { id },
+      data,
+    });
+
+    return NextResponse.json(lesson);
+  } catch (error) {
+    return handleApiError(error, "PUT /api/admin/lessons failed");
   }
-
-  const { id, ...data } = result.data;
-
-  const existing = await prisma.lesson.findUnique({ where: { id } });
-  if (!existing) {
-    return NextResponse.json(
-      { error: "გაკვეთილი ვერ მოიძებნა" },
-      { status: 404 }
-    );
-  }
-
-  const lesson = await prisma.lesson.update({
-    where: { id },
-    data,
-  });
-
-  return NextResponse.json(lesson);
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (!auth.authorized) return auth.response;
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) return auth.response;
 
-  const body = await request.json().catch(() => null);
-  const result = deleteLessonSchema.safeParse(body);
+    const body = await parseJsonBody(request);
+    const result = deleteLessonSchema.safeParse(body);
 
-  if (!result.success) {
-    return NextResponse.json(
-      { error: result.error.issues[0]?.message ?? "არასწორი მონაცემები" },
-      { status: 400 }
-    );
+    if (!result.success) {
+      return validationErrorResponse({
+        [String(result.error.issues[0]?.path[0] ?? "id")]:
+          result.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
+    }
+
+    const existing = await prisma.lesson.findUnique({
+      where: { id: result.data.id },
+    });
+    if (!existing) {
+      return notFoundResponse();
+    }
+
+    await prisma.lesson.delete({ where: { id: result.data.id } });
+
+    return NextResponse.json({ message: "გაკვეთილი წარმატებით წაიშალა" });
+  } catch (error) {
+    return handleApiError(error, "DELETE /api/admin/lessons failed");
   }
-
-  const existing = await prisma.lesson.findUnique({
-    where: { id: result.data.id },
-  });
-  if (!existing) {
-    return NextResponse.json(
-      { error: "გაკვეთილი ვერ მოიძებნა" },
-      { status: 404 }
-    );
-  }
-
-  await prisma.lesson.delete({ where: { id: result.data.id } });
-
-  return NextResponse.json({ message: "გაკვეთილი წარმატებით წაიშალა" });
 }

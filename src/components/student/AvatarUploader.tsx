@@ -57,16 +57,13 @@ export function AvatarUploader({
       const data = (await response.json()) as { error?: string; url?: string };
 
       if (!response.ok || !data.url) {
-        throw new Error(data.error ?? "ავატარის ატვირთვა ვერ მოხერხდა");
+        setError(data.error ?? "ავატარის ატვირთვა ვერ მოხერხდა");
+        return;
       }
 
       onChange(data.url);
-    } catch (uploadError) {
-      setError(
-        uploadError instanceof Error
-          ? uploadError.message
-          : "ავატარის ატვირთვა ვერ მოხერხდა"
-      );
+    } catch {
+      setError("ავატარის ატვირთვა ვერ მოხერხდა");
     } finally {
       setUploadingState(false);
       if (fileInputRef.current) {

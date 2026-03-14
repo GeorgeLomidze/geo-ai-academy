@@ -8,6 +8,7 @@ import { formatLessonDuration } from "@/lib/learn-shared";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { ProgressBar } from "@/components/learn/ProgressBar";
 
 type LearnOverviewPageProps = {
@@ -134,7 +135,12 @@ export default async function LearnOverviewPage({
         </div>
       </section>
 
-      <section className="rounded-3xl border border-brand-border bg-brand-surface p-6 shadow-sm sm:p-8">
+      <ErrorBoundary
+        actionHref="/my-courses"
+        actionLabel="ჩემი კურსების ნახვა"
+        className="min-h-[22rem] px-0 py-0 sm:px-0 sm:py-0"
+      >
+        <section className="rounded-3xl border border-brand-border bg-brand-surface p-6 shadow-sm sm:p-8">
         <div className="flex items-center gap-3">
           <BookOpen className="size-5 text-brand-primary" />
           <div>
@@ -219,9 +225,13 @@ export default async function LearnOverviewPage({
             <p className="text-pretty text-sm text-brand-muted">
               კურსში გაკვეთილები ჯერ არ არის დამატებული.
             </p>
+            <Button asChild variant="outline" className="mt-5 rounded-xl">
+              <Link href="/my-courses">ჩემი კურსების ნახვა</Link>
+            </Button>
           </div>
         )}
-      </section>
+        </section>
+      </ErrorBoundary>
     </div>
   );
 }

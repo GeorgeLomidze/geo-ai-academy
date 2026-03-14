@@ -1,5 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  forbiddenResponse,
+  handleApiError,
+  notFoundResponse,
+} from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { getCourseRatingSummary } from "@/lib/reviews";
@@ -42,17 +47,11 @@ export async function DELETE(
     });
 
     if (!review) {
-      return NextResponse.json(
-        { error: "შეფასება ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     if (review.userId !== auth.userId) {
-      return NextResponse.json(
-        { error: "თქვენ მხოლოდ საკუთარ შეფასებას წაშლით" },
-        { status: 403 }
-      );
+      return forbiddenResponse();
     }
 
     await prisma.review.delete({
@@ -68,10 +67,6 @@ export async function DELETE(
       summary,
     });
   } catch (error) {
-    console.error("DELETE /api/reviews/[reviewId] failed", error);
-    return NextResponse.json(
-      { error: "შეფასების წაშლა ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "DELETE /api/reviews/[reviewId] failed");
   }
 }

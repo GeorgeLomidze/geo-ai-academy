@@ -1,10 +1,20 @@
 import { Resend } from "resend";
 
-if (!process.env.RESEND_API_KEY) {
-  throw new Error("RESEND_API_KEY environment variable is required");
-}
+let resendClient: Resend | null = null;
 
-export const resend = new Resend(process.env.RESEND_API_KEY);
+export function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("ელფოსტის სერვისი დროებით მიუწვდომელია");
+  }
+
+  if (!resendClient) {
+    resendClient = new Resend(apiKey);
+  }
+
+  return resendClient;
+}
 
 export const emailConfig = {
   from: process.env.EMAIL_FROM ?? "GEO AI Academy <onboarding@resend.dev>",

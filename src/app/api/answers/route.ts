@@ -1,5 +1,12 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  forbiddenResponse,
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { getUserNotificationDelegate, prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { sendQuestionAnsweredEmail } from "@/lib/email/send";
@@ -27,26 +34,12 @@ export async function POST(request: NextRequest) {
       return auth.response;
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: "არასწორი მოთხოვნა" },
-        { status: 400 }
-      );
-    }
+    const body = await parseJsonBody(request);
 
     const parsed = answerCreateSchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors = getZodFieldErrors(parsed.error);
-      return NextResponse.json(
-        {
-          error: Object.values(fieldErrors)[0] ?? "არასწორი მონაცემები",
-          fieldErrors,
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse(fieldErrors);
     }
 
     const { questionId, content, imageUrl, imageUrls } = parsed.data;
@@ -85,28 +78,19 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (!question) {
-      return NextResponse.json(
-        { error: "კითხვა ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     const access = await getEnrollmentAccessForLesson(auth.userId, question.lessonId);
 
     if (!access) {
-      return NextResponse.json(
-        { error: "გაკვეთილი ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     const isAdmin = role === "ADMIN";
 
     if (!isAdmin && !access.enrolled) {
-      return NextResponse.json(
-        { error: "პასუხის გაცემა მხოლოდ ჩაწერილ სტუდენტებს შეუძლიათ" },
-        { status: 403 }
-      );
+      return forbiddenResponse();
     }
 
     const answer = await prisma.answer.create({
@@ -196,10 +180,6 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/answers failed", error);
-    return NextResponse.json(
-      { error: "პასუხის დამატება ვერ მოხერხდა, სცადეთ თავიდან" },
-      { status: 500 }
-    );
+    return handleApiError(error, "POST /api/answers failed");
   }
 }

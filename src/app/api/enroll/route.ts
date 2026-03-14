@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
+import {
+  badRequestResponse,
+  conflictResponse,
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 
@@ -12,23 +20,13 @@ export async function POST(request: NextRequest) {
     const auth = await requireAuth(request);
     if (!auth.authenticated) return auth.response;
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: "არასწორი მოთხოვნა" },
-        { status: 400 }
-      );
-    }
+    const body = await parseJsonBody(request);
 
     const parsed = enrollSchema.safeParse(body);
     if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      return NextResponse.json(
-        { error: firstIssue?.message ?? "არასწორი მონაცემები" },
-        { status: 400 }
-      );
+      return validationErrorResponse({
+        courseId: parsed.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
     }
 
     const { courseId } = parsed.data;
@@ -39,17 +37,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!course) {
-      return NextResponse.json(
-        { error: "კურსი ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     if (course.status !== "PUBLISHED") {
-      return NextResponse.json(
-        { error: "ეს კურსი ამჟამად მიუწვდომელია" },
-        { status: 400 }
-      );
+      return badRequestResponse();
     }
 
     const existingEnrollment = await prisma.enrollment.findUnique({
@@ -62,10 +54,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingEnrollment) {
-      return NextResponse.json(
-        { error: "თქვენ უკვე ჩაწერილი ხართ ამ კურსზე" },
-        { status: 409 }
-      );
+      return conflictResponse();
     }
 
     const enrollment = await prisma.enrollment.create({
@@ -77,10 +66,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, enrollment }, { status: 201 });
   } catch (error) {
-    console.error("POST /api/enroll failed", error);
-    return NextResponse.json(
-      { error: "ჩაწერა ვერ მოხერხდა, სცადეთ თავიდან" },
-      { status: 500 }
-    );
+    return handleApiError(error, "POST /api/enroll failed");
   }
 }

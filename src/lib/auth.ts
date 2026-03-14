@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { badRequestResponse, unauthorizedResponse } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email/send";
 
@@ -81,20 +82,14 @@ export async function requireAuth(request?: NextRequest): Promise<AuthResult> {
   if (!user) {
     return {
       authenticated: false,
-      response: NextResponse.json(
-        { error: "ავტორიზაცია აუცილებელია" },
-        { status: 401 }
-      ),
+      response: unauthorizedResponse(),
     };
   }
 
   if (!user.email) {
     return {
       authenticated: false,
-      response: NextResponse.json(
-        { error: "ანგარიშის მონაცემები არასრულია" },
-        { status: 400 }
-      ),
+      response: badRequestResponse(),
     };
   }
 

@@ -1,9 +1,17 @@
 "use client";
 
 import { Fragment } from "react";
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, ExternalLink, MessageSquareText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Loader2,
+  MessageSquareText,
+  Reply,
+} from "lucide-react";
 import { formatRelativeTime } from "@/lib/format-relative-time";
 import { useAdminNotifications } from "@/components/layout/AdminNotificationsProvider";
 import { DeleteQAItemButton } from "@/components/qa/DeleteQAItemButton";
@@ -11,6 +19,7 @@ import { QAImageGallery } from "@/components/qa/QAImageGallery";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -64,6 +73,103 @@ interface AdminQATableProps {
   initialExpandedQuestionId?: string | null;
 }
 
+function AdminQAReplyComposer({
+  questionId,
+  onSubmitted,
+}: {
+  questionId: string;
+  onSubmitted: () => void;
+}) {
+  const [content, setContent] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedContent = content.trim();
+    if (!normalizedContent) {
+      setError("შეიყვანე პასუხი");
+      return;
+    }
+
+    setPending(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/answers", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          questionId,
+          content: normalizedContent,
+          imageUrls: [],
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        setError(data.error ?? "პასუხის დამატება ვერ მოხერხდა");
+        return;
+      }
+
+      setContent("");
+      onSubmitted();
+    } catch {
+      setError("კავშირის შეცდომაა, სცადე თავიდან");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-2xl border border-brand-border bg-brand-background/70 p-4"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-brand-secondary">
+            უპასუხე აქვე
+          </p>
+          <p className="mt-1 text-xs leading-5 text-brand-muted">
+            შეგიძლია პასუხი პირდაპირ ამ პანელიდან გასცე ან ლექციის Q&A-ზე გადახვიდე.
+          </p>
+        </div>
+        <Badge variant="outline" className="rounded-full">
+          ადმინის პასუხი
+        </Badge>
+      </div>
+
+      <Textarea
+        value={content}
+        onChange={(event) => setContent(event.target.value)}
+        placeholder="დაწერე პასუხი სტუდენტისთვის..."
+        className="mt-4 min-h-28 rounded-2xl"
+        aria-label="ადმინისტრატორის პასუხი"
+        disabled={pending}
+      />
+
+      {error ? (
+        <p role="alert" className="mt-3 text-sm text-brand-danger">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button type="submit" className="rounded-xl" disabled={pending}>
+          {pending ? <Loader2 className="size-4 animate-spin" /> : <Reply className="size-4" />}
+          პასუხის გაგზავნა
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function getInitials(name: string | null) {
   if (!name) {
     return "სტ";
@@ -81,6 +187,7 @@ export function AdminQATable({
   questions,
   initialExpandedQuestionId = null,
 }: AdminQATableProps) {
+  const router = useRouter();
   const { markQuestionAsRead: syncQuestionRead, refreshNotifications } = useAdminNotifications();
   const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(
     initialExpandedQuestionId
@@ -330,6 +437,16 @@ export function AdminQATable({
                             {question.answersCount}
                           </Badge>
                         </div>
+
+                        <AdminQAReplyComposer
+                          questionId={question.id}
+                          onSubmitted={() => {
+                            void refreshNotifications(true);
+                            startTransition(() => {
+                              router.refresh();
+                            });
+                          }}
+                        />
 
                         {question.answers.length === 0 ? (
                           <div className="rounded-2xl border border-dashed border-brand-border px-4 py-6 text-sm text-brand-muted">

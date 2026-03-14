@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
-import { requireAuth } from "@/lib/auth";
+import {
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
+import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { sendBulkEmail } from "@/lib/email/send";
 import { emailLayout } from "@/lib/email/templates/layout";
+import { logDebug } from "@/lib/logger";
 
 const bulkEmailSchema = z.object({
   subject: z.string().min(1, "სათაური აუცილებელია"),
@@ -13,70 +20,58 @@ const bulkEmailSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  console.log("[Admin Emails] === START ===");
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) return auth.response;
 
-  const auth = await requireAuth(request);
-  if (!auth.authenticated) return auth.response;
+    const body = await parseJsonBody(request);
+    const parsed = bulkEmailSchema.safeParse(body);
+    if (!parsed.success) {
+      return validationErrorResponse({
+        [String(parsed.error.issues[0]?.path[0] ?? "subject")]:
+          parsed.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
+    }
 
-  const dbUser = await prisma.user.findUnique({
-    where: { id: auth.userId },
-    select: { role: true },
-  });
+    const { subject, body: content, recipientType, courseId } = parsed.data;
 
-  if (dbUser?.role !== "ADMIN") {
-    return NextResponse.json(
-      { error: "მხოლოდ ადმინისტრატორს აქვს წვდომა" },
-      { status: 403 }
+    let emails: string[];
+
+    if (recipientType === "course" && courseId) {
+      const enrollments = await prisma.enrollment.findMany({
+        where: { courseId },
+        select: { user: { select: { email: true } } },
+      });
+      emails = enrollments.map((e) => e.user.email);
+    } else {
+      const students = await prisma.user.findMany({
+        where: { role: "STUDENT" },
+        select: { email: true },
+      });
+      emails = students.map((s) => s.email);
+    }
+
+    if (emails.length === 0) {
+      return notFoundResponse();
+    }
+
+    const html = emailLayout(
+      `<div style="font-size:15px;line-height:1.7;color:#e0e0e0;">${content}</div>`
     );
-  }
 
-  const parsed = bulkEmailSchema.safeParse(await request.json());
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    return NextResponse.json(
-      { error: firstIssue?.message ?? "არასწორი მონაცემები" },
-      { status: 400 }
-    );
-  }
-
-  const { subject, body, recipientType, courseId } = parsed.data;
-
-  let emails: string[];
-
-  if (recipientType === "course" && courseId) {
-    const enrollments = await prisma.enrollment.findMany({
-      where: { courseId },
-      select: { user: { select: { email: true } } },
+    logDebug("[Admin Emails] Sending bulk email", {
+      recipientType,
+      totalRecipients: emails.length,
     });
-    emails = enrollments.map((e) => e.user.email);
-    console.log("[Admin Emails] Course recipients:", emails.length, emails);
-  } else {
-    const students = await prisma.user.findMany({
-      where: { role: "STUDENT" },
-      select: { email: true },
+
+    const result = await sendBulkEmail(emails, subject, html);
+
+    return NextResponse.json({
+      success: true,
+      totalRecipients: emails.length,
+      ...result,
     });
-    emails = students.map((s) => s.email);
-    console.log("[Admin Emails] All student recipients:", emails.length, emails);
+  } catch (error) {
+    return handleApiError(error, "POST /api/admin/emails failed");
   }
-
-  if (emails.length === 0) {
-    return NextResponse.json(
-      { error: "მიმღებები ვერ მოიძებნა" },
-      { status: 404 }
-    );
-  }
-
-  const html = emailLayout(
-    `<div style="font-size:15px;line-height:1.7;color:#e0e0e0;">${body}</div>`
-  );
-
-  console.log("[Admin Emails] Sending to", emails.length, "recipients individually");
-  const result = await sendBulkEmail(emails, subject, html);
-  console.log("[Admin Emails] Result:", JSON.stringify(result));
-
-  return NextResponse.json({
-    success: true,
-    totalRecipients: emails.length,
-    ...result,
-  });
 }

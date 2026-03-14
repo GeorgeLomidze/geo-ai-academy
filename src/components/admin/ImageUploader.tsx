@@ -43,14 +43,13 @@ export function ImageUploader({ value, onChange }: ImageUploaderProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error ?? "ატვირთვა ვერ მოხერხდა");
+        setError(data.error ?? "ატვირთვა ვერ მოხერხდა");
+        return;
       }
 
       onChange(data.url);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "ატვირთვა ვერ მოხერხდა"
-      );
+    } catch {
+      setError("ატვირთვა ვერ მოხერხდა");
     } finally {
       setUploading(false);
       if (fileInputRef.current) {

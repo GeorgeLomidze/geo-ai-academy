@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  forbiddenResponse,
+  unauthorizedResponse,
+} from "@/lib/api-error";
 
 type AdminAuthResult =
   | { authorized: true; userId: string }
@@ -22,10 +26,7 @@ export async function requireAdmin(request?: NextRequest): Promise<AdminAuthResu
   if (!user) {
     return {
       authorized: false,
-      response: NextResponse.json(
-        { error: "ავტორიზაცია აუცილებელია" },
-        { status: 401 }
-      ),
+      response: unauthorizedResponse(),
     };
   }
 
@@ -43,10 +44,7 @@ export async function requireAdmin(request?: NextRequest): Promise<AdminAuthResu
   if (profile?.role !== "ADMIN") {
     return {
       authorized: false,
-      response: NextResponse.json(
-        { error: "წვდომა აკრძალულია" },
-        { status: 403 }
-      ),
+      response: forbiddenResponse(),
     };
   }
 

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Users,
   BookOpen,
@@ -7,6 +8,7 @@ import {
   TrendingDown,
   Clock,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
 
 type Trend = "up" | "down";
@@ -365,6 +367,9 @@ export default async function AdminOverviewPage() {
           ) : (
             <div className="mt-6 rounded-xl border border-dashed border-brand-border px-4 py-8 text-center">
               <p className="text-sm text-brand-muted">აქტივობა ჯერ არ დაფიქსირებულა</p>
+              <Button asChild variant="outline" className="mt-4 rounded-xl">
+                <Link href="/admin/students">სტუდენტების ნახვა</Link>
+              </Button>
             </div>
           )}
         </div>

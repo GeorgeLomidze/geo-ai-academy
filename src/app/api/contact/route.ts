@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
+import {
+  handleApiError,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { sendContactNotification } from "@/lib/email/send";
 
 const contactSchema = z.object({
@@ -16,31 +21,27 @@ const contactSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const body: unknown = await request.json();
-  const result = contactSchema.safeParse(body);
-
-  if (!result.success) {
-    const firstIssue = result.error.issues[0];
-    return NextResponse.json(
-      { error: firstIssue?.message ?? "არასწორი მონაცემები" },
-      { status: 400 }
-    );
-  }
-
-  const { name, email, subject, message } = result.data;
-
   try {
+    const body = await parseJsonBody(request);
+    const result = contactSchema.safeParse(body);
+
+    if (!result.success) {
+      return validationErrorResponse({
+        [String(result.error.issues[0]?.path[0] ?? "message")]:
+          result.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
+    }
+
+    const { name, email, subject, message } = result.data;
+
     await sendContactNotification(
       name,
       email,
       subject,
       message
     );
-  } catch {
-    return NextResponse.json(
-      { error: "შეტყობინების გაგზავნა ვერ მოხერხდა" },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(error, "POST /api/contact failed");
   }
 
   return NextResponse.json({ success: true });

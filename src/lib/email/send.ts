@@ -1,4 +1,4 @@
-import { resend, emailConfig } from "./client";
+import { emailConfig, getResendClient } from "./client";
 import { emailButton, emailLayout } from "./templates/layout";
 import {
   welcomeEmailHtml,
@@ -12,6 +12,7 @@ import {
   contactNotificationHtml,
   contactNotificationSubject,
 } from "./templates/contact-notification";
+import { logDebug } from "@/lib/logger";
 
 type SendEmailOptions = {
   to: string;
@@ -21,6 +22,7 @@ type SendEmailOptions = {
 };
 
 async function sendEmail({ to, subject, html, replyTo }: SendEmailOptions) {
+  const resend = getResendClient();
   const { error } = await resend.emails.send({
     from: emailConfig.from,
     to,
@@ -218,8 +220,8 @@ export async function sendBulkEmail(
   let errorCount = 0;
 
   for (const email of emails) {
-    console.log("[Email] Sending to:", email);
     try {
+      const resend = getResendClient();
       const { data, error } = await resend.emails.send({
         from: emailConfig.from,
         to: email,
@@ -231,7 +233,7 @@ export async function sendBulkEmail(
         console.error("[Email] Send failed for", email, ":", JSON.stringify(error));
         errorCount++;
       } else {
-        console.log("[Email] Send success for", email, ":", JSON.stringify(data));
+        logDebug("[Email] Send success", { email, data });
         successCount++;
       }
     } catch (err) {

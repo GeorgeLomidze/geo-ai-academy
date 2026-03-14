@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod/v4";
+import {
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 
@@ -27,123 +33,119 @@ const deleteModuleSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (!auth.authorized) return auth.response;
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) return auth.response;
 
-  const body = await request.json().catch(() => null);
-  const result = createModuleSchema.safeParse(body);
+    const body = await parseJsonBody(request);
+    const result = createModuleSchema.safeParse(body);
 
-  if (!result.success) {
-    return NextResponse.json(
-      { error: result.error.issues[0]?.message ?? "არასწორი მონაცემები" },
-      { status: 400 }
-    );
+    if (!result.success) {
+      return validationErrorResponse({
+        [String(result.error.issues[0]?.path[0] ?? "title")]:
+          result.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
+    }
+
+    const { title, courseId } = result.data;
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) {
+      return notFoundResponse();
+    }
+
+    const maxSort = await prisma.module.aggregate({
+      where: { courseId },
+      _max: { sortOrder: true },
+    });
+    const nextSortOrder = (maxSort._max.sortOrder ?? 0) + 1;
+
+    const mod = await prisma.module.create({
+      data: {
+        title,
+        courseId,
+        sortOrder: nextSortOrder,
+      },
+    });
+
+    return NextResponse.json(mod, { status: 201 });
+  } catch (error) {
+    return handleApiError(error, "POST /api/admin/modules failed");
   }
-
-  const { title, courseId } = result.data;
-
-  // Verify course exists
-  const course = await prisma.course.findUnique({ where: { id: courseId } });
-  if (!course) {
-    return NextResponse.json(
-      { error: "კურსი ვერ მოიძებნა" },
-      { status: 404 }
-    );
-  }
-
-  // Get next sortOrder within the course
-  const maxSort = await prisma.module.aggregate({
-    where: { courseId },
-    _max: { sortOrder: true },
-  });
-  const nextSortOrder = (maxSort._max.sortOrder ?? 0) + 1;
-
-  const mod = await prisma.module.create({
-    data: {
-      title,
-      courseId,
-      sortOrder: nextSortOrder,
-    },
-  });
-
-  return NextResponse.json(mod, { status: 201 });
 }
 
 export async function PUT(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (!auth.authorized) return auth.response;
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) return auth.response;
 
-  const body = await request.json().catch(() => null);
-  const reorderResult = reorderModulesSchema.safeParse(body);
+    const body = await parseJsonBody(request);
+    const reorderResult = reorderModulesSchema.safeParse(body);
 
-  if (reorderResult.success) {
-    await prisma.$transaction(
-      reorderResult.data.modules.map(({ id, sortOrder }) =>
-        prisma.module.update({
-          where: { id },
-          data: { sortOrder },
-        })
-      )
-    );
+    if (reorderResult.success) {
+      await prisma.$transaction(
+        reorderResult.data.modules.map(({ id, sortOrder }) =>
+          prisma.module.update({
+            where: { id },
+            data: { sortOrder },
+          })
+        )
+      );
 
-    return NextResponse.json({ message: "თანმიმდევრობა განახლდა" });
-  }
+      return NextResponse.json({ message: "თანმიმდევრობა განახლდა" });
+    }
 
-  const updateResult = updateModuleSchema.safeParse(body);
-  if (!updateResult.success) {
-    return NextResponse.json(
-      {
-        error:
+    const updateResult = updateModuleSchema.safeParse(body);
+    if (!updateResult.success) {
+      return validationErrorResponse({
+        [String(updateResult.error.issues[0]?.path[0] ?? "title")]:
           updateResult.error.issues[0]?.message ?? "არასწორი მონაცემები",
-      },
-      { status: 400 }
-    );
+      });
+    }
+
+    const existing = await prisma.module.findUnique({
+      where: { id: updateResult.data.id },
+    });
+    if (!existing) {
+      return notFoundResponse();
+    }
+
+    const mod = await prisma.module.update({
+      where: { id: updateResult.data.id },
+      data: { title: updateResult.data.title },
+    });
+
+    return NextResponse.json(mod);
+  } catch (error) {
+    return handleApiError(error, "PUT /api/admin/modules failed");
   }
-
-  const existing = await prisma.module.findUnique({
-    where: { id: updateResult.data.id },
-  });
-  if (!existing) {
-    return NextResponse.json(
-      { error: "მოდული ვერ მოიძებნა" },
-      { status: 404 }
-    );
-  }
-
-  const mod = await prisma.module.update({
-    where: { id: updateResult.data.id },
-    data: { title: updateResult.data.title },
-  });
-
-  return NextResponse.json(mod);
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAdmin(request);
-  if (!auth.authorized) return auth.response;
+  try {
+    const auth = await requireAdmin(request);
+    if (!auth.authorized) return auth.response;
 
-  const body = await request.json().catch(() => null);
-  const result = deleteModuleSchema.safeParse(body);
+    const body = await parseJsonBody(request);
+    const result = deleteModuleSchema.safeParse(body);
 
-  if (!result.success) {
-    return NextResponse.json(
-      { error: result.error.issues[0]?.message ?? "არასწორი მონაცემები" },
-      { status: 400 }
-    );
+    if (!result.success) {
+      return validationErrorResponse({
+        [String(result.error.issues[0]?.path[0] ?? "id")]:
+          result.error.issues[0]?.message ?? "არასწორი მონაცემები",
+      });
+    }
+
+    const existing = await prisma.module.findUnique({
+      where: { id: result.data.id },
+    });
+    if (!existing) {
+      return notFoundResponse();
+    }
+
+    await prisma.module.delete({ where: { id: result.data.id } });
+
+    return NextResponse.json({ message: "მოდული წარმატებით წაიშალა" });
+  } catch (error) {
+    return handleApiError(error, "DELETE /api/admin/modules failed");
   }
-
-  const existing = await prisma.module.findUnique({
-    where: { id: result.data.id },
-  });
-  if (!existing) {
-    return NextResponse.json(
-      { error: "მოდული ვერ მოიძებნა" },
-      { status: 404 }
-    );
-  }
-
-  // Cascade delete is configured in Prisma schema (lessons)
-  await prisma.module.delete({ where: { id: result.data.id } });
-
-  return NextResponse.json({ message: "მოდული წარმატებით წაიშალა" });
 }

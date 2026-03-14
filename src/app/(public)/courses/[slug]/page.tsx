@@ -26,6 +26,7 @@ import {
 import { PriceTag } from "@/components/course/PriceTag";
 import { EnrollButton } from "@/components/course/EnrollButton";
 import { BuyButton } from "@/components/course/BuyButton";
+import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { StarRating } from "@/components/reviews/StarRating";
 import { ReviewsSection } from "@/components/reviews/ReviewsSection";
 
@@ -483,23 +484,29 @@ export default async function CourseDetailPage({
       </section>
 
       <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
-        <ReviewsSection
-          key={[
-            reviewData.summary.totalReviews,
-            reviewData.summary.averageRating ?? "none",
-            reviewData.currentUserReview?.id ?? "none",
-            reviewData.currentUserReview?.updatedAt ?? "none",
-            reviewData.reviews
-              .map((review) => `${review.id}:${review.updatedAt}`)
-              .join("|"),
-          ].join("-")}
-          courseId={course.id}
-          summary={reviewData.summary}
-          reviews={reviewData.reviews}
-          currentUserReview={reviewData.currentUserReview}
-          isAuthenticated={!!user}
-          isEnrolled={isEnrolled}
-        />
+        <ErrorBoundary
+          actionHref="/courses"
+          actionLabel="კურსებში დაბრუნება"
+          className="min-h-[24rem] px-0 py-0 sm:px-0 sm:py-0"
+        >
+          <ReviewsSection
+            key={[
+              reviewData.summary.totalReviews,
+              reviewData.summary.averageRating ?? "none",
+              reviewData.currentUserReview?.id ?? "none",
+              reviewData.currentUserReview?.updatedAt ?? "none",
+              reviewData.reviews
+                .map((review) => `${review.id}:${review.updatedAt}`)
+                .join("|"),
+            ].join("-")}
+            courseId={course.id}
+            summary={reviewData.summary}
+            reviews={reviewData.reviews}
+            currentUserReview={reviewData.currentUserReview}
+            isAuthenticated={!!user}
+            isEnrolled={isEnrolled}
+          />
+        </ErrorBoundary>
       </section>
     </div>
   );

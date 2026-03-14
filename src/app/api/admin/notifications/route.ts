@@ -1,5 +1,11 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
 import { getAdminNotificationDelegate, prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getAdminNotifications, getQuestionIdFromNotificationLink } from "@/lib/qa";
@@ -23,11 +29,7 @@ export async function GET(request: NextRequest) {
     const result = await getAdminNotifications(12);
     return NextResponse.json(result);
   } catch (error) {
-    console.error("GET /api/admin/notifications failed", error);
-    return NextResponse.json(
-      { error: "შეტყობინებების ჩატვირთვა ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "GET /api/admin/notifications failed");
   }
 }
 
@@ -38,26 +40,12 @@ export async function PUT(request: NextRequest) {
       return auth.response;
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: "არასწორი მოთხოვნა" },
-        { status: 400 }
-      );
-    }
+    const body = await parseJsonBody(request);
 
     const parsed = notificationUpdateSchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors = getZodFieldErrors(parsed.error);
-      return NextResponse.json(
-        {
-          error: Object.values(fieldErrors)[0] ?? "არასწორი მონაცემები",
-          fieldErrors,
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse(fieldErrors);
     }
 
     const adminNotification = getAdminNotificationDelegate();
@@ -92,10 +80,7 @@ export async function PUT(request: NextRequest) {
       });
 
       if (!question) {
-        return NextResponse.json(
-          { error: "კითხვა ვერ მოიძებნა" },
-          { status: 404 }
-        );
+        return notFoundResponse();
       }
 
       await Promise.all([
@@ -126,10 +111,7 @@ export async function PUT(request: NextRequest) {
       });
 
       if (!notification) {
-        return NextResponse.json(
-          { error: "შეტყობინება ვერ მოიძებნა" },
-          { status: 404 }
-        );
+        return notFoundResponse();
       }
 
       const questionId = getQuestionIdFromNotificationLink(notification.linkUrl);
@@ -163,10 +145,6 @@ export async function PUT(request: NextRequest) {
       ...(await getAdminNotifications(12)),
     });
   } catch (error) {
-    console.error("PUT /api/admin/notifications failed", error);
-    return NextResponse.json(
-      { error: "შეტყობინების განახლება ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "PUT /api/admin/notifications failed");
   }
 }

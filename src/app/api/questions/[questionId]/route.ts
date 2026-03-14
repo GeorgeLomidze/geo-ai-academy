@@ -1,6 +1,13 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import {
+  forbiddenResponse,
+  handleApiError,
+  notFoundResponse,
+  parseJsonBody,
+  validationErrorResponse,
+} from "@/lib/api-error";
+import {
   getAdminNotificationDelegate,
   getUserNotificationDelegate,
   prisma,
@@ -31,26 +38,12 @@ export async function PUT(
       return auth.response;
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: "არასწორი მოთხოვნა" },
-        { status: 400 }
-      );
-    }
+    const body = await parseJsonBody(request);
 
     const parsed = questionUpdateSchema.safeParse(body);
     if (!parsed.success) {
       const fieldErrors = getZodFieldErrors(parsed.error);
-      return NextResponse.json(
-        {
-          error: Object.values(fieldErrors)[0] ?? "არასწორი მონაცემები",
-          fieldErrors,
-        },
-        { status: 400 }
-      );
+      return validationErrorResponse(fieldErrors);
     }
 
     const { questionId } = await context.params;
@@ -77,17 +70,11 @@ export async function PUT(
     });
 
     if (!question) {
-      return NextResponse.json(
-        { error: "კითხვა ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     if (question.userId !== auth.userId) {
-      return NextResponse.json(
-        { error: "თქვენ მხოლოდ საკუთარ კითხვას ჩაასწორებთ" },
-        { status: 403 }
-      );
+      return forbiddenResponse();
     }
 
     const updatedQuestion = await prisma.question.update({
@@ -150,11 +137,7 @@ export async function PUT(
       question: serializeQuestion(updatedQuestion, auth.userId, false),
     });
   } catch (error) {
-    console.error("PUT /api/questions/[questionId] failed", error);
-    return NextResponse.json(
-      { error: "კითხვის განახლება ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "PUT /api/questions/[questionId] failed");
   }
 }
 
@@ -174,10 +157,7 @@ export async function PATCH(
     ]);
 
     if (role !== "ADMIN") {
-      return NextResponse.json(
-        { error: "წვდომა აკრძალულია" },
-        { status: 403 }
-      );
+      return forbiddenResponse();
     }
 
     const question = await prisma.question.findUnique({
@@ -202,10 +182,7 @@ export async function PATCH(
     });
 
     if (!question) {
-      return NextResponse.json(
-        { error: "კითხვა ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     await prisma.question.update({
@@ -234,11 +211,7 @@ export async function PATCH(
       message: "კითხვა წაკითხულად მოინიშნა",
     });
   } catch (error) {
-    console.error("PATCH /api/questions/[questionId] failed", error);
-    return NextResponse.json(
-      { error: "კითხვის სტატუსის განახლება ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "PATCH /api/questions/[questionId] failed");
   }
 }
 
@@ -279,18 +252,12 @@ export async function DELETE(
     ]);
 
     if (!question) {
-      return NextResponse.json(
-        { error: "კითხვა ვერ მოიძებნა" },
-        { status: 404 }
-      );
+      return notFoundResponse();
     }
 
     const isAdmin = role === "ADMIN";
     if (!isAdmin && question.userId !== auth.userId) {
-      return NextResponse.json(
-        { error: "თქვენ მხოლოდ საკუთარ კითხვას წაშლით" },
-        { status: 403 }
-      );
+      return forbiddenResponse();
     }
 
     await prisma.question.delete({
@@ -326,10 +293,6 @@ export async function DELETE(
       message: "კითხვა წარმატებით წაიშალა",
     });
   } catch (error) {
-    console.error("DELETE /api/questions/[questionId] failed", error);
-    return NextResponse.json(
-      { error: "კითხვის წაშლა ვერ მოხერხდა" },
-      { status: 500 }
-    );
+    return handleApiError(error, "DELETE /api/questions/[questionId] failed");
   }
 }
