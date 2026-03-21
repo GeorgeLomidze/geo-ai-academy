@@ -300,12 +300,12 @@ export function VideoPlayer({
         onError={() => setError("ვიდეო ფლეიერის ჩატვირთვა ვერ მოხერხდა")}
       />
 
-      <div className="overflow-hidden rounded-[28px] border border-brand-border bg-brand-surface shadow-sm">
-        <div className="relative aspect-video bg-brand-surface-light">
+      <div className="-mx-4 -mt-4 overflow-hidden bg-black sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-mt-8">
+        <div className="relative aspect-video bg-black">
           {!playerReady || transitioning ? (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-brand-background/86">
-              <div className="flex size-20 items-center justify-center rounded-full border border-brand-border bg-brand-surface shadow-sm">
-                <LoaderCircle className="size-8 animate-spin text-brand-primary" />
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black">
+              <div className="flex size-20 items-center justify-center rounded-full bg-white/10">
+                <LoaderCircle className="size-8 animate-spin text-white/70" />
               </div>
             </div>
           ) : null}
@@ -316,7 +316,8 @@ export function VideoPlayer({
             title={lessonTitle}
             allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
             allowFullScreen
-            className={`size-full border-0 transition-opacity duration-200 ${playerReady && !transitioning ? "opacity-100" : "opacity-0"}`}
+            style={{ border: "none", padding: 0, margin: 0 }}
+            className={`block size-full rounded-none transition-opacity duration-200 ${playerReady && !transitioning ? "opacity-100" : "opacity-0"}`}
           />
 
           {playerReady && paused && !transitioning ? (

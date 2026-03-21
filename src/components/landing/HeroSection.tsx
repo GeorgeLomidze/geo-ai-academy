@@ -15,6 +15,7 @@ type HeroSectionProps = {
 export function HeroSection({ isAuthenticated }: HeroSectionProps) {
   const reduceMotion = useReducedMotion();
   const primaryCtaHref = isAuthenticated ? "/courses" : "/register";
+  const aiToolsHref = "/ai-tools";
   const heroSocialLinks = [
     socialLinks.find((item) => item.shortLabel === "YT"),
     socialLinks.find((item) => item.shortLabel === "FB"),
@@ -114,7 +115,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
                 size="lg"
                 className="h-12 rounded-2xl border border-brand-border bg-brand-surface/40 text-base text-foreground hover:bg-brand-surface-light hover:text-brand-secondary"
               >
-                <Link href="/courses">კურსების ნახვა</Link>
+                <Link href={aiToolsHref}>AI ინსტრუმენტები</Link>
               </Button>
             </motion.div>
 
@@ -143,12 +144,11 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
             className="relative hidden lg:block"
-            aria-hidden="true"
           >
             <div className="relative size-80">
               {/* Orbiting rings */}
               <motion.div
-                className="absolute inset-0 rounded-full border border-brand-primary/20"
+                className="pointer-events-none absolute inset-0 rounded-full border border-brand-primary/20"
                 initial={{ rotate: 270 }}
                 animate={reduceMotion ? undefined : { rotate: 630 }}
                 transition={{
@@ -160,7 +160,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
                 <div className="absolute left-1/2 top-0 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-accent shadow-lg shadow-brand-accent/50" />
               </motion.div>
               <motion.div
-                className="absolute inset-4 rounded-full border border-brand-primary/15"
+                className="pointer-events-none absolute inset-4 rounded-full border border-brand-primary/15"
                 initial={{ rotate: 220 }}
                 animate={reduceMotion ? undefined : { rotate: -140 }}
                 transition={{
@@ -172,7 +172,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
                 <div className="absolute left-1/2 top-0 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-accent shadow-lg shadow-brand-accent/40" />
               </motion.div>
               <motion.div
-                className="absolute inset-8 rounded-full border border-brand-accent/10"
+                className="pointer-events-none absolute inset-8 rounded-full border border-brand-accent/10"
                 initial={{ rotate: 38 }}
                 animate={reduceMotion ? undefined : { rotate: 398 }}
                 transition={{
@@ -186,7 +186,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
 
               {/* Center glow */}
               <motion.div
-                className="absolute inset-16 rounded-full bg-brand-primary/20 blur-2xl"
+                className="pointer-events-none absolute inset-16 rounded-full bg-brand-primary/20 blur-2xl"
                 animate={
                   reduceMotion
                     ? undefined
@@ -202,7 +202,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
                 }}
               />
               <motion.div
-                className="absolute inset-20 flex items-center justify-center rounded-full bg-brand-accent shadow-[0_0_30px_rgba(255,214,10,0.22)]"
+                className="absolute inset-20"
                 animate={
                   reduceMotion
                     ? undefined
@@ -217,9 +217,15 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
                   ease: "easeInOut",
                 }}
               >
-                <span className="font-display text-4xl font-bold text-black/88">
-                  AI
-                </span>
+                <Link
+                  href={aiToolsHref}
+                  aria-label="AI ინსტრუმენტებზე გადასვლა"
+                  className="focus-ring flex size-full items-center justify-center rounded-full bg-brand-accent shadow-[0_0_30px_rgba(255,214,10,0.22)]"
+                >
+                  <span className="font-display text-4xl font-bold text-black/88">
+                    AI
+                  </span>
+                </Link>
               </motion.div>
             </div>
           </motion.div>

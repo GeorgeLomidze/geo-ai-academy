@@ -37,6 +37,17 @@ interface NavbarAccountMenuProps {
   showNotificationList: boolean;
 }
 
+const studentNavIcons = {
+  "/dashboard": LayoutDashboard,
+  "/my-courses": BookOpen,
+  "/ai-tools": Sparkles,
+  "/profile": User,
+} as const;
+
+const profileDropdownItems = studentNavItems.filter(
+  (item) => item.href !== "/ai-tools"
+);
+
 type NotificationResponse = {
   notifications?: Array<{
     id: string;
@@ -301,36 +312,22 @@ export function NavbarAccountMenu({
 
         {notificationSection}
 
-        <DropdownMenuItem asChild>
-          <Link
-            href={studentNavItems[0].href}
-            className="rounded-xl px-3 py-3 focus:bg-white/5 focus:text-brand-secondary"
-          >
-            <LayoutDashboard />
-            {studentNavItems[0].label}
-            <ChevronRight className="ml-auto size-4 text-brand-muted" />
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link
-            href={studentNavItems[1].href}
-            className="rounded-xl px-3 py-3 focus:bg-white/5 focus:text-brand-secondary"
-          >
-            <BookOpen />
-            {studentNavItems[1].label}
-            <ChevronRight className="ml-auto size-4 text-brand-muted" />
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link
-            href={studentNavItems[2].href}
-            className="rounded-xl px-3 py-3 focus:bg-white/5 focus:text-brand-secondary"
-          >
-            <User />
-            {studentNavItems[2].label}
-            <ChevronRight className="ml-auto size-4 text-brand-muted" />
-          </Link>
-        </DropdownMenuItem>
+        {profileDropdownItems.map((item) => {
+          const Icon = studentNavIcons[item.href];
+
+          return (
+            <DropdownMenuItem key={item.href} asChild>
+              <Link
+                href={item.href}
+                className="rounded-xl px-3 py-3 focus:bg-white/5 focus:text-brand-secondary"
+              >
+                <Icon />
+                {item.label}
+                <ChevronRight className="ml-auto size-4 text-brand-muted" />
+              </Link>
+            </DropdownMenuItem>
+          );
+        })}
         {isAdmin ? (
           <DropdownMenuItem asChild>
             <Link

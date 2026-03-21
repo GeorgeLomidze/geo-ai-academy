@@ -7,13 +7,42 @@ export const siteConfig = {
 export const navItems = [
   { label: "მთავარი", href: "/" },
   { label: "კურსები", href: "/courses" },
+  { label: "AI ინსტრუმენტები", href: "/ai-tools" },
   { label: "ტრენერი", href: "/about" },
   { label: "კონტაქტი", href: "/#contact" },
+] as const;
+
+export const aiToolNavItems = [
+  {
+    label: "სურათის გენერაცია",
+    href: "/ai-tools/image",
+    emoji: "📷",
+    description: "შექმენი ახალი ვიზუალები AI გენერატორით",
+  },
+  {
+    label: "ვიდეოს გენერაცია",
+    href: "/ai-tools/video",
+    emoji: "🎥",
+    description: "ააწყე ვიდეოები ტექსტიდან ან კადრიდან",
+  },
+  {
+    label: "აუდიო გენერაცია",
+    href: "/ai-tools/audio",
+    emoji: "🎵",
+    description: "მუსიკის და აუდიო ეფექტების გენერაცია",
+  },
+  {
+    label: "პროექტები",
+    href: "/ai-tools/projects",
+    emoji: "📁",
+    description: "შექმენი AI პროექტები ნოდების ედიტორით",
+  },
 ] as const;
 
 export const studentNavItems = [
   { label: "სამუშაო პანელი", href: "/dashboard" },
   { label: "ჩემი კურსები", href: "/my-courses" },
+  { label: "AI ინსტრუმენტები", href: "/ai-tools" },
   { label: "პროფილი", href: "/profile" },
 ] as const;
 

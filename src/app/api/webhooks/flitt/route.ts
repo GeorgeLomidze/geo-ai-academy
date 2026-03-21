@@ -7,6 +7,7 @@ import {
 } from "@/lib/api-error";
 import { prisma } from "@/lib/prisma";
 import { verifyFlittSignature } from "@/lib/flitt/client";
+import { failCreditPurchase, fulfillCreditPurchase } from "@/lib/credits/purchases";
 import { fulfillOrder } from "@/lib/flitt/fulfill";
 import { logDebug } from "@/lib/logger";
 
@@ -41,14 +42,24 @@ export async function POST(request: NextRequest) {
       return badRequestResponse();
     }
 
-    if (orderStatus === "approved") {
-      await fulfillOrder(orderId, flittPaymentId);
-    } else if (orderStatus === "declined" || orderStatus === "expired") {
-      const order = await prisma.order.findUnique({
+    const [order, creditPurchase] = await Promise.all([
+      prisma.order.findUnique({
         where: { id: orderId },
         select: { id: true, status: true },
-      });
+      }),
+      prisma.creditPurchase.findUnique({
+        where: { id: orderId },
+        select: { id: true, status: true },
+      }),
+    ]);
 
+    if (orderStatus === "approved") {
+      if (order) {
+        await fulfillOrder(orderId, flittPaymentId);
+      } else if (creditPurchase) {
+        await fulfillCreditPurchase(orderId, flittPaymentId);
+      }
+    } else if (orderStatus === "declined" || orderStatus === "expired") {
       if (order && order.status !== "PAID") {
         await prisma.order.update({
           where: { id: order.id },
@@ -57,6 +68,8 @@ export async function POST(request: NextRequest) {
             flittPaymentId: flittPaymentId ?? undefined,
           },
         });
+      } else if (creditPurchase && creditPurchase.status !== "COMPLETED") {
+        await failCreditPurchase(orderId, flittPaymentId);
       }
     }
 

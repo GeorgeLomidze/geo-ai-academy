@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  COURSE_BONUS_CREDITS,
+  grantCourseBonusWithClient,
+} from "@/lib/credits/manager";
 import { sendPurchaseEmail } from "@/lib/email/send";
 import { logDebug } from "@/lib/logger";
 
@@ -31,16 +35,26 @@ export async function fulfillOrder(
     return true;
   }
 
-  await prisma.$transaction([
-    prisma.order.update({
-      where: { id: order.id },
+  const result = await prisma.$transaction(async (tx) => {
+    const updateResult = await tx.order.updateMany({
+      where: {
+        id: order.id,
+        status: {
+          not: "PAID",
+        },
+      },
       data: {
         status: "PAID",
         flittOrderId: orderId,
         flittPaymentId: flittPaymentId ?? undefined,
       },
-    }),
-    prisma.enrollment.upsert({
+    });
+
+    if (updateResult.count === 0) {
+      return { newlyFulfilled: false };
+    }
+
+    await tx.enrollment.upsert({
       where: {
         userId_courseId: {
           userId: order.userId,
@@ -52,10 +66,22 @@ export async function fulfillOrder(
         courseId: order.courseId,
       },
       update: {},
-    }),
-  ]);
+    });
 
-  logDebug("[fulfillOrder] Completed", { orderId });
+    await grantCourseBonusWithClient(tx, order.userId, order.id);
+
+    return { newlyFulfilled: true };
+  });
+
+  if (!result.newlyFulfilled) {
+    logDebug("[fulfillOrder] Already fulfilled during transaction", { orderId });
+    return true;
+  }
+
+  logDebug("[fulfillOrder] Completed", {
+    orderId,
+    courseBonusCredits: COURSE_BONUS_CREDITS,
+  });
 
   sendPurchaseEmail(
     order.user.email,

@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, User, BookOpen } from "lucide-react";
+import { LayoutDashboard, User, BookOpen, Sparkles } from "lucide-react";
+import { studentNavItems } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-const studentNavItems = [
-  { label: "სამუშაო პანელი", href: "/dashboard", icon: LayoutDashboard },
-  { label: "ჩემი კურსები", href: "/my-courses", icon: BookOpen },
-  { label: "პროფილი", href: "/profile", icon: User },
-] as const;
+const studentNavIcons = {
+  "/dashboard": LayoutDashboard,
+  "/my-courses": BookOpen,
+  "/ai-tools": Sparkles,
+  "/profile": User,
+} as const;
 
 export function StudentSidebar() {
   const pathname = usePathname();
@@ -25,7 +27,7 @@ export function StudentSidebar() {
       <aside className="hidden w-60 shrink-0 border-r border-brand-border bg-brand-background lg:block">
         <nav className="space-y-1 px-3 py-4" aria-label="სტუდენტის ნავიგაცია">
           {studentNavItems.map((item) => {
-            const Icon = item.icon;
+            const Icon = studentNavIcons[item.href];
             const isActive = pathname === item.href;
 
             return (
@@ -54,7 +56,7 @@ export function StudentSidebar() {
         aria-label="სტუდენტის ნავიგაცია"
       >
         {studentNavItems.map((item) => {
-          const Icon = item.icon;
+          const Icon = studentNavIcons[item.href];
           const isActive = pathname === item.href;
 
           return (

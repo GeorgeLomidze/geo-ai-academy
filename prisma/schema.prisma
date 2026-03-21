@@ -29,6 +29,36 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum CreditTransactionType {
+  PURCHASE
+  BONUS
+  REFUND
+  COURSE_BONUS
+  USAGE
+  ADMIN_GRANT
+  ADMIN_DEDUCT
+}
+
+enum GenerationType {
+  IMAGE
+  VIDEO
+}
+
+enum GenerationStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum CreditPurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -38,13 +68,18 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  enrollments    Enrollment[]
-  lessonProgress LessonProgress[]
-  reviews        Review[]
-  orders         Order[]
-  questions      Question[]       @relation("UserQuestions")
-  answers        Answer[]         @relation("UserAnswers")
-  notifications  UserNotification[]
+  enrollments        Enrollment[]
+  lessonProgress     LessonProgress[]
+  reviews            Review[]
+  orders             Order[]
+  questions          Question[]          @relation("UserQuestions")
+  answers            Answer[]            @relation("UserAnswers")
+  notifications      UserNotification[]
+  creditBalance      CreditBalance?
+  creditTransactions CreditTransaction[]
+  generations        Generation[]
+  creditPurchases    CreditPurchase[]
+  projects           Project[]
 
   @@map("users")
 }
@@ -74,7 +109,7 @@ model Module {
   id        String   @id @default(uuid())
   title     String
   sortOrder Int      @default(0)
-  courseId   String
+  courseId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -85,21 +120,21 @@ model Module {
 }
 
 model Lesson {
-  id            String     @id @default(uuid())
-  title         String
-  type          LessonType @default(VIDEO)
-  content       String?
-  bunnyVideoId  String?
-  duration      Int        @default(0)
-  isFree        Boolean    @default(false)
-  sortOrder     Int        @default(0)
-  moduleId      String
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id           String     @id @default(uuid())
+  title        String
+  type         LessonType @default(VIDEO)
+  content      String?
+  bunnyVideoId String?
+  duration     Int        @default(0)
+  isFree       Boolean    @default(false)
+  sortOrder    Int        @default(0)
+  moduleId     String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  module   Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  progress LessonProgress[]
-  questions Question[]
+  module      Module             @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress    LessonProgress[]
+  questions   Question[]
   attachments LessonAttachment[]
 
   @@map("lessons")
@@ -123,7 +158,7 @@ model LessonAttachment {
 model Enrollment {
   id         String   @id @default(uuid())
   userId     String
-  courseId    String
+  courseId   String
   enrolledAt DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -171,7 +206,7 @@ model Review {
 model Order {
   id             String      @id @default(uuid())
   userId         String
-  courseId        String
+  courseId       String
   amount         Decimal     @db.Decimal(10, 2)
   currency       String      @default("GEL")
   status         OrderStatus @default(PENDING)
@@ -188,6 +223,90 @@ model Order {
   @@map("orders")
 }
 
+model CreditBalance {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions CreditTransaction[]
+
+  @@map("credit_balances")
+}
+
+model CreditTransaction {
+  id            String                @id @default(uuid())
+  userId        String
+  balanceId     String
+  amount        Int
+  balanceBefore Int
+  balanceAfter  Int
+  type          CreditTransactionType
+  description   String
+  modelUsed     String?
+  generationId  String?
+  purchaseId    String?
+  createdAt     DateTime              @default(now())
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance    CreditBalance   @relation(fields: [balanceId], references: [id], onDelete: Cascade)
+  generation Generation?     @relation(fields: [generationId], references: [id], onDelete: SetNull)
+  purchase   CreditPurchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([balanceId])
+  @@index([userId, createdAt])
+  @@index([generationId])
+  @@index([purchaseId])
+  @@map("credit_transactions")
+}
+
+model Generation {
+  id           String           @id @default(uuid())
+  userId       String
+  type         GenerationType
+  modelId      String
+  prompt       String?          @db.Text
+  status       GenerationStatus @default(PENDING)
+  creditsCost  Int              @default(0)
+  outputUrl    String?
+  sourceUrl    String?
+  externalId   String?          @unique
+  errorMessage String?          @db.Text
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions CreditTransaction[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("generations")
+}
+
+model CreditPurchase {
+  id                String               @id @default(uuid())
+  userId            String
+  coins             Int
+  bonusCoins        Int                  @default(0)
+  amount            Decimal              @db.Decimal(10, 2)
+  currency          String               @default("GEL")
+  status            CreditPurchaseStatus @default(PENDING)
+  provider          String               @default("FLITT")
+  providerOrderId   String?              @unique
+  providerPaymentId String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions CreditTransaction[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("credit_purchases")
+}
+
 model Question {
   id          String    @id @default(uuid())
   content     String    @db.Text
@@ -199,9 +318,9 @@ model Question {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  user      User     @relation("UserQuestions", fields: [userId], references: [id], onDelete: Cascade)
-  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  answers   Answer[]
+  user    User     @relation("UserQuestions", fields: [userId], references: [id], onDelete: Cascade)
+  lesson  Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  answers Answer[]
 
   @@index([lessonId])
   @@index([userId])
@@ -240,16 +359,16 @@ model AdminNotification {
 }
 
 model UserNotification {
-  id        String   @id @default(uuid())
-  userId    String
-  type      String   @default("NEW_ANSWER")
-  title     String
-  message   String
-  linkUrl   String?
+  id         String   @id @default(uuid())
+  userId     String
+  type       String   @default("NEW_ANSWER")
+  title      String
+  message    String
+  linkUrl    String?
   questionId String?
-  answerId  String?
-  isRead    Boolean  @default(false)
-  createdAt DateTime @default(now())
+  answerId   String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -257,4 +376,19 @@ model UserNotification {
   @@index([questionId])
   @@index([answerId])
   @@map("user_notifications")
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  title     String   @default("უსათაურო")
+  userId    String
+  thumbnail String?
+  nodes     Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("projects")
 }

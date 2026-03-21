@@ -33,7 +33,7 @@ export class ApiError extends Error {
 
   constructor(
     statusCode: number,
-    userMessage = getApiErrorMessage(statusCode),
+    userMessage: string = getApiErrorMessage(statusCode),
     fieldErrors?: ApiFieldErrors
   ) {
     super(userMessage);
@@ -60,11 +60,12 @@ export function getSafeZodFieldErrors(error: z.ZodError): ApiFieldErrors {
 
 export function createApiErrorResponse(
   statusCode: number,
-  fieldErrors?: ApiFieldErrors
+  fieldErrors?: ApiFieldErrors,
+  userMessage?: string
 ) {
   return NextResponse.json(
     {
-      error: getApiErrorMessage(statusCode),
+      error: userMessage ?? getApiErrorMessage(statusCode),
       ...(fieldErrors ? { fieldErrors } : {}),
     },
     { status: statusCode }
@@ -115,7 +116,11 @@ export function handleApiError(error: unknown, context?: string) {
   console.error(context ?? "[API] Request failed", error);
 
   if (error instanceof ApiError) {
-    return createApiErrorResponse(error.statusCode, error.fieldErrors);
+    return createApiErrorResponse(
+      error.statusCode,
+      error.fieldErrors,
+      error.userMessage
+    );
   }
 
   if (error instanceof z.ZodError) {

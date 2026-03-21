@@ -1,11 +1,22 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Upload, X, Film, Loader2, RotateCcw } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import {
+  Upload,
+  X,
+  Film,
+  Loader2,
+  RotateCcw,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+type VideoStatus = "uploading" | "processing" | "ready" | "failed" | "idle";
 
 type VideoUploaderProps = {
   onUploadComplete: (videoId: string) => void;
+  onProcessingChange?: (processing: boolean) => void;
   existingVideoId?: string | null;
 };
 
@@ -19,6 +30,7 @@ function formatBytes(bytes: number): string {
 
 export function VideoUploader({
   onUploadComplete,
+  onProcessingChange,
   existingVideoId,
 }: VideoUploaderProps) {
   const [uploading, setUploading] = useState(false);
@@ -31,17 +43,100 @@ export function VideoUploader({
   );
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [lastFile, setLastFile] = useState<File | null>(null);
+  const [videoStatus, setVideoStatus] = useState<VideoStatus>(
+    existingVideoId ? "ready" : "idle"
+  );
+  const [encodeProgress, setEncodeProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poll for video processing status
+  useEffect(() => {
+    if (!videoId || videoStatus !== "processing") {
+      return;
+    }
+
+    onProcessingChange?.(true);
+
+    async function checkStatus() {
+      try {
+        const res = await fetch(`/api/admin/video-status/${videoId}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        setEncodeProgress(data.encodeProgress ?? 0);
+
+        if (data.status === "ready") {
+          setVideoStatus("ready");
+          onProcessingChange?.(false);
+          onUploadComplete(videoId!);
+        } else if (data.status === "failed") {
+          setVideoStatus("failed");
+          onProcessingChange?.(false);
+          setError("ვიდეოს დამუშავება ვერ მოხერხდა");
+        }
+      } catch {
+        // Ignore poll errors, retry on next interval
+      }
+    }
+
+    checkStatus();
+    pollIntervalRef.current = setInterval(checkStatus, 5000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      onProcessingChange?.(false);
+    };
+  }, [videoId, videoStatus, onProcessingChange, onUploadComplete]);
+
+  // Check status on mount for existing videos that might still be processing
+  useEffect(() => {
+    if (!existingVideoId || videoStatus !== "ready") return;
+
+    let cancelled = false;
+
+    async function checkExisting() {
+      try {
+        const res = await fetch(
+          `/api/admin/video-status/${existingVideoId}`
+        );
+        if (!res.ok || cancelled) return;
+
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (data.status === "processing") {
+          setVideoStatus("processing");
+        } else if (data.status === "failed") {
+          setVideoStatus("failed");
+          setError("ვიდეოს დამუშავება ვერ მოხერხდა");
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
+    checkExisting();
+
+    return () => {
+      cancelled = true;
+    };
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function uploadFile(file: File) {
     setError(null);
     setUploading(true);
+    setVideoStatus("uploading");
     setProgress(0);
     setBytesUploaded(0);
     setBytesTotal(file.size);
 
     try {
-      // 1. Create video on Bunny, get upload URL
       const createRes = await fetch("/api/admin/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,6 +148,7 @@ export function VideoUploader({
       if (!createRes.ok) {
         setError(createData.error ?? "ვიდეოს შექმნა ვერ მოხერხდა");
         setUploading(false);
+        setVideoStatus("idle");
         return;
       }
 
@@ -63,7 +159,6 @@ export function VideoUploader({
         thumbnailUrl: thumb,
       } = createData;
 
-      // 2. Upload using TUS protocol via dynamic import
       const { Upload: TusUpload } = await import("tus-js-client");
 
       const upload = new TusUpload(file, {
@@ -85,11 +180,13 @@ export function VideoUploader({
           setThumbnailUrl(thumb ?? null);
           setUploading(false);
           setLastFile(null);
-          onUploadComplete(newVideoId);
+          // Don't call onUploadComplete yet — start polling for processing
+          setVideoStatus("processing");
         },
         onError() {
           setError("ვიდეოს ატვირთვა ვერ მოხერხდა");
           setUploading(false);
+          setVideoStatus("idle");
         },
       });
 
@@ -97,6 +194,7 @@ export function VideoUploader({
     } catch {
       setError("ვიდეოს ატვირთვა ვერ მოხერხდა");
       setUploading(false);
+      setVideoStatus("idle");
     }
   }
 
@@ -132,16 +230,75 @@ export function VideoUploader({
     setBytesTotal(0);
     setError(null);
     setLastFile(null);
+    setVideoStatus("idle");
+    setEncodeProgress(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }
 
-  // Completed state — show thumbnail + video ID
-  if (videoId && !uploading) {
+  // Processing state
+  if (videoId && videoStatus === "processing") {
     return (
       <div className="overflow-hidden rounded-xl border border-brand-border">
-        {/* Thumbnail preview */}
+        <div className="flex flex-col items-center gap-3 bg-brand-primary-light/50 p-6">
+          <div className="flex size-12 items-center justify-center rounded-full bg-brand-primary/10">
+            <Loader2 className="size-6 animate-spin text-brand-primary" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium text-brand-primary">
+              ვიდეო მუშავდება... გთხოვთ მოიცადოთ
+            </p>
+            {encodeProgress > 0 && (
+              <p className="mt-1 text-xs text-brand-muted">
+                პროგრესი: {encodeProgress}%
+              </p>
+            )}
+          </div>
+          <div className="h-1.5 w-full max-w-48 overflow-hidden rounded-full bg-brand-border">
+            <div className="h-full animate-pulse rounded-full bg-brand-primary" />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 border-t border-brand-border bg-brand-surface p-3">
+          <Film className="size-5 shrink-0 text-brand-muted" />
+          <p className="min-w-0 flex-1 truncate text-xs text-brand-muted">
+            {videoId}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Failed state
+  if (videoId && videoStatus === "failed") {
+    return (
+      <div className="overflow-hidden rounded-xl border border-brand-danger/20">
+        <div className="flex flex-col items-center gap-3 bg-brand-danger/5 p-6">
+          <div className="flex size-12 items-center justify-center rounded-full bg-brand-danger/10">
+            <AlertTriangle className="size-6 text-brand-danger" />
+          </div>
+          <p className="text-sm font-medium text-brand-danger">
+            ვიდეოს დამუშავება ვერ მოხერხდა
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleClear}
+            className="rounded-xl gap-2 border-brand-danger/20 text-brand-danger hover:bg-brand-danger/10"
+          >
+            <RotateCcw className="size-3.5" />
+            ხელახლა ატვირთვა
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Completed/ready state
+  if (videoId && !uploading && videoStatus === "ready") {
+    return (
+      <div className="overflow-hidden rounded-xl border border-brand-border">
         {thumbnailUrl && (
           <div className="relative aspect-video w-full bg-black/5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -150,17 +307,16 @@ export function VideoUploader({
               alt="ვიდეოს გადახედვა"
               className="size-full object-contain"
               onError={(e) => {
-                // Bunny may not have generated the thumbnail yet
                 e.currentTarget.style.display = "none";
               }}
             />
           </div>
         )}
         <div className="flex items-center gap-3 bg-brand-primary-light p-3">
-          <Film className="size-5 shrink-0 text-brand-primary" />
+          <CheckCircle2 className="size-5 shrink-0 text-green-600" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-brand-secondary">
-              ვიდეო ატვირთულია
+              ვიდეო მზადაა!
             </p>
             <p className="truncate text-xs text-brand-muted">{videoId}</p>
           </div>

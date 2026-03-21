@@ -142,7 +142,7 @@ export function QAImageUploader({
       </div>
 
       <p className="text-xs text-brand-muted">
-        სურვილის შემთხვევაში დაურთე screenshot ან ფოტო. მაქსიმუმ {maxImages} სურათი, თითოეული 5MB-მდე.
+        სურვილის შემთხვევაში დაურთე screenshot ან ფოტო. მაქსიმუმ {maxImages} სურათი, თითოეული 10MB-მდე.
       </p>
 
       {uploadError || error ? (

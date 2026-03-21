@@ -7,6 +7,7 @@ import { navItems } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { AIToolsNavDropdown } from "@/components/layout/AIToolsNavDropdown";
 import { NavbarAccountMenu } from "@/components/layout/NavbarAccountMenu";
 import { PublicNavLink } from "@/components/layout/PublicNavLink";
 import { MobileNavToggle } from "@/components/layout/MobileNavToggle";
@@ -24,7 +25,7 @@ function getInitials(name: string | null | undefined, email: string): string {
 }
 
 const desktopNavLinkClass = cn(
-  "font-nav group relative inline-flex items-center py-2 text-sm font-medium text-brand-muted transition-colors duration-200",
+  "font-nav inline-flex items-center py-2 text-sm font-medium text-brand-muted transition-colors duration-200",
   "hover:text-brand-secondary focus-visible:text-brand-secondary focus-visible:outline-none"
 );
 
@@ -74,17 +75,17 @@ export async function Navbar() {
         <div className="flex items-center gap-3 md:gap-6">
           <div className="hidden items-center gap-6 md:flex" aria-label="მთავარი ნავიგაცია">
             {navItems.map((item) => (
-              <PublicNavLink
-                key={item.href}
-                href={item.href}
-                className={desktopNavLinkClass}
-              >
-                {item.label}
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-px origin-right scale-x-0 bg-brand-primary transition-transform duration-200 group-hover:origin-left group-hover:scale-x-100 group-focus-visible:origin-left group-focus-visible:scale-x-100"
-                />
-              </PublicNavLink>
+              item.href === "/ai-tools" ? (
+                <AIToolsNavDropdown key={item.href} className={desktopNavLinkClass} />
+              ) : (
+                <PublicNavLink
+                  key={item.href}
+                  href={item.href}
+                  className={desktopNavLinkClass}
+                >
+                  {item.label}
+                </PublicNavLink>
+              )
             ))}
           </div>
 

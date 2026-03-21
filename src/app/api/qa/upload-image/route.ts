@@ -8,20 +8,30 @@ import {
 import { requireAuth } from "@/lib/auth";
 import { createStorageClient, ensureBucket } from "@/lib/supabase/storage";
 
-const ALLOWED_TYPES = new Set([
+const ALLOWED_IMAGE_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/avif",
 ]);
 
-const MAX_SIZE = 5 * 1024 * 1024;
+const ALLOWED_VIDEO_TYPES = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+]);
+
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 
 const EXT_MAP: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
   "image/avif": "avif",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
 };
 
 export async function POST(request: NextRequest) {
@@ -41,15 +51,21 @@ export async function POST(request: NextRequest) {
       return validationErrorResponse({ file: "ფაილი არ არის არჩეული" });
     }
 
-    if (!ALLOWED_TYPES.has(file.type)) {
+    const isImage = ALLOWED_IMAGE_TYPES.has(file.type);
+    const isVideo = ALLOWED_VIDEO_TYPES.has(file.type);
+
+    if (!isImage && !isVideo) {
       return validationErrorResponse({
-        file: "მხოლოდ JPEG, PNG, WebP და AVIF ფორმატებია ნებადართული",
+        file: "მხოლოდ JPEG, PNG, WebP, AVIF, MP4, WebM და MOV ფორმატებია ნებადართული",
       });
     }
 
-    if (file.size > MAX_SIZE) {
+    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+    if (file.size > maxSize) {
       return validationErrorResponse({
-        file: "ფაილის ზომა არ უნდა აღემატებოდეს 5MB-ს",
+        file: isVideo
+          ? "ვიდეოს ზომა არ უნდა აღემატებოდეს 50MB-ს"
+          : "სურათის ზომა არ უნდა აღემატებოდეს 10MB-ს",
       });
     }
 

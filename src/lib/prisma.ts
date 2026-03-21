@@ -41,6 +41,34 @@ function getFieldNames(model: unknown) {
   return [];
 }
 
+function getEnumValues(enumDef: unknown) {
+  const values = (enumDef as
+    | { values?: Array<{ name?: string } | string> | Record<string, unknown> }
+    | undefined)?.values;
+
+  if (Array.isArray(values)) {
+    return values
+      .map((value) =>
+        typeof value === "string"
+          ? value
+          : typeof value?.name === "string"
+            ? value.name
+            : null
+      )
+      .filter((value): value is string => Boolean(value));
+  }
+
+  if (values && typeof values === "object") {
+    return Object.keys(values);
+  }
+
+  if (enumDef && typeof enumDef === "object") {
+    return Object.keys(enumDef as Record<string, unknown>);
+  }
+
+  return [];
+}
+
 function hasExpectedModelFields(client: PrismaClient) {
   const models = (client as PrismaClient & {
     _runtimeDataModel?: {
@@ -52,6 +80,10 @@ function hasExpectedModelFields(client: PrismaClient) {
   const answerFields = getFieldNames(models?.Answer);
   const lessonFields = getFieldNames(models?.Lesson);
   const lessonAttachmentFields = getFieldNames(models?.LessonAttachment);
+  const creditBalanceFields = getFieldNames(models?.CreditBalance);
+  const creditTransactionFields = getFieldNames(models?.CreditTransaction);
+  const generationFields = getFieldNames(models?.Generation);
+  const creditPurchaseFields = getFieldNames(models?.CreditPurchase);
 
   return (
     questionFields.includes("imageUrl") &&
@@ -61,7 +93,26 @@ function hasExpectedModelFields(client: PrismaClient) {
     answerFields.includes("imageUrls") &&
     lessonFields.includes("attachments") &&
     lessonAttachmentFields.includes("fileUrl") &&
-    lessonAttachmentFields.includes("lessonId")
+    lessonAttachmentFields.includes("lessonId") &&
+    creditBalanceFields.includes("balance") &&
+    creditTransactionFields.includes("amount") &&
+    generationFields.includes("modelId") &&
+    creditPurchaseFields.includes("coins")
+  );
+}
+
+function hasExpectedEnums(client: PrismaClient) {
+  const enums = (client as PrismaClient & {
+    _runtimeDataModel?: {
+      enums?: Record<string, unknown>;
+    };
+  })._runtimeDataModel?.enums;
+
+  const creditTransactionTypeValues = getEnumValues(enums?.CreditTransactionType);
+
+  return (
+    creditTransactionTypeValues.includes("ADMIN_GRANT") &&
+    creditTransactionTypeValues.includes("ADMIN_DEDUCT")
   );
 }
 
@@ -107,7 +158,18 @@ function hasExpectedDelegates(client: PrismaClient) {
     typeof client.adminNotification !== "undefined" &&
     "userNotification" in client &&
     typeof client.userNotification !== "undefined" &&
-    hasExpectedModelFields(client)
+    "creditBalance" in client &&
+    typeof client.creditBalance !== "undefined" &&
+    "creditTransaction" in client &&
+    typeof client.creditTransaction !== "undefined" &&
+    "generation" in client &&
+    typeof client.generation !== "undefined" &&
+    "creditPurchase" in client &&
+    typeof client.creditPurchase !== "undefined" &&
+    "project" in client &&
+    typeof client.project !== "undefined" &&
+    hasExpectedModelFields(client) &&
+    hasExpectedEnums(client)
   );
 }
 

@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "CreditTransactionType" ADD VALUE IF NOT EXISTS 'ADMIN_GRANT';
+ALTER TYPE "CreditTransactionType" ADD VALUE IF NOT EXISTS 'ADMIN_DEDUCT';

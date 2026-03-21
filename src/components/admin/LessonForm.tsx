@@ -57,6 +57,7 @@ export function LessonForm({
   const [isFree, setIsFree] = useState(lesson?.isFree ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [videoProcessing, setVideoProcessing] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -154,6 +155,7 @@ export function LessonForm({
         <div className="space-y-4">
           <VideoUploader
             onUploadComplete={(videoId) => setBunnyVideoId(videoId)}
+            onProcessingChange={setVideoProcessing}
             existingVideoId={bunnyVideoId || null}
           />
           <div className="space-y-2">
@@ -214,14 +216,20 @@ export function LessonForm({
           type="submit"
           size="sm"
           className="rounded-xl gap-2"
-          disabled={saving}
+          disabled={saving || videoProcessing}
         >
           {saving ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : videoProcessing ? (
             <Loader2 className="size-3.5 animate-spin" />
           ) : (
             <Save className="size-3.5" />
           )}
-          {isEditing ? "შენახვა" : "დამატება"}
+          {videoProcessing
+            ? "ვიდეო მუშავდება..."
+            : isEditing
+              ? "შენახვა"
+              : "დამატება"}
         </Button>
         <Button
           type="button"

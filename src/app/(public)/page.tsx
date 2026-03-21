@@ -1,5 +1,6 @@
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeaturedCourses } from "@/components/landing/FeaturedCourses";
+import { AIToolsSection } from "@/components/landing/AIToolsSection";
 import { WhyUs } from "@/components/landing/WhyUs";
 import { FAQSection } from "@/components/landing/FAQSection";
 import { CTASection } from "@/components/landing/CTASection";
@@ -16,6 +17,7 @@ export default async function HomePage() {
     <>
       <HeroSection isAuthenticated={!!user} />
       <FeaturedCourses />
+      <AIToolsSection />
       <WhyUs />
       <FAQSection />
       <CTASection />
