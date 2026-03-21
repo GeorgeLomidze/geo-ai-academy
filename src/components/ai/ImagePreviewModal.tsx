@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import { useEffect, useState } from "react";
 import { X, Copy, Download, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AIHistoryItem } from "@/components/ai/types";
@@ -33,7 +34,6 @@ interface ImagePreviewModalProps {
   item: AIHistoryItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCopyPrompt: (prompt: string | null) => void;
   onDownload: (item: AIHistoryItem) => void;
   onAddReference: (item: AIHistoryItem) => void;
   onDelete: (item: AIHistoryItem) => void;
@@ -43,11 +43,36 @@ export function ImagePreviewModal({
   item,
   open,
   onOpenChange,
-  onCopyPrompt,
   onDownload,
   onAddReference,
   onDelete,
 }: ImagePreviewModalProps) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCopied(false);
+    }, 1800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [copied]);
+
+  async function handleCopyPrompt() {
+    if (!item?.prompt) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(item.prompt);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
 
   if (!open || !item) return null;
 
@@ -103,15 +128,22 @@ export function ImagePreviewModal({
             <div className="mt-6">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs font-medium text-brand-muted">პრომპტი</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 rounded-full border-brand-border px-3 text-xs"
-                  onClick={() => onCopyPrompt(item.prompt)}
-                >
-                  <Copy className="size-3.5" />
-                  კოპირება
-                </Button>
+                <div className="flex items-center gap-3">
+                  {copied ? (
+                    <span className="text-xs font-medium text-emerald-400">
+                      დაკოპირდა
+                    </span>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-full border-brand-border px-3 text-xs"
+                    onClick={() => void handleCopyPrompt()}
+                  >
+                    <Copy className="size-3.5" />
+                    კოპირება
+                  </Button>
+                </div>
               </div>
               <p className="text-pretty text-sm leading-relaxed text-brand-secondary">
                 {getPromptPreview(item.prompt)}

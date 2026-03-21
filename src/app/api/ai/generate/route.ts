@@ -132,6 +132,13 @@ function getKieErrorMessage(error: KieApiError) {
   return `გენერაციის დაწყება ვერ მოხერხდა. კრედიტები დაგიბრუნდათ${debugSuffix}`;
 }
 
+function isRetryablePrismaTransactionError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2034"
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
@@ -213,40 +220,60 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, "კრედიტები არ არის საკმარისი");
     }
 
-    const generation = await prisma.$transaction(
-      async (tx) => {
-        const createdGeneration = await tx.generation.create({
-          data: {
-            userId: auth.userId,
-            type,
-            modelId: effectiveModel,
-            prompt: normalizedPrompt || null,
-            status: "PENDING",
-            creditsCost: coinsCost,
-            sourceUrl: primaryImageUrl ?? videoUrl ?? null,
-          },
-          select: {
-            id: true,
-            type: true,
-            creditsCost: true,
-          },
-        });
+    let generation: {
+      id: string;
+      type: "IMAGE" | "VIDEO";
+      creditsCost: number;
+    };
 
-        await deductCreditsWithClient(
-          tx,
-          auth.userId,
-          coinsCost,
-          `${modelMetadata.name} გენერაცია`,
-          effectiveModel,
-          createdGeneration.id
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        generation = await prisma.$transaction(
+          async (tx) => {
+            const createdGeneration = await tx.generation.create({
+              data: {
+                userId: auth.userId,
+                type,
+                modelId: effectiveModel,
+                prompt: normalizedPrompt || null,
+                status: "PENDING",
+                creditsCost: coinsCost,
+                sourceUrl: primaryImageUrl ?? videoUrl ?? null,
+              },
+              select: {
+                id: true,
+                type: true,
+                creditsCost: true,
+              },
+            });
+
+            await deductCreditsWithClient(
+              tx,
+              auth.userId,
+              coinsCost,
+              `${modelMetadata.name} გენერაცია`,
+              effectiveModel,
+              createdGeneration.id
+            );
+
+            return createdGeneration;
+          },
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          }
         );
 
-        return createdGeneration;
-      },
-      {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        break;
+      } catch (error) {
+        if (attempt === 2 || !isRetryablePrismaTransactionError(error)) {
+          throw error;
+        }
       }
-    );
+    }
+
+    if (!generation!) {
+      throw new ApiError(500, "გენერაციის დაწყება ვერ მოხერხდა");
+    }
 
     try {
       const callbackUrl = buildKieCallbackUrl();

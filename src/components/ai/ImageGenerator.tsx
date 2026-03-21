@@ -153,6 +153,7 @@ export function ImageGenerator({
   const qualityOptions = QUALITY_OPTIONS[selectedModel] ?? DEFAULT_QUALITY_OPTIONS;
   const aspectRatioOptions = ASPECT_RATIO_OPTIONS[selectedModel] ?? DEFAULT_ASPECT_RATIOS;
   const selectedCoinCost = getModelPrice(selectedModel, quality) ?? selectedModelMeta.coins;
+  const totalCoinCost = selectedCoinCost * imageCount;
   const primaryImageUrl = imageUrls[0] ?? null;
   const pendingGenerations = generations.filter(
     (item) =>
@@ -226,52 +227,28 @@ export function ImageGenerator({
     return () => window.clearInterval(intervalId);
   }, [pendingGenerations]);
 
-  async function handleGenerate() {
-    if (!prompt.trim()) {
-      setError("პრომპტი აუცილებელია");
-      return;
-    }
-
-    setGenerating(true);
-    setError(null);
-    const temporaryId = createTemporaryGenerationId();
-
+  async function requestImageGeneration(input: {
+    temporaryId: string;
+    model: string;
+    promptValue: string;
+    aspectRatioValue: string;
+    qualityValue: string;
+    primaryImageUrlValue: string | null;
+  }) {
     try {
-      const model = resolveImageModel(selectedModel, Boolean(primaryImageUrl));
-      const generationCoinCost = getModelPrice(model, quality) ?? selectedCoinCost;
-      const startedAt = new Date().toISOString();
-
-      setGenerations((current) => [
-        {
-          id: temporaryId,
-          modelId: selectedModel,
-          modelName: selectedModelMeta.name,
-          prompt,
-          aspectRatio,
-          status: "PROCESSING",
-          outputUrl: null,
-          errorMessage: null,
-          creditsUsed: generationCoinCost,
-          createdAt: startedAt,
-          sourceUrl: primaryImageUrl,
-        },
-        ...current,
-      ]);
-
       const response = await fetch("/api/ai/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model,
+          model: input.model,
           type: "IMAGE",
-          prompt,
-          imageUrl: primaryImageUrl ?? undefined,
+          prompt: input.promptValue,
+          imageUrl: input.primaryImageUrlValue ?? undefined,
           options: {
-            aspectRatio,
-            quality,
-            imageCount,
+            aspectRatio: input.aspectRatioValue,
+            quality: input.qualityValue,
           },
         }),
       });
@@ -285,7 +262,7 @@ export function ImageGenerator({
       if (!response.ok || !data.generationId) {
         setGenerations((current) =>
           current.map((entry) =>
-            entry.id === temporaryId
+            entry.id === input.temporaryId
               ? {
                   ...entry,
                   status: "FAILED",
@@ -294,26 +271,26 @@ export function ImageGenerator({
               : entry
           )
         );
-        return;
+        return false;
       }
 
-      setBalance((current) => current - generationCoinCost);
-      setGenerations((current) => [
-        ...current.map((entry) =>
-          entry.id === temporaryId
+      setGenerations((current) =>
+        current.map((entry) =>
+          entry.id === input.temporaryId
             ? {
                 ...entry,
                 id: data.generationId!,
                 status: data.status ?? "PROCESSING",
               }
             : entry
-        ),
-      ]);
-      setPrompt("");
+        )
+      );
+
+      return true;
     } catch {
       setGenerations((current) =>
         current.map((entry) =>
-          entry.id === temporaryId
+          entry.id === input.temporaryId
             ? {
                 ...entry,
                 status: "FAILED",
@@ -322,17 +299,74 @@ export function ImageGenerator({
             : entry
         )
       );
-    } finally {
-      setGenerating(false);
+      return false;
     }
   }
 
-  function handleCopyPrompt(value: string | null) {
-    if (!value) {
+  async function handleGenerate() {
+    const promptValue = prompt.trim();
+
+    if (!promptValue) {
+      setError("პრომპტი აუცილებელია");
       return;
     }
 
-    void navigator.clipboard.writeText(value);
+    setGenerating(true);
+    setError(null);
+    const temporaryId = createTemporaryGenerationId();
+
+    try {
+      const model = resolveImageModel(selectedModel, Boolean(primaryImageUrl));
+      const generationCoinCost = getModelPrice(model, quality) ?? selectedCoinCost;
+      const tempItems = Array.from({ length: imageCount }, (_, index) => ({
+        id: index === 0 ? temporaryId : createTemporaryGenerationId(),
+        modelId: selectedModel,
+        modelName: selectedModelMeta.name,
+        prompt: promptValue,
+        aspectRatio,
+        status: "PROCESSING" as const,
+        outputUrl: null,
+        errorMessage: null,
+        creditsUsed: generationCoinCost,
+        createdAt: new Date(Date.now() + index).toISOString(),
+        sourceUrl: primaryImageUrl,
+      }));
+
+      setGenerations((current) => [...tempItems, ...current]);
+
+      const results: boolean[] = [];
+
+      for (const item of tempItems) {
+        results.push(
+          await requestImageGeneration({
+            temporaryId: item.id,
+            model,
+            promptValue,
+            aspectRatioValue: aspectRatio,
+            qualityValue: quality,
+            primaryImageUrlValue: primaryImageUrl,
+          })
+        );
+      }
+
+      const successfulGenerations = results.filter(Boolean).length;
+      const failedGenerations = results.length - successfulGenerations;
+
+      if (successfulGenerations > 0) {
+        setBalance((current) => current - generationCoinCost * successfulGenerations);
+        setPrompt("");
+      }
+
+      if (failedGenerations > 0) {
+        setError(
+          failedGenerations === results.length
+            ? "გენერაცია ვერ შესრულდა"
+            : `${failedGenerations} სურათის გენერაცია ვერ შესრულდა`
+        );
+      }
+    } finally {
+      setGenerating(false);
+    }
   }
 
   function handleDownload(item: AIHistoryItem) {
@@ -429,7 +463,7 @@ export function ImageGenerator({
         onImageCountChange={setImageCount}
         imageUrls={imageUrls}
         onImageUrlsChange={setImageUrls}
-        coinCost={selectedCoinCost}
+        coinCost={totalCoinCost}
         canGenerate={
           prompt.trim().length > 0 && !generating
         }
@@ -440,6 +474,7 @@ export function ImageGenerator({
       />
 
       <ImagePreviewModal
+        key={previewItem?.id ?? "image-preview-closed"}
         item={previewItem}
         open={previewItem !== null}
         onOpenChange={(open) => {
@@ -447,7 +482,6 @@ export function ImageGenerator({
             setPreviewItem(null);
           }
         }}
-        onCopyPrompt={handleCopyPrompt}
         onDownload={handleDownload}
         onAddReference={handleAddReference}
         onDelete={(item) => void handleDelete(item)}

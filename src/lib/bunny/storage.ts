@@ -1,4 +1,5 @@
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+let hasLoggedUnauthorizedBunnyWarning = false;
 
 function getStorageConfig() {
   const apiKey = process.env.BUNNY_STORAGE_API_KEY;
@@ -108,6 +109,18 @@ export async function persistToBunnyStorage(
     const path = getStoragePath(type, userId, generationId);
     return await uploadToStorage(buffer, path);
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message.includes("Bunny Storage ატვირთვის შეცდომა (401)")) {
+      if (!hasLoggedUnauthorizedBunnyWarning) {
+        hasLoggedUnauthorizedBunnyWarning = true;
+        console.warn(
+          "[BunnyStorage] ავტორიზაცია ვერ მოხერხდა. გადაამოწმე `BUNNY_STORAGE_API_KEY`, `BUNNY_STORAGE_ZONE` და `BUNNY_STORAGE_HOSTNAME`."
+        );
+      }
+      return null;
+    }
+
     console.error("[BunnyStorage] ატვირთვა ვერ მოხერხდა:", error);
     return null;
   }
