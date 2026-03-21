@@ -6,6 +6,7 @@ import { ImageGrid } from "@/components/ai/ImageGrid";
 import { ImagePreviewModal } from "@/components/ai/ImagePreviewModal";
 import { PromptBar } from "@/components/ai/PromptBar";
 import { AIHistoryItem } from "@/components/ai/types";
+import { getModelPrice } from "@/lib/credits/pricing";
 
 const MODEL_OPTIONS = [
   {
@@ -151,6 +152,7 @@ export function ImageGenerator({
     MODEL_OPTIONS.find((item) => item.id === selectedModel) ?? MODEL_OPTIONS[0];
   const qualityOptions = QUALITY_OPTIONS[selectedModel] ?? DEFAULT_QUALITY_OPTIONS;
   const aspectRatioOptions = ASPECT_RATIO_OPTIONS[selectedModel] ?? DEFAULT_ASPECT_RATIOS;
+  const selectedCoinCost = getModelPrice(selectedModel, quality) ?? selectedModelMeta.coins;
   const primaryImageUrl = imageUrls[0] ?? null;
   const pendingGenerations = generations.filter(
     (item) =>
@@ -236,6 +238,7 @@ export function ImageGenerator({
 
     try {
       const model = resolveImageModel(selectedModel, Boolean(primaryImageUrl));
+      const generationCoinCost = getModelPrice(model, quality) ?? selectedCoinCost;
       const startedAt = new Date().toISOString();
 
       setGenerations((current) => [
@@ -248,7 +251,7 @@ export function ImageGenerator({
           status: "PROCESSING",
           outputUrl: null,
           errorMessage: null,
-          creditsUsed: selectedModelMeta.coins,
+          creditsUsed: generationCoinCost,
           createdAt: startedAt,
           sourceUrl: primaryImageUrl,
         },
@@ -294,7 +297,7 @@ export function ImageGenerator({
         return;
       }
 
-      setBalance((current) => current - selectedModelMeta.coins);
+      setBalance((current) => current - generationCoinCost);
       setGenerations((current) => [
         ...current.map((entry) =>
           entry.id === temporaryId
@@ -426,7 +429,7 @@ export function ImageGenerator({
         onImageCountChange={setImageCount}
         imageUrls={imageUrls}
         onImageUrlsChange={setImageUrls}
-        coinCost={selectedModelMeta.coins}
+        coinCost={selectedCoinCost}
         canGenerate={
           prompt.trim().length > 0 && !generating
         }

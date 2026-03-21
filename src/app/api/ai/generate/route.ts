@@ -198,7 +198,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolution + duration aware pricing for video models
-    const resolution = typeof options?.resolution === "string" ? options.resolution : undefined;
+    const resolution =
+      typeof options?.resolution === "string"
+        ? options.resolution
+        : typeof options?.quality === "string"
+          ? options.quality
+          : undefined;
     const durationStr = typeof options?.duration === "string" ? options.duration : undefined;
     const durationSec = durationStr ? Number.parseInt(durationStr, 10) : undefined;
     const coinsCost = getModelPrice(effectiveModel, resolution, durationSec) ?? modelMetadata.coins;

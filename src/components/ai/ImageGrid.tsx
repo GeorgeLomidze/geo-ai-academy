@@ -125,7 +125,7 @@ export function ImageGrid({
     );
   }
 
-  const safeContainerWidth = Math.max(containerWidth, 320);
+  const safeContainerWidth = containerWidth > 0 ? containerWidth : 1200;
   const { columns, rowHeight } = getGridConfig(safeContainerWidth);
 
   return (
@@ -140,18 +140,11 @@ export function ImageGrid({
       {items.map((item) => {
         const isReady = item.status === "SUCCEEDED" && item.outputUrl;
         const isFailed = item.status === "FAILED" || item.status === "CANCELED";
-        const hasOutput = Boolean(item.outputUrl);
         const aspectRatio = toAspectRatioNumber(item.aspectRatio);
         const tileSpans = getTileSpans(aspectRatio, safeContainerWidth);
-        const columnSpan = hasOutput
-          ? tileSpans.columnSpan
-          : Math.min(tileSpans.columnSpan, Math.max(1, Math.ceil(columns / 5)));
-        const rowSpan = hasOutput
-          ? tileSpans.rowSpan
-          : Math.min(tileSpans.rowSpan, 8);
-        const width = columnSpan === tileSpans.columnSpan
-          ? tileSpans.width
-          : columnSpan * ((safeContainerWidth - 12 * Math.max(columns - 1, 0)) / columns) + 12 * (columnSpan - 1);
+        const columnSpan = tileSpans.columnSpan;
+        const rowSpan = tileSpans.rowSpan;
+        const width = tileSpans.width;
         const compactActions = width < 320;
 
         return (

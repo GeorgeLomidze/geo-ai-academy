@@ -3,6 +3,9 @@ export type ModelPricing = {
   coins: number;
   kieModel: string;
   type: "IMAGE" | "VIDEO";
+  qualityOptions?: string[];
+  defaultQuality?: string;
+  coinsByQuality?: Record<string, number>;
 };
 
 export type VideoModelConfig = {
@@ -50,36 +53,76 @@ export const IMAGE_MODELS = {
     coins: 12,
     kieModel: "nano-banana-2",
     type: "IMAGE",
+    qualityOptions: ["1K", "2K", "4K"],
+    defaultQuality: "4K",
+    coinsByQuality: {
+      "1K": 6,
+      "2K": 9,
+      "4K": 12,
+    },
   },
   nanobanana2_edit: {
     name: "Nano Banana 2 Edit",
     coins: 12,
     kieModel: "nano-banana-2",
     type: "IMAGE",
+    qualityOptions: ["1K", "2K", "4K"],
+    defaultQuality: "4K",
+    coinsByQuality: {
+      "1K": 6,
+      "2K": 9,
+      "4K": 12,
+    },
   },
   nanobananapro: {
     name: "Nano Banana Pro",
     coins: 36,
     kieModel: "nano-banana-pro",
     type: "IMAGE",
+    qualityOptions: ["1K", "2K", "4K"],
+    defaultQuality: "4K",
+    coinsByQuality: {
+      "1K": 18,
+      "2K": 27,
+      "4K": 36,
+    },
   },
   nanobananapro_edit: {
     name: "Nano Banana Pro Edit",
     coins: 36,
     kieModel: "nano-banana-pro",
     type: "IMAGE",
+    qualityOptions: ["1K", "2K", "4K"],
+    defaultQuality: "4K",
+    coinsByQuality: {
+      "1K": 18,
+      "2K": 27,
+      "4K": 36,
+    },
   },
   seedream5lite: {
     name: "Seedream 5 Lite",
     coins: 15,
     kieModel: "seedream/5-lite-text-to-image",
     type: "IMAGE",
+    qualityOptions: ["2K", "4K"],
+    defaultQuality: "4K",
+    coinsByQuality: {
+      "2K": 10,
+      "4K": 15,
+    },
   },
   seedream5lite_edit: {
     name: "Seedream 5 Lite Edit",
     coins: 15,
     kieModel: "seedream/5-lite-image-to-image",
     type: "IMAGE",
+    qualityOptions: ["2K", "4K"],
+    defaultQuality: "4K",
+    coinsByQuality: {
+      "2K": 10,
+      "4K": 15,
+    },
   },
   grok_t2i: {
     name: "Grok Imagine Image",
@@ -416,12 +459,26 @@ export const ALL_MODELS: Record<string, ModelPricing> = {
 
 export type SupportedModelId = keyof typeof IMAGE_MODELS | keyof typeof VIDEO_MODELS;
 
+export function getImageModelCoins(modelId: string, quality?: string): number | null {
+  const config = (IMAGE_MODELS as Record<string, ModelPricing>)[modelId];
+  if (!config) {
+    return null;
+  }
+
+  if (!config.coinsByQuality) {
+    return config.coins;
+  }
+
+  const resolvedQuality = quality ?? config.defaultQuality;
+  return config.coinsByQuality[resolvedQuality ?? ""] ?? config.coins;
+}
+
 export function getModelPrice(modelId: string, resolution?: string, durationSeconds?: number): number | null {
   // For video models, use resolution + duration aware pricing
   if (modelId in VIDEO_MODELS) {
     return getVideoModelCoins(modelId, resolution, durationSeconds);
   }
-  return (IMAGE_MODELS as Record<string, ModelPricing>)[modelId]?.coins ?? null;
+  return getImageModelCoins(modelId, resolution);
 }
 
 export function getModelMetadata(modelId: string): ModelPricing | null {
