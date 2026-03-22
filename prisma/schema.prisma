@@ -378,6 +378,15 @@ model UserNotification {
   @@map("user_notifications")
 }
 
+model EmailSignature {
+  id        String   @id @default(uuid())
+  html      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("email_signatures")
+}
+
 model Project {
   id        String   @id @default(uuid())
   title     String   @default("უსათაურო")

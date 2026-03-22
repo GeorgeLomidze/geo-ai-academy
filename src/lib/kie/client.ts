@@ -46,6 +46,13 @@ type KieCreateTaskData = {
   id?: string;
 };
 
+type VeoUpgradeTaskData = {
+  taskId?: string;
+  id?: string;
+  resultUrls?: string[] | null;
+  imageUrls?: string[] | null;
+};
+
 type KieTaskStatusData = {
   taskId?: string;
   state?: string;
@@ -796,6 +803,32 @@ export async function generateVideoFromImage(
       ...buildMediaInput(config.mediaInputKey ?? "image_urls", imageUrl),
     }
   );
+}
+
+export async function requestVeo4kVideo(taskId: string) {
+  const data = await requestKie<VeoUpgradeTaskData>(
+    "/veo/get-4k-video",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        taskId,
+        index: 0,
+      }),
+    }
+  );
+
+  const nextTaskId = extractTaskId(data.data);
+
+  if (!nextTaskId) {
+    throw new KieApiError("Kie.ai 4K upgrade response did not include a task id", {
+      details: data,
+    });
+  }
+
+  return {
+    taskId: nextTaskId,
+    raw: data,
+  };
 }
 
 function resolveStatusState(raw: KieTaskStatusData): { state: string; success: boolean; failed: boolean } {

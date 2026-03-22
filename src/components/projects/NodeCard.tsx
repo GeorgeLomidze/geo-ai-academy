@@ -45,6 +45,7 @@ interface NodeCardProps {
   y: number;
   width: number;
   height: number;
+  zoom: number;
   selected: boolean;
   processing?: boolean;
   hasOutput?: boolean;
@@ -65,6 +66,7 @@ export function NodeCard({
   y,
   width,
   height,
+  zoom,
   selected,
   processing,
   onMove,
@@ -241,6 +243,8 @@ export function NodeCard({
   }
 
   const showPlus = hovered || selected;
+  const promptBarScale = zoom > 0 ? 1 / zoom : 1;
+  const promptBarTop = 24 + height + 12;
 
   return (
     <div
@@ -356,9 +360,15 @@ export function NodeCard({
       {/* Prompt bar — rendered directly below the node, wider than frame */}
       {selected && promptBar && (
         <div
-          className="relative mt-3"
+          className="absolute z-20"
           data-prompt-bar=""
-          style={{ width: width + 60, left: -30 }}
+          style={{
+            width: width + 60,
+            left: -30,
+            top: promptBarTop,
+            transform: `scale(${promptBarScale})`,
+            transformOrigin: "top left",
+          }}
         >
           {promptBar}
         </div>

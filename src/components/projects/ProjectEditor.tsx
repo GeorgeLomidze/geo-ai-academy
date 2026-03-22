@@ -24,26 +24,39 @@ import { VideoNode } from "./nodes/VideoNode";
 import { AudioNode } from "./nodes/AudioNode";
 import { UploadNode } from "./nodes/UploadNode";
 import {
+  getImageModelCoins,
+  getModelMetadata,
   VIDEO_MODELS as VIDEO_MODELS_MAP,
   getVideoModelCoins,
 } from "@/lib/credits/pricing";
 import type { ProjectNode, ProjectNodeData, NodeType, NodeConnection } from "./types";
 
-// ── Image models (exact copy from ImageGenerator) ─────────
-const IMAGE_MODEL_LIST = [
-  { id: "nanobananapro", name: "Nano Banana Pro", coins: 36 },
-  { id: "nanobanana2", name: "Nano Banana 2", coins: 12 },
-  { id: "nanobanana", name: "Nano Banana", coins: 6 },
-  { id: "seedream5lite", name: "Seedream 5.0 Lite", coins: 15 },
-  { id: "grok_t2i", name: "Grok Imagine", coins: 9 },
-  { id: "openaiimage", name: "GPT Image", coins: 12 },
-  { id: "flux", name: "Flux", coins: 15 },
+const IMAGE_MODEL_ORDER = [
+  "nanobananapro",
+  "nanobanana2",
+  "nanobanana",
+  "seedream5lite",
+  "grok_t2i",
+  "openaiimage",
+  "flux",
 ] as const;
+
+// ── Image models (sourced from centralized pricing metadata) ─────────
+const IMAGE_MODEL_LIST = IMAGE_MODEL_ORDER.map((id) => {
+  const meta = getModelMetadata(id);
+  return {
+    id,
+    name: meta?.name ?? id,
+    coins: meta?.coins ?? 0,
+  };
+});
 
 // ── Video models (match visible models from VideoGenerator) ──
 const VISIBLE_VIDEO_MODEL_IDS = Object.entries(VIDEO_MODELS_MAP)
   .filter(([, cfg]) => !cfg.hidden)
   .map(([id]) => id);
+
+const ALL_VIDEO_MODEL_IDS = Object.keys(VIDEO_MODELS_MAP);
 
 const VIDEO_MODEL_ORDER = (() => {
   const ids = [...VISIBLE_VIDEO_MODEL_IDS];
@@ -58,7 +71,7 @@ const VIDEO_MODEL_ORDER = (() => {
   return ids;
 })();
 
-const VIDEO_MODEL_LIST = VIDEO_MODEL_ORDER.map((id) => {
+const VIDEO_MODEL_LIST = ALL_VIDEO_MODEL_IDS.map((id) => {
   const cfg = VIDEO_MODELS_MAP[id];
   return {
     id,
@@ -75,8 +88,23 @@ const VIDEO_MODEL_LIST = VIDEO_MODEL_ORDER.map((id) => {
     defaultAspectRatio: cfg.defaultAspectRatio,
     defaultDuration: cfg.defaultDuration,
     coinsPerSecondByResolution: cfg.coinsPerSecondByResolution,
+    supportsFirstLastFrames: cfg.supportsFirstLastFrames,
+    hidden: cfg.hidden,
+    variants: cfg.variants,
   };
 });
+
+const VISIBLE_VIDEO_MODEL_LIST = VIDEO_MODEL_ORDER
+  .map((id) => VIDEO_MODEL_LIST.find((item) => item.id === id))
+  .filter((item): item is (typeof VIDEO_MODEL_LIST)[number] => Boolean(item));
+
+function getPreferredVideoModelId(modelId: string) {
+  if (modelId === "veo31") {
+    return "veo31fast";
+  }
+
+  return modelId;
+}
 
 type UploadedProjectMedia = {
   fileName: string;
@@ -842,7 +870,7 @@ export function ProjectEditor({
         } else if (sourceIsVideo && !hasReferenceVideo) {
           role = "referenceVideo";
         }
-      } else if (selectedModelId === "kling3") {
+      } else if (selectedModel?.supportsFirstLastFrames) {
         if (!sourceIsImage) return;
         role = hasPrimary && !hasEndFrame ? "endFrame" : !hasPrimary ? "primary" : null;
       } else if (selectedModel?.inputMode === "image") {
@@ -925,9 +953,12 @@ export function ProjectEditor({
   // ── Generation ──
   function getNodeModelInfo(node: ProjectNode) {
     if (node.type === "VIDEO") {
-      const list = VIDEO_MODEL_LIST;
+      const list = VISIBLE_VIDEO_MODEL_LIST;
       const modelId = node.data.model ?? list[0].id;
-      const meta = list.find((m) => m.id === modelId) ?? list[0];
+      const meta =
+        VIDEO_MODEL_LIST.find((m) => m.id === modelId) ??
+        VIDEO_MODEL_LIST.find((m) => m.id === getPreferredVideoModelId(list[0].id)) ??
+        VIDEO_MODEL_LIST[0];
       // Dynamic pricing for video
       const resolution = node.data.resolution ?? meta.defaultResolution;
       const durationStr = node.data.duration ?? meta.defaultDuration;
@@ -938,7 +969,55 @@ export function ProjectEditor({
     const list = IMAGE_MODEL_LIST;
     const modelId = node.data.model ?? list[0].id;
     const meta = list.find((m) => m.id === modelId) ?? list[0];
-    return { list, modelId, meta };
+    const quality = node.data.quality;
+    const dynamicCoins = getImageModelCoins(modelId, quality) ?? meta.coins;
+    return { list, modelId, meta: { ...meta, coins: dynamicCoins } };
+  }
+
+  function handleVideoModelSelection(
+    node: ProjectNode,
+    nextModelId: string,
+    options?: { preferDefaultVariant?: boolean }
+  ) {
+    const resolvedModelId = options?.preferDefaultVariant
+      ? getPreferredVideoModelId(nextModelId)
+      : nextModelId;
+    const videoModel =
+      VIDEO_MODEL_LIST.find((item) => item.id === resolvedModelId) ??
+      VIDEO_MODEL_LIST[0];
+    const nextConnections = (node.data.connections ?? []).filter((connection) => {
+      if (connection.role === "referenceVideo") {
+        return videoModel.id === "kling3_motion";
+      }
+
+      if (connection.role === "endFrame") {
+        return Boolean(videoModel.supportsFirstLastFrames);
+      }
+
+      if (connection.role === "primary") {
+        return (
+          videoModel.id === "kling3_motion" ||
+          Boolean(videoModel.supportsFirstLastFrames) ||
+          videoModel.inputMode === "image" ||
+          videoModel.inputMode === "video"
+        );
+      }
+
+      return true;
+    });
+
+    handleNodeDataChange(node.id, {
+      model: resolvedModelId,
+      resolution: videoModel.defaultResolution || undefined,
+      duration: videoModel.defaultDuration || undefined,
+      audio: videoModel.supportsAudio ? node.data.audio : false,
+      multiShot: videoModel.supportsMultiShot ? node.data.multiShot : false,
+      connections: nextConnections.length > 0 ? nextConnections : undefined,
+      aspectRatio:
+        videoModel.aspectRatios.length > 0
+          ? (videoModel.defaultAspectRatio || videoModel.aspectRatios[0])
+          : node.data.aspectRatio,
+    });
   }
 
   async function handleGenerate(node: ProjectNode) {
@@ -1017,17 +1096,20 @@ export function ProjectEditor({
         return;
       }
 
+      const selectedVideoModel =
+        node.type === "VIDEO" ? VIDEO_MODEL_LIST.find((m) => m.id === modelId) : null;
+
       if (node.type === "VIDEO") {
-        const selectedVideoModel = VIDEO_MODEL_LIST.find((m) => m.id === modelId);
         const motionReady = modelId === "kling3_motion" && Boolean(imageUrl) && Boolean(videoUrl);
         const hasKlingFrames = modelId === "kling3" && Boolean(imageUrl || endFrameUrl);
+        const supportsFirstLastFrames = Boolean(selectedVideoModel?.supportsFirstLastFrames);
 
         if (!promptValue && !motionReady && !hasKlingFrames) {
           setError("პრომპტი აუცილებელია");
           return;
         }
 
-        if (selectedVideoModel?.inputMode === "image" && modelId !== "kling3" && !imageUrl) {
+        if (selectedVideoModel?.inputMode === "image" && !supportsFirstLastFrames && !imageUrl) {
           setError(
             modelId === "kling3_motion"
               ? "Kling 3.0 Motion-ს სჭირდება პერსონაჟის საწყისი სურათი"
@@ -1061,7 +1143,7 @@ export function ProjectEditor({
             startFrameNode?.type === "UPLOAD" &&
             !isKlingSupportedImageType(startFrameNode.data.fileType, startFrameNode.data.fileName)
           ) {
-            setError("Kling 3.0-ის ფრეიმები უნდა იყოს PNG ან JPG ფორმატში");
+            setError("Kling 3.0-ის კადრები უნდა იყოს PNG ან JPG ფორმატში");
             return;
           }
 
@@ -1069,7 +1151,7 @@ export function ProjectEditor({
             endFrameNode?.type === "UPLOAD" &&
             !isKlingSupportedImageType(endFrameNode.data.fileType, endFrameNode.data.fileName)
           ) {
-            setError("Kling 3.0-ის ფრეიმები უნდა იყოს PNG ან JPG ფორმატში");
+            setError("Kling 3.0-ის კადრები უნდა იყოს PNG ან JPG ფორმატში");
             return;
           }
 
@@ -1081,14 +1163,14 @@ export function ProjectEditor({
           const startFrame = framePairs[0];
 
           if (startFrame.width < 300 || startFrame.height < 300) {
-            setError("Kling 3.0-ის საწყისი ფრეიმი მინიმუმ 300x300 უნდა იყოს");
+            setError("Kling 3.0-ის საწყისი კადრი მინიმუმ 300x300 უნდა იყოს");
             return;
           }
 
           if (endFrameUrl) {
             const endFrame = framePairs[1];
             if (endFrame.width < 300 || endFrame.height < 300) {
-              setError("Kling 3.0-ის ბოლო ფრეიმი მინიმუმ 300x300 უნდა იყოს");
+              setError("Kling 3.0-ის ბოლო კადრი მინიმუმ 300x300 უნდა იყოს");
               return;
             }
 
@@ -1096,7 +1178,7 @@ export function ProjectEditor({
             const endRatio = endFrame.width / endFrame.height;
 
             if (Math.abs(startRatio - endRatio) > 0.03) {
-              setError("Kling 3.0-ის საწყისი და ბოლო ფრეიმები ერთნაირი პროპორციით უნდა იყოს");
+              setError("Kling 3.0-ის საწყისი და ბოლო კადრები ერთნაირი პროპორციით უნდა იყოს");
               return;
             }
           }
@@ -1114,8 +1196,10 @@ export function ProjectEditor({
           prompt: promptValue,
           options,
           ...(imageUrls.length > 0 ? { imageUrls } : {}),
-          ...(imageUrl ? { imageUrl } : {}),
-          ...(endFrameUrl ? { endFrameUrl } : {}),
+          ...((selectedVideoModel?.inputMode === "image" || selectedVideoModel?.supportsFirstLastFrames) && imageUrl
+            ? { imageUrl }
+            : {}),
+          ...(selectedVideoModel?.supportsFirstLastFrames && endFrameUrl ? { endFrameUrl } : {}),
           ...(videoUrl ? { videoUrl } : {}),
         }),
       });
@@ -1185,7 +1269,7 @@ export function ProjectEditor({
   // ── Dropdown position: captured at click time so it works inside CSS transforms ──
   const [dropdownPos, setDropdownPos] = useState<{ x: number; y: number } | null>(null);
 
-  type ActiveDropdown = "model" | "aspect" | "quality" | "resolution" | "duration" | null;
+  type ActiveDropdown = "model" | "variant" | "aspect" | "quality" | "resolution" | "duration" | null;
   const [activeDropdown, setActiveDropdown] = useState<ActiveDropdown>(null);
 
   function openDropdown(type: ActiveDropdown, e: React.MouseEvent) {
@@ -1232,8 +1316,18 @@ export function ProjectEditor({
       node.type === "VIDEO"
         ? (VIDEO_MODEL_LIST.find((m) => m.id === modelId) ?? VIDEO_MODEL_LIST[0])
         : null;
+    const parentVideoModel =
+      selectedVideoModel?.hidden
+        ? (VIDEO_MODEL_LIST.find((m) => m.variants?.some((variant) => variant.id === modelId)) ?? selectedVideoModel)
+        : selectedVideoModel;
+    const activeVariants = parentVideoModel?.variants ?? [];
+    const activeVariantLabel =
+      activeVariants.find((variant) => variant.id === modelId)?.label ??
+      activeVariants[0]?.label ??
+      null;
     const isKling3 = node.type === "VIDEO" && modelId === "kling3";
     const isMotionControl = node.type === "VIDEO" && modelId === "kling3_motion";
+    const supportsFirstLastFrames = selectedVideoModel?.supportsFirstLastFrames ?? false;
     const needsImage = selectedVideoModel?.inputMode === "image";
     const needsVideo = selectedVideoModel?.inputMode === "video";
     const supportsAudio = selectedVideoModel?.supportsAudio ?? false;
@@ -1259,11 +1353,11 @@ export function ProjectEditor({
           c.role === "referenceVideo"
             ? "რეფერენს ვიდეო"
             : node.type === "VIDEO" && c.role === "endFrame"
-              ? "ბოლო ფრეიმი"
+              ? "ბოლო კადრი"
               : node.type === "VIDEO" && isVideo
                 ? "საწყისი ვიდეო"
                 : node.type === "VIDEO"
-                  ? "საწყისი ფრეიმი"
+                  ? "საწყისი კადრი"
                   : "რეფერენსი";
         return {
           sourceNodeId: c.sourceNodeId,
@@ -1302,45 +1396,14 @@ export function ProjectEditor({
       (node.type === "IMAGE"
         ? Boolean(currentPromptValue.trim())
         : (!promptRequired || Boolean(currentPromptValue.trim())) &&
-          (!needsImage || isKling3 || Boolean(primaryImageRef)) &&
+          (!needsImage || supportsFirstLastFrames || Boolean(primaryImageRef)) &&
           (!needsVideo || Boolean(primaryVideoRef)) &&
           (!isMotionControl || (Boolean(primaryImageRef) && Boolean(primaryVideoRef))));
 
     const sourceCards: React.ReactNode[] = [];
 
     if (node.type === "VIDEO") {
-      if (isKling3) {
-        sourceCards.push(
-          <ProjectMediaInputCard
-            key="start-frame"
-            title="საწყისი ფრეიმი"
-            description="პირველი კადრი"
-            emptyLabel="ატვირთე ან შეაერთე სურათის node"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            isVideo={false}
-            mediaUrl={primaryImageRef?.url ?? null}
-            onUpload={(file) => handleInlineSourceUpload(node.id, "primary", file)}
-            onRemove={() => {
-              if (primaryImageRef) handleDisconnect(node.id, primaryImageRef.sourceNodeId);
-            }}
-          />
-        );
-        sourceCards.push(
-          <ProjectMediaInputCard
-            key="end-frame"
-            title="ბოლო ფრეიმი"
-            description="ბოლო კადრი"
-            emptyLabel="ატვირთე ან შეაერთე სურათის node"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            isVideo={false}
-            mediaUrl={endFrameRef?.url ?? null}
-            onUpload={(file) => handleInlineSourceUpload(node.id, "endFrame", file)}
-            onRemove={() => {
-              if (endFrameRef) handleDisconnect(node.id, endFrameRef.sourceNodeId);
-            }}
-          />
-        );
-      } else if (isMotionControl) {
+      if (isMotionControl) {
         sourceCards.push(
           <ProjectMediaInputCard
             key="character-image"
@@ -1368,6 +1431,37 @@ export function ProjectEditor({
             onUpload={(file) => handleInlineSourceUpload(node.id, "referenceVideo", file)}
             onRemove={() => {
               if (primaryVideoRef) handleDisconnect(node.id, primaryVideoRef.sourceNodeId);
+            }}
+          />
+        );
+      } else if (supportsFirstLastFrames) {
+        sourceCards.push(
+          <ProjectMediaInputCard
+            key="start-frame"
+            title="საწყისი კადრი"
+            description="პირველი კადრი"
+            emptyLabel="ატვირთე ან შეაერთე სურათის node"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            isVideo={false}
+            mediaUrl={primaryImageRef?.url ?? null}
+            onUpload={(file) => handleInlineSourceUpload(node.id, "primary", file)}
+            onRemove={() => {
+              if (primaryImageRef) handleDisconnect(node.id, primaryImageRef.sourceNodeId);
+            }}
+          />
+        );
+        sourceCards.push(
+          <ProjectMediaInputCard
+            key="end-frame"
+            title="ბოლო კადრი"
+            description="ბოლო კადრი"
+            emptyLabel="ატვირთე ან შეაერთე სურათის node"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            isVideo={false}
+            mediaUrl={endFrameRef?.url ?? null}
+            onUpload={(file) => handleInlineSourceUpload(node.id, "endFrame", file)}
+            onRemove={() => {
+              if (endFrameRef) handleDisconnect(node.id, endFrameRef.sourceNodeId);
             }}
           />
         );
@@ -1521,8 +1615,24 @@ export function ProjectEditor({
               openDropdown("model", e);
             }}
           >
-            {meta.name}
+            {node.type === "VIDEO" ? (parentVideoModel?.name ?? meta.name) : meta.name}
           </button>
+
+          {node.type === "VIDEO" && activeVariants.length > 1 && (
+            <>
+              <div className="mx-0.5 h-4 w-px bg-white/[0.08]" />
+              <button
+                className={btnClass(activeDropdown === "variant" && selectedNodeId === node.id)}
+                onClick={(e) => {
+                  setSelectedNodeId(node.id);
+                  if (activeDropdown === "variant") { closeDropdown(); return; }
+                  openDropdown("variant", e);
+                }}
+              >
+                {activeVariantLabel}
+              </button>
+            </>
+          )}
 
           {hasAspectOptions && <div className="mx-0.5 h-4 w-px bg-white/[0.08]" />}
 
@@ -1612,7 +1722,7 @@ export function ProjectEditor({
           </button>
         </div>
 
-        {node.type === "VIDEO" && needsImage && !primaryImageRef && !isKling3 && !isMotionControl ? (
+        {node.type === "VIDEO" && needsImage && !primaryImageRef && !supportsFirstLastFrames && !isMotionControl ? (
           <p className="px-4 pb-3 text-xs text-white/35">
             image-to-video მოდელისთვის საწყისი კადრი აუცილებელია.
           </p>
@@ -1729,6 +1839,7 @@ export function ProjectEditor({
               y={node.y}
               width={node.width}
               height={node.height}
+              zoom={zoom}
               selected={selectedNodeId === node.id}
               processing={
                 node.data.status === "PROCESSING" ||
@@ -1901,6 +2012,19 @@ export function ProjectEditor({
           const { list, modelId } = getNodeModelInfo(selectedNode);
           const quality = selectedNode.data.quality;
           const qualityOpts = QUALITY_OPTIONS[modelId] ?? [];
+          const selectedVideoModel =
+            selectedNode.type === "VIDEO"
+              ? (VIDEO_MODEL_LIST.find((m) => m.id === modelId) ?? VIDEO_MODEL_LIST[0])
+              : null;
+          const selectedVideoParentModel =
+            selectedVideoModel?.hidden
+              ? (VIDEO_MODEL_LIST.find((m) => m.variants?.some((variant) => variant.id === modelId)) ?? selectedVideoModel)
+              : selectedVideoModel;
+          const activeVariants = selectedVideoParentModel?.variants ?? [];
+          const selectedModelKey =
+            selectedNode.type === "VIDEO"
+              ? (selectedVideoParentModel?.id ?? modelId)
+              : modelId;
 
           let aspectOpts: readonly string[];
           let resolutionOpts: string[] = [];
@@ -1939,35 +2063,60 @@ export function ProjectEditor({
                       <button
                         key={m.id}
                         className={`flex w-full select-none items-center justify-between px-4 py-2.5 text-sm transition-colors hover:bg-brand-accent/5 ${
-                          modelId === m.id
+                          selectedModelKey === m.id
                             ? "bg-brand-accent/5 text-brand-accent"
                             : "text-white/70"
                         }`}
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => {
                           if (selectedNode.type === "VIDEO") {
-                            const videoModel =
-                              VIDEO_MODEL_LIST.find((item) => item.id === m.id) ??
-                              VIDEO_MODEL_LIST[0];
-                            handleNodeDataChange(selectedNode.id, {
-                              model: m.id,
-                              resolution: videoModel.defaultResolution || undefined,
-                              duration: videoModel.defaultDuration || undefined,
-                              audio: videoModel.supportsAudio ? selectedNode.data.audio : false,
-                              multiShot: videoModel.supportsMultiShot ? selectedNode.data.multiShot : false,
-                              aspectRatio:
-                                videoModel.aspectRatios.length > 0
-                                  ? (videoModel.defaultAspectRatio || videoModel.aspectRatios[0])
-                                  : selectedNode.data.aspectRatio,
+                            handleVideoModelSelection(selectedNode, m.id, {
+                              preferDefaultVariant: true,
                             });
                           } else {
-                            handleNodeDataChange(selectedNode.id, { model: m.id });
+                            const nextQualityOptions = QUALITY_OPTIONS[m.id] ?? [];
+                            const nextAspectOptions =
+                              IMAGE_ASPECT_RATIO_OPTIONS[m.id] ?? DEFAULT_IMAGE_ASPECT_RATIOS;
+                            const currentQuality = selectedNode.data.quality;
+                            const currentAspectRatio = selectedNode.data.aspectRatio;
+
+                            handleNodeDataChange(selectedNode.id, {
+                              model: m.id,
+                              quality: nextQualityOptions.includes(currentQuality ?? "")
+                                ? currentQuality
+                                : (nextQualityOptions[nextQualityOptions.length - 1] ?? undefined),
+                              aspectRatio: nextAspectOptions.includes(currentAspectRatio ?? "")
+                                ? currentAspectRatio
+                                : nextAspectOptions[0],
+                            });
                           }
                           closeDropdown();
                         }}
                       >
                         <span className="font-medium">{m.name}</span>
                         <span className="text-xs text-white/30">{m.coins} ✦</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {activeDropdown === "variant" && activeVariants.length > 1 && (
+                  <div className="w-48 py-1 select-none">
+                    {activeVariants.map((variant) => (
+                      <button
+                        key={variant.id}
+                        className={`flex w-full select-none items-center justify-between px-4 py-2.5 text-sm transition-colors hover:bg-brand-accent/5 ${
+                          modelId === variant.id
+                            ? "bg-brand-accent/5 text-brand-accent"
+                            : "text-white/70"
+                        }`}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          handleVideoModelSelection(selectedNode, variant.id);
+                          closeDropdown();
+                        }}
+                      >
+                        <span className="font-medium">{variant.label}</span>
                       </button>
                     ))}
                   </div>

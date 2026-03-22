@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { AdminTopbarProfile } from "@/components/layout/AdminTopbarProfile";
+import { KieBalancePill } from "@/components/admin/KieBalancePill";
 import { prisma } from "@/lib/prisma";
 
 export async function AdminTopbar() {
@@ -28,12 +29,15 @@ export async function AdminTopbar() {
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-brand-border bg-brand-background px-4 sm:px-6">
       <div />
-      <AdminTopbarProfile
-        name={name}
-        email={email}
-        avatarUrl={avatarUrl}
-        initials={initials}
-      />
+      <div className="flex items-center gap-3">
+        <KieBalancePill />
+        <AdminTopbarProfile
+          name={name}
+          email={email}
+          avatarUrl={avatarUrl}
+          initials={initials}
+        />
+      </div>
     </header>
   );
 }

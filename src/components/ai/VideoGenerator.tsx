@@ -121,6 +121,18 @@ export function VideoGenerator({
     if (!meta.supportsAudio) {
       setAudio(false)
     }
+
+    if (!meta.supportsFirstLastFrames) {
+      setEndFrameUrl(null)
+    }
+
+    if (meta.inputMode !== "image" && !meta.supportsFirstLastFrames) {
+      setStartFrameUrl(null)
+    }
+
+    if (meta.inputMode !== "video" && meta.id !== "kling3_motion") {
+      setReferenceVideoUrl(null)
+    }
   }, [aspectRatio, resolution, selectedModelMeta])
 
   useEffect(() => {
@@ -213,6 +225,9 @@ export function VideoGenerator({
     setError(null)
 
     try {
+      const supportsImageInput =
+        model.inputMode === "image" || Boolean(model.supportsFirstLastFrames)
+
       const response = await fetch("/api/ai/generate", {
         method: "POST",
         headers: {
@@ -222,9 +237,14 @@ export function VideoGenerator({
           model: config.model,
           type: "VIDEO",
           prompt: config.prompt,
-          imageUrl: config.startFrameUrl ?? undefined,
-          endFrameUrl: config.endFrameUrl ?? undefined,
-          videoUrl: config.referenceVideoUrl ?? undefined,
+          imageUrl: supportsImageInput ? config.startFrameUrl ?? undefined : undefined,
+          endFrameUrl: model.supportsFirstLastFrames
+            ? config.endFrameUrl ?? undefined
+            : undefined,
+          videoUrl:
+            model.inputMode === "video" || config.model === "kling3_motion"
+              ? config.referenceVideoUrl ?? undefined
+              : undefined,
           options: {
             duration: `${config.durationSeconds}s`,
             aspectRatio: config.aspectRatio,
@@ -255,13 +275,13 @@ export function VideoGenerator({
         outputUrl: null,
         creditsUsed: coins,
         createdAt: new Date().toISOString(),
-        sourceUrl: config.startFrameUrl,
+        sourceUrl: supportsImageInput ? config.startFrameUrl : null,
       }
 
       setBalance((current) => current - coins)
       setGenerations((current) => [nextItem, ...current])
       setPrompt("")
-      if (model.inputMode !== "image") {
+      if (model.inputMode !== "image" && !model.supportsFirstLastFrames) {
         setStartFrameUrl(null)
       }
     } catch {

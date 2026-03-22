@@ -1,4 +1,5 @@
 import { emailConfig, getResendClient } from "./client";
+import { getSignatureHtml, buildSignatureBlock } from "./signature";
 import { emailButton, emailLayout } from "./templates/layout";
 import {
   welcomeEmailHtml,
@@ -21,13 +22,37 @@ type SendEmailOptions = {
   replyTo?: string;
 };
 
+async function injectSignature(html: string): Promise<string> {
+  try {
+    const signatureHtml = await getSignatureHtml();
+    const block = buildSignatureBlock(signatureHtml);
+    if (!block) return html;
+
+    // Insert signature before the footer separator in the email layout
+    const footerMarker = "<!-- Footer -->";
+    if (html.includes(footerMarker)) {
+      return html.replace(footerMarker, `${block}\n${footerMarker}`);
+    }
+
+    // Fallback: insert before closing </body>
+    if (html.includes("</body>")) {
+      return html.replace("</body>", `${block}\n</body>`);
+    }
+
+    return html + block;
+  } catch {
+    return html;
+  }
+}
+
 async function sendEmail({ to, subject, html, replyTo }: SendEmailOptions) {
   const resend = getResendClient();
+  const finalHtml = await injectSignature(html);
   const { error } = await resend.emails.send({
     from: emailConfig.from,
     to,
     subject,
-    html,
+    html: finalHtml,
     replyTo,
   });
 
@@ -216,6 +241,7 @@ export async function sendBulkEmail(
 ) {
   if (emails.length === 0) return { successCount: 0, errorCount: 0 };
 
+  const finalHtml = await injectSignature(htmlContent);
   let successCount = 0;
   let errorCount = 0;
 
@@ -226,7 +252,7 @@ export async function sendBulkEmail(
         from: emailConfig.from,
         to: email,
         subject,
-        html: htmlContent,
+        html: finalHtml,
       });
 
       if (error) {
@@ -243,4 +269,35 @@ export async function sendBulkEmail(
   }
 
   return { successCount, errorCount };
+}
+
+export async function sendKieLowBalanceAlert(credits: number) {
+  if (!emailConfig.adminEmail) {
+    return;
+  }
+
+  const usdValue = (credits * 0.005).toFixed(2);
+
+  const content = `
+    <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#ffffff;">
+      Kie.ai კრედიტები ამოიწურება
+    </h1>
+    <p style="margin:0 0 20px;color:#e0e0e0;">
+      თქვენს Kie.ai ანგარიშზე დარჩა <strong style="color:#ffffff;">${credits.toLocaleString("ka-GE")}</strong> კრედიტი (&asymp; $${usdValue}).
+    </p>
+    <p style="margin:0 0 24px;color:#e0e0e0;">
+      გთხოვთ შეავსოთ ბალანსი, რომ AI გენერაცია შეუფერხებლად გაგრძელდეს.
+    </p>
+    ${emailButton("https://kie.ai/pricing", "ბალანსის შევსება")}
+  `;
+
+  try {
+    await sendEmail({
+      to: emailConfig.adminEmail,
+      subject: "Kie.ai კრედიტები ამოიწურება!",
+      html: emailLayout(content),
+    });
+  } catch (error) {
+    console.error("[Email] Failed to send Kie.ai low balance alert:", error);
+  }
 }

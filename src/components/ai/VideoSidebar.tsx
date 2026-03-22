@@ -251,8 +251,8 @@ export function VideoSidebar({
 
   const needsImage = selected.inputMode === "image"
   const needsVideo = selected.inputMode === "video"
-  const isKling3 = selectedModel === "kling3"
   const isMotionControl = selectedModel === "kling3_motion"
+  const supportsFirstLastFrames = Boolean(selected.supportsFirstLastFrames)
   const hasResolutions = selected.resolutions.length > 0
   const hasAspectRatios = selected.aspectRatios.length > 0
   const hasDurations = selected.durations.length > 0
@@ -268,27 +268,7 @@ export function VideoSidebar({
 
   let frameUploadSection: React.ReactNode = null
 
-  if (isKling3) {
-    frameUploadSection = (
-      <div className="space-y-2">
-        <p className="text-xs text-brand-muted">ფრეიმები (არასავალდებულო)</p>
-        <div className="grid grid-cols-2 gap-2">
-          <ModelUploadCard
-            title="საწყისი ფრეიმი"
-            description="პირველი კადრი"
-            value={startFrameUrl}
-            onChange={onStartFrameChange}
-          />
-          <ModelUploadCard
-            title="ბოლო ფრეიმი"
-            description="ბოლო კადრი"
-            value={endFrameUrl}
-            onChange={onEndFrameChange}
-          />
-        </div>
-      </div>
-    )
-  } else if (isMotionControl) {
+  if (isMotionControl) {
     frameUploadSection = (
       <div className="space-y-3">
         <ModelUploadCard
@@ -306,7 +286,27 @@ export function VideoSidebar({
         />
       </div>
     )
-  } else if (needsImage && !isKling3) {
+  } else if (supportsFirstLastFrames) {
+    frameUploadSection = (
+      <div className="space-y-2">
+        <p className="text-xs text-brand-muted">კადრები (არასავალდებულო)</p>
+        <div className="grid grid-cols-2 gap-2">
+          <ModelUploadCard
+            title="საწყისი კადრი"
+            description="პირველი კადრი"
+            value={startFrameUrl}
+            onChange={onStartFrameChange}
+          />
+          <ModelUploadCard
+            title="ბოლო კადრი"
+            description="ბოლო კადრი"
+            value={endFrameUrl}
+            onChange={onEndFrameChange}
+          />
+        </div>
+      </div>
+    )
+  } else if (needsImage) {
     frameUploadSection = (
       <ModelUploadCard
         title="საწყისი კადრი"
@@ -565,7 +565,7 @@ export function VideoSidebar({
           გენერაცია ✦ {currentCoins}
         </Button>
 
-        {needsImage && !startFrameUrl && !isKling3 ? (
+        {needsImage && !startFrameUrl && !supportsFirstLastFrames ? (
           <p className="mt-3 text-sm text-brand-muted">
             image-to-video მოდელისთვის საწყისი კადრი აუცილებელია.
           </p>

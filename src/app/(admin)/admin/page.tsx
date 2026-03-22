@@ -9,6 +9,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { KieBalanceCard } from "@/components/admin/KieBalanceCard";
 import { prisma } from "@/lib/prisma";
 
 type Trend = "up" | "down";
@@ -297,6 +298,10 @@ export default async function AdminOverviewPage() {
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-4 max-w-xs">
+        <KieBalanceCard />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-5">

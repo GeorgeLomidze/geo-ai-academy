@@ -33,6 +33,8 @@ export type VideoModelConfig = {
   hidden?: boolean;
   /** Sub-variants shown as a toggle on the sidebar panel. The parent model ID is always first. */
   variants?: { id: string; label: string }[];
+  /** Supports one or two reference images as start/end keyframes. */
+  supportsFirstLastFrames?: boolean;
 };
 
 export const IMAGE_MODELS = {
@@ -211,13 +213,14 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
     category: "GENERAL",
     inputMode: "text",
     waitTime: "~2-5 წუთი",
-    resolutions: ["1080p"],
+    resolutions: ["1080p", "4K"],
     aspectRatios: ["16:9", "9:16"],
     durations: ["4s", "6s", "8s"],
     defaultResolution: "1080p",
     defaultAspectRatio: "16:9",
     defaultDuration: "4s",
-    coinsByResolution: { "1080p": 150 },
+    coinsByResolution: { "1080p": 150, "4K": 390 },
+    supportsFirstLastFrames: true,
     variants: [
       { id: "veo31", label: "3.1 Quality" },
       { id: "veo31fast", label: "3.1 Fast" },
@@ -232,13 +235,14 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
     category: "GENERAL",
     inputMode: "text",
     waitTime: "~1-2 წუთი",
-    resolutions: ["1080p"],
+    resolutions: ["1080p", "4K"],
     aspectRatios: ["16:9", "9:16"],
     durations: ["4s", "6s", "8s"],
     defaultResolution: "1080p",
     defaultAspectRatio: "16:9",
     defaultDuration: "4s",
-    coinsByResolution: { "1080p": 120 },
+    coinsByResolution: { "1080p": 120, "4K": 360 },
+    supportsFirstLastFrames: true,
     hidden: true,
   },
   sora2: {
@@ -294,6 +298,7 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
     defaultDuration: "5s",
     coinsByResolution: { "720p": 90, "1080p": 180 },
     coinsPerSecondByResolution: { "720p": 18, "1080p": 36 },
+    supportsFirstLastFrames: true,
   },
   seedance: {
     name: "Seedance 1.5 Pro",

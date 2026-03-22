@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import { ParticleNetwork } from "@/components/landing/ParticleNetwork";
 import { SocialLinks } from "@/components/layout/SocialLinks";
 import { Button } from "@/components/ui/button";
 import { socialLinks } from "@/lib/constants";
@@ -25,45 +25,11 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
   ].filter((item) => item !== undefined);
 
   return (
-    <section className="relative isolate overflow-hidden bg-[linear-gradient(180deg,#0A0A0A_0%,#1a1000_50%,#0A0A0A_100%)]">
-      <div className="pointer-events-none absolute inset-0">
-        <Image
-          src="/image001.png"
-          alt=""
-          fill
-          priority
-          className="object-cover object-center opacity-60"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,10,10,0.44)_0%,rgba(10,10,10,0.3)_24%,rgba(10,10,10,0.38)_44%,rgba(10,10,10,0.7)_68%,rgba(10,10,10,0.92)_100%)]" />
-        <div className="absolute inset-y-0 right-0 w-[56%] bg-[linear-gradient(90deg,rgba(10,10,10,0)_0%,rgba(10,10,10,0.16)_18%,rgba(10,10,10,0.48)_48%,rgba(10,10,10,0.82)_78%,rgba(10,10,10,0.96)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_36%,rgba(245,166,35,0.12),transparent_34%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_74%_42%,rgba(245,166,35,0.1),transparent_30%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.2)_0%,rgba(10,10,10,0.06)_24%,rgba(10,10,10,0.18)_60%,rgba(10,10,10,0.42)_100%)]" />
-      </div>
+    <section className="relative isolate overflow-hidden bg-[#0A0A0A]">
+      <ParticleNetwork className="z-0" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[rgba(10,10,10,0.16)]" />
 
-      {/* Gradient overlay */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(245,166,35,0.18),transparent)]" />
-
-      {/* Geometric grid decoration */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.07]">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px)
-            `,
-            backgroundSize: "60px 60px",
-          }}
-        />
-      </div>
-
-      {/* Floating accent shapes */}
-      <div className="pointer-events-none absolute -right-20 top-20 size-72 rounded-full bg-brand-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute -left-10 bottom-10 size-56 rounded-full bg-brand-accent/10 blur-3xl" />
-
-      <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_auto] lg:gap-16">
           {/* Text content */}
           <div className="max-w-2xl">
@@ -73,12 +39,12 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="font-display text-4xl font-bold leading-[1.1] text-white sm:text-5xl lg:text-6xl"
             >
-              ისწავლე AI
+              ისწავლე და
               <br />
-              ტექნოლოგიები
+              გამოიყენე AI
               <br />
               <span className="bg-gradient-to-r from-brand-primary via-brand-primary to-brand-accent bg-clip-text text-transparent">
-                ქართულად
+                ინსტრუმენტები
               </span>
             </motion.h1>
 
@@ -233,7 +199,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
       </div>
 
       {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 h-24 w-full bg-gradient-to-t from-brand-background to-transparent" />
+      <div className="absolute bottom-0 left-0 z-10 h-24 w-full bg-gradient-to-t from-brand-background to-transparent" />
     </section>
   );
 }

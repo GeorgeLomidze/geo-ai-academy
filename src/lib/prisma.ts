@@ -168,6 +168,8 @@ function hasExpectedDelegates(client: PrismaClient) {
     typeof client.creditPurchase !== "undefined" &&
     "project" in client &&
     typeof client.project !== "undefined" &&
+    "emailSignature" in client &&
+    typeof client.emailSignature !== "undefined" &&
     hasExpectedModelFields(client) &&
     hasExpectedEnums(client)
   );

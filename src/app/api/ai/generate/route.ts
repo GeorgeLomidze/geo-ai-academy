@@ -21,6 +21,12 @@ import {
 import { refundKieGenerationCredits } from "@/lib/kie/callback";
 import { prisma } from "@/lib/prisma";
 import { siteConfig } from "@/lib/constants";
+import {
+  fetchKieBalance,
+  shouldSendLowBalanceAlert,
+  markAlertSent,
+} from "@/lib/kie/balance";
+import { sendKieLowBalanceAlert } from "@/lib/email/send";
 
 const generateSchema = z.object({
   model: z.string().min(1, "მოდელი აუცილებელია"),
@@ -30,7 +36,7 @@ const generateSchema = z.object({
   imageUrls: z
     .array(z.string().url("სურათის მისამართი არასწორია"))
     .optional(),
-  endFrameUrl: z.string().url("ბოლო ფრეიმის მისამართი არასწორია").optional(),
+  endFrameUrl: z.string().url("ბოლო კადრის მისამართი არასწორია").optional(),
   videoUrl: z.string().url("ვიდეოს მისამართი არასწორია").optional(),
   options: z.record(z.string(), z.unknown()).optional(),
 });
@@ -104,15 +110,15 @@ function getKieErrorMessage(error: KieApiError) {
   const normalized = detailMessage.toLowerCase();
 
   if (normalized.includes("image") && normalized.includes("format")) {
-    return "ვიდეოს ფრეიმებისთვის გამოიყენე PNG ან JPG სურათები";
+    return "ვიდეოს კადრებისთვის გამოიყენე PNG ან JPG სურათები";
   }
 
   if (normalized.includes("300") && normalized.includes("image")) {
-    return "ვიდეოს ფრეიმები მინიმუმ 300x300 უნდა იყოს";
+    return "ვიდეოს კადრები მინიმუმ 300x300 უნდა იყოს";
   }
 
   if (normalized.includes("aspect") || normalized.includes("ratio")) {
-    return "ვიდეოს საწყისი და ბოლო ფრეიმები ერთნაირი პროპორციით უნდა იყოს";
+    return "ვიდეოს საწყისი და ბოლო კადრები ერთნაირი პროპორციით უნდა იყოს";
   }
 
   if (normalized.includes("balance") || normalized.includes("insufficient") || normalized.includes("credit")) {
@@ -167,6 +173,9 @@ export async function POST(request: NextRequest) {
     const kieModelConfig = getKieModelConfig(effectiveModel);
     const normalizedPrompt = prompt?.trim() ?? "";
     const klingHasFrames = effectiveModel === "kling3" && Boolean(primaryImageUrl || endFrameUrl);
+    const veoHasFrames =
+      (effectiveModel === "veo31" || effectiveModel === "veo31fast") &&
+      Boolean(primaryImageUrl || endFrameUrl);
     const motionControlReady = effectiveModel === "kling3_motion" && Boolean(primaryImageUrl);
 
     if (!modelMetadata) {
@@ -179,6 +188,10 @@ export async function POST(request: NextRequest) {
 
     if (!normalizedPrompt && !(type === "VIDEO" && (klingHasFrames || motionControlReady))) {
       throw new ApiError(400, "პრომპტი აუცილებელია");
+    }
+
+    if (endFrameUrl && !primaryImageUrl && (klingHasFrames || veoHasFrames)) {
+      throw new ApiError(400, "ბოლო კადრის გამოყენებისთვის საწყისი კადრიც აუცილებელია");
     }
 
     const nativeRefConfig = NATIVE_REFERENCE_MODELS[effectiveModel];
@@ -324,6 +337,19 @@ export async function POST(request: NextRequest) {
             ...kieOptions,
             input: klingInput,
           });
+        } else if ((effectiveModel === "veo31" || effectiveModel === "veo31fast") && primaryImageUrl) {
+          const veoImageUrls = endFrameUrl
+            ? [primaryImageUrl, endFrameUrl]
+            : [primaryImageUrl];
+          const veoInput = {
+            ...(kieOptions.input ?? {}),
+            imageUrls: veoImageUrls,
+            generationType: "FIRST_AND_LAST_FRAMES_2_VIDEO",
+          };
+          task = await generateVideo(effectiveModel, normalizedPrompt, {
+            ...kieOptions,
+            input: veoInput,
+          });
         // Kling Motion Control: input_urls (character) + video_urls (reference video)
         } else if (effectiveModel === "kling3_motion" && primaryImageUrl) {
           // KIE API requires a prompt — use a sensible default when user omits it
@@ -401,6 +427,20 @@ export async function POST(request: NextRequest) {
 
       throw error;
     }
+
+    // Fire-and-forget: check Kie.ai balance and alert admin if low
+    void (async () => {
+      try {
+        if (!shouldSendLowBalanceAlert()) return;
+        const balance = await fetchKieBalance();
+        if (balance.lowBalance) {
+          markAlertSent();
+          await sendKieLowBalanceAlert(balance.credits);
+        }
+      } catch {
+        // Non-critical — don't affect generation response
+      }
+    })();
 
     return NextResponse.json(
       {

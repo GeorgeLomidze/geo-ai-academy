@@ -1,9 +1,14 @@
-import Link from "next/link";
+import {
+  AudioWaveform,
+  Clapperboard,
+  FolderKanban,
+  ImagePlus,
+} from "lucide-react";
 import { redirect } from "next/navigation";
+import { ToolFeatureCard } from "@/components/ai/ToolFeatureCard";
 import { createClient } from "@/lib/supabase/server";
 import { getBalance } from "@/lib/credits/manager";
 import { CreditDisplay } from "@/components/ai/CreditDisplay";
-import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "AI ინსტრუმენტები - GEO AI Academy",
@@ -14,6 +19,52 @@ interface AIToolsHubPageProps {
     credits?: string;
   }>;
 }
+
+type ToolCardConfig = {
+  title: string;
+  href: string;
+  ctaLabel: string;
+  icon: typeof ImagePlus;
+  iconTone: string;
+  available: boolean;
+  badge?: string;
+};
+
+const toolCards: ToolCardConfig[] = [
+  {
+    title: "სურათის გენერაცია",
+    href: "/ai-tools/image",
+    ctaLabel: "გენერატორის გახსნა",
+    icon: ImagePlus,
+    iconTone: "text-brand-accent",
+    available: true,
+  },
+  {
+    title: "ვიდეოს გენერაცია",
+    href: "/ai-tools/video",
+    ctaLabel: "გენერატორის გახსნა",
+    icon: Clapperboard,
+    iconTone: "text-brand-primary",
+    available: true,
+  },
+  {
+    title: "აუდიო გენერაცია",
+    href: "/ai-tools/audio",
+    ctaLabel: "გვერდის ნახვა",
+    icon: AudioWaveform,
+    iconTone: "text-brand-accent",
+    available: false,
+    badge: "მალე",
+  },
+  {
+    title: "პროექტები",
+    href: "/ai-tools/projects",
+    ctaLabel: "პროექტების გახსნა",
+    icon: FolderKanban,
+    iconTone: "text-brand-primary",
+    available: true,
+  },
+];
 
 export default async function AIToolsHubPage({
   searchParams,
@@ -47,68 +98,20 @@ export default async function AIToolsHubPage({
         </div>
       ) : null}
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-2">
-        <section className="flex min-h-[320px] flex-col items-center justify-center rounded-[32px] border border-brand-border bg-brand-surface p-6 text-center sm:p-8">
-          <span className="text-6xl leading-none" aria-hidden="true">📷</span>
-          <h2 className="mt-8 text-3xl text-brand-secondary">სურათის გენერაცია</h2>
-          <div className="mt-8">
-            <Button
-              asChild
-              className="rounded-full bg-brand-accent px-5 text-black hover:bg-brand-accent-hover"
-            >
-              <Link href="/ai-tools/image">გენერატორის გახსნა</Link>
-            </Button>
-          </div>
-        </section>
-
-        <section className="flex min-h-[320px] flex-col items-center justify-center rounded-[32px] border border-brand-border bg-brand-surface p-6 text-center sm:p-8">
-          <span className="text-6xl leading-none" aria-hidden="true">🎥</span>
-          <h2 className="mt-8 text-3xl text-brand-secondary">ვიდეოს გენერაცია</h2>
-          <div className="mt-8">
-            <Button
-              asChild
-              className="rounded-full bg-brand-accent px-5 text-black hover:bg-brand-accent-hover"
-            >
-              <Link href="/ai-tools/video">გენერატორის გახსნა</Link>
-            </Button>
-          </div>
-        </section>
-
-        <section className="relative flex min-h-[320px] flex-col items-center justify-center rounded-[32px] border border-brand-border bg-brand-surface p-6 text-center sm:p-8">
-          <span className="absolute right-4 top-4 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
-            მალე
-          </span>
-          <span className="text-6xl leading-none" aria-hidden="true">🎵</span>
-          <h2 className="mt-8 text-3xl text-brand-secondary">აუდიო გენერაცია</h2>
-          <p className="mt-3 text-sm text-brand-muted">
-            მუსიკის და აუდიო ეფექტების გენერაცია
-          </p>
-          <div className="mt-8">
-            <Button
-              asChild
-              variant="outline"
-              className="rounded-full border-brand-border px-5"
-            >
-              <Link href="/ai-tools/audio">გვერდის ნახვა</Link>
-            </Button>
-          </div>
-        </section>
-
-        <section className="flex min-h-[320px] flex-col items-center justify-center rounded-[32px] border border-brand-border bg-brand-surface p-6 text-center sm:p-8">
-          <span className="text-6xl leading-none" aria-hidden="true">📁</span>
-          <h2 className="mt-8 text-3xl text-brand-secondary">პროექტები</h2>
-          <p className="mt-3 text-sm text-brand-muted">
-            AI პროექტების ნოდ-ედიტორი
-          </p>
-          <div className="mt-8">
-            <Button
-              asChild
-              className="rounded-full bg-brand-accent px-5 text-black hover:bg-brand-accent-hover"
-            >
-              <Link href="/ai-tools/projects">პროექტების გახსნა</Link>
-            </Button>
-          </div>
-        </section>
+      <div className="mt-8 grid gap-4 md:grid-cols-2">
+        {toolCards.map((card, index) => (
+          <ToolFeatureCard
+            key={card.title}
+            title={card.title}
+            href={card.href}
+            ctaLabel={card.ctaLabel}
+            icon={card.icon}
+            iconTone={card.iconTone}
+            available={card.available}
+            badge={card.badge}
+            animationDelayMs={index * 70}
+          />
+        ))}
       </div>
     </div>
   );

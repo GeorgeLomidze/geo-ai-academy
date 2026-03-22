@@ -1,26 +1,56 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import {
+  AudioWaveform,
+  Clapperboard,
+  FolderKanban,
+  ImagePlus,
+} from "lucide-react";
+import { ToolFeatureCard } from "@/components/ai/ToolFeatureCard";
 
-const AI_TOOL_CARDS = [
+type LandingToolCard = {
+  href: string;
+  title: string;
+  ctaLabel: string;
+  icon: typeof ImagePlus;
+  iconTone: string;
+  available: boolean;
+  badge?: string;
+};
+
+const AI_TOOL_CARDS: LandingToolCard[] = [
   {
     href: "/ai-tools/image",
-    emoji: "📷",
     title: "სურათის გენერაცია",
-    comingSoon: false,
+    icon: ImagePlus,
+    iconTone: "text-brand-accent",
+    available: true,
+    ctaLabel: "გენერატორის გახსნა",
   },
   {
     href: "/ai-tools/video",
-    emoji: "🎥",
     title: "ვიდეოს გენერაცია",
-    comingSoon: false,
+    icon: Clapperboard,
+    iconTone: "text-brand-primary",
+    available: true,
+    ctaLabel: "გენერატორის გახსნა",
   },
   {
     href: "/ai-tools/audio",
-    emoji: "🎵",
     title: "აუდიო გენერაცია",
-    comingSoon: true,
+    icon: AudioWaveform,
+    iconTone: "text-brand-accent",
+    available: false,
+    badge: "მალე",
+    ctaLabel: "გვერდის ნახვა",
   },
-] as const;
+  {
+    href: "/ai-tools/projects",
+    title: "პროექტები",
+    icon: FolderKanban,
+    iconTone: "text-brand-primary",
+    available: true,
+    ctaLabel: "პროექტების გახსნა",
+  },
+];
 
 export function AIToolsSection() {
   return (
@@ -33,42 +63,19 @@ export function AIToolsSection() {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-3">
-          {AI_TOOL_CARDS.map((card) => (
-            <section
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {AI_TOOL_CARDS.map((card, index) => (
+            <ToolFeatureCard
               key={card.href}
-              className="relative flex min-h-[320px] flex-col items-center justify-center rounded-[32px] border border-brand-border bg-brand-surface p-6 text-center sm:p-8"
-            >
-              {card.comingSoon ? (
-                <span className="absolute right-4 top-4 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
-                  მალე
-                </span>
-              ) : null}
-              <span className="text-6xl leading-none" aria-hidden="true">
-                {card.emoji}
-              </span>
-              <h2 className="mt-8 text-balance text-3xl text-brand-secondary">
-                {card.title}
-              </h2>
-              <div className="mt-8">
-                {card.comingSoon ? (
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="rounded-full border-brand-border px-5"
-                  >
-                    <Link href={card.href}>გვერდის ნახვა</Link>
-                  </Button>
-                ) : (
-                  <Button
-                    asChild
-                    className="rounded-full bg-brand-accent px-5 text-black hover:bg-brand-accent-hover"
-                  >
-                    <Link href={card.href}>გენერატორის გახსნა</Link>
-                  </Button>
-                )}
-              </div>
-            </section>
+              title={card.title}
+              href={card.href}
+              ctaLabel={card.ctaLabel}
+              icon={card.icon}
+              iconTone={card.iconTone}
+              available={card.available}
+              badge={card.badge}
+              animationDelayMs={index * 70}
+            />
           ))}
         </div>
       </div>

@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { handleApiError, notFoundResponse } from "@/lib/api-error";
 import { requireAuth } from "@/lib/auth";
 import { persistToBunnyStorage } from "@/lib/bunny/storage";
-import { getTaskStatus } from "@/lib/kie/client";
-import { syncGenerationStatus } from "@/lib/kie/callback";
+import { getTaskStatus, requestVeo4kVideo } from "@/lib/kie/client";
+import {
+  isVeo4KUpgradeRequested,
+  syncGenerationStatus,
+  VEO_4K_UPGRADE_PENDING_MARKER,
+} from "@/lib/kie/callback";
 import { prisma } from "@/lib/prisma";
 
 /** Max time (ms) a generation can stay in PROCESSING before being auto-failed */
@@ -39,6 +43,7 @@ export async function GET(
         status: true,
         externalId: true,
         modelId: true,
+        creditsCost: true,
         outputUrl: true,
         errorMessage: true,
         createdAt: true,
@@ -82,7 +87,25 @@ export async function GET(
 
         const isTerminal = taskStatus.success || isFailedState(taskStatus.state);
 
-        if (isTerminal) {
+        if (
+          taskStatus.success &&
+          isVeo4KUpgradeRequested(generation.modelId, generation.creditsCost) &&
+          generation.errorMessage !== VEO_4K_UPGRADE_PENDING_MARKER
+        ) {
+          try {
+            const upgrade = await requestVeo4kVideo(generation.externalId);
+            await prisma.generation.update({
+              where: { id: generation.id },
+              data: {
+                status: "PROCESSING",
+                externalId: upgrade.taskId,
+                errorMessage: VEO_4K_UPGRADE_PENDING_MARKER,
+              },
+            });
+          } catch {
+            // 4K upgrade may not be ready immediately after base task success.
+          }
+        } else if (isTerminal) {
           await syncGenerationStatus({
             taskId: generation.externalId,
             success: taskStatus.success,
@@ -147,14 +170,20 @@ export async function GET(
       return NextResponse.json({
         status: refreshedGeneration.status,
         outputUrl: refreshedGeneration.outputUrl ?? null,
-        errorMessage: refreshedGeneration.errorMessage ?? null,
+        errorMessage:
+          refreshedGeneration.errorMessage === VEO_4K_UPGRADE_PENDING_MARKER
+            ? null
+            : (refreshedGeneration.errorMessage ?? null),
       });
     }
 
     return NextResponse.json({
       status: generation.status,
       outputUrl: generation.outputUrl ?? null,
-      errorMessage: generation.errorMessage ?? null,
+      errorMessage:
+        generation.errorMessage === VEO_4K_UPGRADE_PENDING_MARKER
+          ? null
+          : (generation.errorMessage ?? null),
     });
   } catch (error) {
     return handleApiError(error, "GET /api/ai/status/[generationId] failed");

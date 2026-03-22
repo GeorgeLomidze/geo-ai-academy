@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 
@@ -80,6 +81,7 @@ export function CreditPurchaseModal({ trigger }: CreditPurchaseModalProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-w-6xl gap-0 overflow-hidden rounded-3xl border-white/10 bg-[#080808] p-0 text-white shadow-2xl sm:max-w-6xl [&>button]:hidden">
+        <DialogTitle className="sr-only">GEO კოინების პაკეტების არჩევა</DialogTitle>
         {/* Header */}
         <div className="relative border-b border-white/5 px-6 pb-5 pt-6 text-center sm:px-10">
           <button

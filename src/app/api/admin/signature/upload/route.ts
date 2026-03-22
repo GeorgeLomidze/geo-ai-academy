@@ -13,16 +13,16 @@ const ALLOWED_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/avif",
+  "image/gif",
 ]);
 
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_SIZE = 2 * 1024 * 1024; // 2MB
 
 const EXT_MAP: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
-  "image/avif": "avif",
+  "image/gif": "gif",
 };
 
 export async function POST(request: NextRequest) {
@@ -42,17 +42,17 @@ export async function POST(request: NextRequest) {
 
     if (!ALLOWED_TYPES.has(file.type)) {
       return validationErrorResponse({
-        file: "მხოლოდ JPEG, PNG, WebP და AVIF ფორმატებია ნებადართული",
+        file: "მხოლოდ JPEG, PNG, WebP და GIF ფორმატებია ნებადართული",
       });
     }
 
     if (file.size > MAX_SIZE) {
       return validationErrorResponse({
-        file: "ფაილის ზომა არ უნდა აღემატებოდეს 5MB-ს",
+        file: "ფაილის ზომა არ უნდა აღემატებოდეს 2MB-ს",
       });
     }
 
-    const ext = EXT_MAP[file.type] ?? "jpg";
+    const ext = EXT_MAP[file.type] ?? "png";
     const buffer = Buffer.from(await file.arrayBuffer());
     const detectedMime = detectImageMime(buffer);
 
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const filename = `${randomUUID()}.${ext}`;
+    const filename = `signatures/${randomUUID()}.${ext}`;
 
     const supabase = createStorageClient();
     await ensureBucket(supabase, "course-thumbnails");
@@ -84,6 +84,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: publicUrlData.publicUrl });
   } catch (error) {
-    return handleApiError(error, "POST /api/admin/upload-image failed");
+    return handleApiError(error, "POST /api/admin/signature/upload failed");
   }
 }

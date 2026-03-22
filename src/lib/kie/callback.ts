@@ -1,6 +1,7 @@
 import { Prisma, type CreditTransactionType, type PrismaClient } from "@prisma/client";
 import { addCreditsWithClient } from "@/lib/credits/manager";
 import { persistToBunnyStorage } from "@/lib/bunny/storage";
+import { getVideoModelCoins } from "@/lib/credits/pricing";
 import { prisma } from "@/lib/prisma";
 
 type CreditDbClient = PrismaClient | Prisma.TransactionClient;
@@ -225,6 +226,7 @@ export async function handleKieCallback(payload: KieCallbackPayload): Promise<Ki
         creditsCost: true,
         modelId: true,
         outputUrl: true,
+        errorMessage: true,
       },
     });
 
@@ -273,7 +275,18 @@ type GenerationLookup = {
   modelId: string;
   outputUrl: string | null;
   type: string;
+  errorMessage: string | null;
 };
+
+export const VEO_4K_UPGRADE_PENDING_MARKER = "__veo_4k_upgrade_pending__";
+
+export function isVeo4KUpgradeRequested(modelId: string, creditsCost: number) {
+  if (modelId !== "veo31" && modelId !== "veo31fast") {
+    return false;
+  }
+
+  return creditsCost === (getVideoModelCoins(modelId, "4K") ?? Number.NaN);
+}
 
 async function syncGenerationStatusWithClient(
   tx: CreditDbClient,
@@ -281,6 +294,27 @@ async function syncGenerationStatusWithClient(
   input: KieStatusSyncInput
 ): Promise<KieCallbackResult> {
   if (input.success) {
+    if (
+      isVeo4KUpgradeRequested(generation.modelId, generation.creditsCost) &&
+      generation.errorMessage !== VEO_4K_UPGRADE_PENDING_MARKER
+    ) {
+      await tx.generation.update({
+        where: { id: generation.id },
+        data: {
+          status: "PROCESSING",
+          errorMessage: null,
+        },
+      });
+
+      return {
+        processed: true,
+        taskId: input.taskId,
+        status: "IGNORED",
+        refunded: false,
+        generationId: generation.id,
+      };
+    }
+
     const kieOutputUrl = input.resultUrls?.[0] ?? generation.outputUrl ?? null;
 
     // Save the Kie.ai URL immediately so the generation is marked as SUCCEEDED
@@ -375,6 +409,7 @@ export async function syncGenerationStatus(input: KieStatusSyncInput) {
         creditsCost: true,
         modelId: true,
         outputUrl: true,
+        errorMessage: true,
       },
     });
 
