@@ -3,234 +3,439 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
-type ParticleNetworkProps = { className?: string };
+type ParticleNetworkProps = {
+  className?: string;
+};
 
-/* ── Deterministic random ── */
-function mkRand(seed: number) {
-  return () => {
-    seed |= 0;
-    seed = (seed + 0x6D2B79F5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+type PaletteEntry = {
+  fill: string;
+  rgb: [number, number, number];
+};
+
+type Particle = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  baseSize: number;
+  size: number;
+  baseOpacity: number;
+  opacity: number;
+  offsetX: number;
+  offsetY: number;
+  targetOffsetX: number;
+  targetOffsetY: number;
+  pulsePhase: number;
+  pulseSpeed: number;
+  depth: number;
+  palette: PaletteEntry;
+  sparkle: boolean;
+};
+
+const MOBILE_BREAKPOINT = 768;
+const DESKTOP_PARTICLE_COUNT = 96;
+const MOBILE_PARTICLE_COUNT = 52;
+const CONNECTION_DISTANCE = 150;
+const CURSOR_RADIUS = 200;
+const MAX_CURSOR_SHIFT = 18;
+const WRAP_MARGIN = 24;
+const DPR_LIMIT = 2;
+const PALETTE: PaletteEntry[] = [
+  { fill: "#F5A623", rgb: [245, 166, 35] },
+  { fill: "#FFD60A", rgb: [255, 214, 10] },
+  { fill: "#E09000", rgb: [224, 144, 0] },
+  { fill: "#FFF1CC", rgb: [255, 241, 204] },
+];
+
+function randomBetween(min: number, max: number) {
+  return min + Math.random() * (max - min);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function pickPaletteEntry() {
+  const roll = Math.random();
+
+  if (roll < 0.48) return PALETTE[0];
+  if (roll < 0.74) return PALETTE[1];
+  if (roll < 0.96) return PALETTE[2];
+
+  return PALETTE[3];
+}
+
+function createParticle(width: number, height: number): Particle {
+  const depth = Math.random();
+  const angle = Math.random() * Math.PI * 2;
+  const palette = pickPaletteEntry();
+
+  let baseSize = randomBetween(1.2, 2.4);
+  let baseOpacity = randomBetween(0.2, 0.45);
+  let speed = randomBetween(0.12, 0.2);
+
+  if (depth > 0.38) {
+    baseSize = randomBetween(1.8, 3.3);
+    baseOpacity = randomBetween(0.28, 0.62);
+    speed = randomBetween(0.18, 0.34);
+  }
+
+  if (depth > 0.74) {
+    baseSize = randomBetween(3.1, 5);
+    baseOpacity = randomBetween(0.62, 0.96);
+    speed = randomBetween(0.26, 0.46);
+  }
+
+  const sparkle = palette.fill === "#FFF1CC";
+  const velocityScale = sparkle ? 1.08 : 1;
+
+  return {
+    x: Math.random() * width,
+    y: Math.random() * height,
+    vx: Math.cos(angle) * speed * velocityScale,
+    vy: Math.sin(angle) * speed * velocityScale,
+    baseSize,
+    size: baseSize,
+    baseOpacity,
+    opacity: baseOpacity,
+    offsetX: 0,
+    offsetY: 0,
+    targetOffsetX: 0,
+    targetOffsetY: 0,
+    pulsePhase: Math.random() * Math.PI * 2,
+    pulseSpeed: randomBetween(0.0015, 0.0038),
+    depth,
+    palette,
+    sparkle,
   };
 }
 
-type Dot = {
-  x: number;
-  y: number;
-  size: number;
-  opacity: number;
-  dur: number;
-  delay: number;
-  drift: number;
-  pulseDur: number;
-  pulseDelay: number;
-};
-
-function makeDots(
-  n: number,
-  size: [number, number],
-  alpha: [number, number],
-  speed: [number, number],
-  rand: () => number,
-): Dot[] {
-  return Array.from({ length: n }, () => ({
-    x: rand() * 100,
-    y: rand() * 100,
-    size: size[0] + rand() * (size[1] - size[0]),
-    opacity: alpha[0] + rand() * (alpha[1] - alpha[0]),
-    dur: speed[0] + rand() * (speed[1] - speed[0]),
-    delay: -(rand() * speed[1]),
-    drift: Math.floor(rand() * 6),
-    pulseDur: 6 + rand() * 6,
-    pulseDelay: -(rand() * 12),
-  }));
+function createParticles(width: number, height: number, count: number) {
+  return Array.from({ length: count }, () => createParticle(width, height));
 }
 
-/* Connection lines for middle layer */
-function makeLines(dots: Dot[], maxDist: number) {
-  const lines: { x1: number; y1: number; x2: number; y2: number; o: number }[] = [];
-  for (let i = 0; i < dots.length; i++) {
-    for (let j = i + 1; j < dots.length; j++) {
-      const dx = dots[i].x - dots[j].x;
-      const dy = dots[i].y - dots[j].y;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d < maxDist) {
-        lines.push({
-          x1: dots[i].x, y1: dots[i].y,
-          x2: dots[j].x, y2: dots[j].y,
-          o: 0.06 + (1 - d / maxDist) * 0.2,
-        });
-      }
-    }
+function wrapParticlePosition(particle: Particle, width: number, height: number) {
+  if (particle.x < -WRAP_MARGIN) particle.x = width + WRAP_MARGIN;
+  if (particle.x > width + WRAP_MARGIN) particle.x = -WRAP_MARGIN;
+  if (particle.y < -WRAP_MARGIN) particle.y = height + WRAP_MARGIN;
+  if (particle.y > height + WRAP_MARGIN) particle.y = -WRAP_MARGIN;
+}
+
+function drawParticle(
+  context: CanvasRenderingContext2D,
+  particle: Particle,
+  x: number,
+  y: number,
+) {
+  const radius = particle.size / 2;
+  const [r, g, b] = particle.palette.rgb;
+
+  if (particle.opacity > 0.45 || particle.baseSize > 2.2) {
+    context.beginPath();
+    context.fillStyle = `rgba(${r}, ${g}, ${b}, ${particle.opacity * 0.12})`;
+    context.arc(x, y, radius * (particle.sparkle ? 4.6 : 3.6), 0, Math.PI * 2);
+    context.fill();
   }
-  return lines;
-}
 
-/* ── Generate at module level (deterministic, runs once) ── */
-const rand = mkRand(42);
-const FAR = makeDots(28, [1, 1.5], [0.1, 0.2], [25, 35], rand);
-const MID = makeDots(22, [2, 3], [0.3, 0.5], [15, 25], rand);
-const NEAR = makeDots(12, [3, 5], [0.6, 0.9], [10, 18], rand);
-const MID_LINES = makeLines(MID, 22);
+  context.beginPath();
+  context.fillStyle = `rgba(${r}, ${g}, ${b}, ${particle.opacity})`;
+  context.arc(x, y, radius, 0, Math.PI * 2);
+  context.fill();
 
-/* ── Keyframes ── */
-const STYLE_CSS = `
-@keyframes d0{0%,100%{translate:0 0}25%{translate:28px -18px}50%{translate:-15px 22px}75%{translate:-22px -12px}}
-@keyframes d1{0%,100%{translate:0 0}25%{translate:-20px 25px}50%{translate:30px 10px}75%{translate:12px -28px}}
-@keyframes d2{0%,100%{translate:0 0}25%{translate:18px 20px}50%{translate:-25px -15px}75%{translate:20px -22px}}
-@keyframes d3{0%,100%{translate:0 0}25%{translate:-15px -22px}50%{translate:22px 18px}75%{translate:-28px 10px}}
-@keyframes d4{0%,100%{translate:0 0}25%{translate:25px 12px}50%{translate:-18px -25px}75%{translate:-10px 28px}}
-@keyframes d5{0%,100%{translate:0 0}25%{translate:-28px 15px}50%{translate:12px -20px}75%{translate:25px 18px}}
-@keyframes glow-pulse{0%,100%{scale:1}50%{scale:1.3}}
-@media(prefers-reduced-motion:reduce){
-  .pn-dot,.pn-dot-pulse{animation:none!important}
+  if (particle.sparkle) {
+    context.beginPath();
+    context.fillStyle = `rgba(255, 255, 255, ${Math.min(
+      0.85,
+      particle.opacity * 0.72,
+    )})`;
+    context.arc(x, y, Math.max(0.55, radius * 0.42), 0, Math.PI * 2);
+    context.fill();
+  }
 }
-`;
 
 export function ParticleNetwork({ className }: ParticleNetworkProps) {
-  const l1 = useRef<HTMLDivElement>(null);
-  const l2 = useRef<HTMLDivElement>(null);
-  const l3 = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    const mqMot = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches || mqMot.matches) return;
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
 
-    let last = 0;
+    if (!canvas || !container) return;
 
-    function onMove(e: MouseEvent) {
-      const now = Date.now();
-      if (now - last < 100) return;
-      last = now;
+    const context = canvas.getContext("2d", { alpha: true });
 
-      const cx = (e.clientX / window.innerWidth - 0.5) * 2;
-      const cy = (e.clientY / window.innerHeight - 0.5) * 2;
+    if (!context) return;
 
-      if (l1.current) l1.current.style.transform = `translate(${(-cx * 3).toFixed(1)}px,${(-cy * 3).toFixed(1)}px)`;
-      if (l2.current) l2.current.style.transform = `translate(${(-cx * 7).toFixed(1)}px,${(-cy * 7).toFixed(1)}px)`;
-      if (l3.current) l3.current.style.transform = `translate(${(-cx * 12).toFixed(1)}px,${(-cy * 12).toFixed(1)}px)`;
+    context.imageSmoothingEnabled = true;
+
+    const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mobileQuery = window.matchMedia(
+      `(max-width: ${MOBILE_BREAKPOINT - 1}px)`,
+    );
+
+    const cursor = { active: false, x: 0, y: 0 };
+    let particles: Particle[] = [];
+    let frameId = 0;
+    let resizeObserver: ResizeObserver | null = null;
+    let intersectionObserver: IntersectionObserver | null = null;
+    let isVisible = true;
+    let width = 1;
+    let height = 1;
+    let lastTimestamp = 0;
+
+    function getParticleCount() {
+      return mobileQuery.matches
+        ? MOBILE_PARTICLE_COUNT
+        : DESKTOP_PARTICLE_COUNT;
     }
 
-    function onLeave() {
-      if (l1.current) l1.current.style.transform = "";
-      if (l2.current) l2.current.style.transform = "";
-      if (l3.current) l3.current.style.transform = "";
+    function resizeCanvas() {
+      const rect = container.getBoundingClientRect();
+      const nextWidth = Math.max(1, rect.width);
+      const nextHeight = Math.max(1, rect.height);
+      const dpr = Math.min(window.devicePixelRatio || 1, DPR_LIMIT);
+
+      width = nextWidth;
+      height = nextHeight;
+      canvas.width = Math.round(nextWidth * dpr);
+      canvas.height = Math.round(nextHeight * dpr);
+      canvas.style.width = `${nextWidth}px`;
+      canvas.style.height = `${nextHeight}px`;
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      particles = createParticles(nextWidth, nextHeight, getParticleCount());
+      drawFrame(0, true);
     }
 
-    window.addEventListener("mousemove", onMove, { passive: true });
-    document.documentElement.addEventListener("mouseleave", onLeave);
+    function updateParticles(deltaFactor: number, timestamp: number) {
+      for (const particle of particles) {
+        particle.x += particle.vx * deltaFactor;
+        particle.y += particle.vy * deltaFactor;
+        wrapParticlePosition(particle, width, height);
+
+        if (cursor.active) {
+          const dx = cursor.x - particle.x;
+          const dy = cursor.y - particle.y;
+          const distance = Math.hypot(dx, dy) || 1;
+
+          if (distance < CURSOR_RADIUS) {
+            const influence = 1 - distance / CURSOR_RADIUS;
+            const shift =
+              MAX_CURSOR_SHIFT * influence * (0.45 + particle.depth * 0.55);
+
+            particle.targetOffsetX = (dx / distance) * shift;
+            particle.targetOffsetY = (dy / distance) * shift;
+          } else {
+            particle.targetOffsetX = 0;
+            particle.targetOffsetY = 0;
+          }
+        } else {
+          particle.targetOffsetX = 0;
+          particle.targetOffsetY = 0;
+        }
+
+        particle.offsetX +=
+          (particle.targetOffsetX - particle.offsetX) * 0.08 * deltaFactor;
+        particle.offsetY +=
+          (particle.targetOffsetY - particle.offsetY) * 0.08 * deltaFactor;
+
+        particle.pulsePhase += particle.pulseSpeed * deltaFactor * 16.67;
+
+        const pulseWave = (Math.sin(particle.pulsePhase) + 1) / 2;
+        const pulseBoost =
+          pulseWave > 0.985 ? (pulseWave - 0.985) / 0.015 : 0;
+
+        particle.opacity = clamp(
+          particle.baseOpacity + pulseBoost * (particle.sparkle ? 0.4 : 0.26),
+          0.18,
+          1,
+        );
+        particle.size = particle.baseSize + pulseBoost * (particle.sparkle ? 1 : 0.6);
+
+        if (timestamp > 0 && Math.random() < 0.00018 * deltaFactor) {
+          particle.pulsePhase = Math.PI / 2;
+        }
+      }
+    }
+
+    function drawConnections(displayPoints: { particle: Particle; x: number; y: number }[]) {
+      for (let index = 0; index < displayPoints.length; index += 1) {
+        const first = displayPoints[index];
+
+        for (let secondIndex = index + 1; secondIndex < displayPoints.length; secondIndex += 1) {
+          const second = displayPoints[secondIndex];
+          const dx = second.x - first.x;
+
+          if (Math.abs(dx) > CONNECTION_DISTANCE) continue;
+
+          const dy = second.y - first.y;
+
+          if (Math.abs(dy) > CONNECTION_DISTANCE) continue;
+
+          const distance = Math.hypot(dx, dy);
+
+          if (distance > CONNECTION_DISTANCE) continue;
+
+          const baseOpacity =
+            (1 - distance / CONNECTION_DISTANCE) *
+            (0.08 + ((first.particle.depth + second.particle.depth) / 2) * 0.14);
+
+          if (baseOpacity <= 0.02) continue;
+
+          let glowBoost = 0;
+
+          if (cursor.active) {
+            const lineMidX = (first.x + second.x) / 2;
+            const lineMidY = (first.y + second.y) / 2;
+            const cursorDistance = Math.hypot(cursor.x - lineMidX, cursor.y - lineMidY);
+
+            if (cursorDistance < CURSOR_RADIUS) {
+              glowBoost = (1 - cursorDistance / CURSOR_RADIUS) * 0.12;
+            }
+          }
+
+          context.beginPath();
+          context.moveTo(first.x, first.y);
+          context.lineTo(second.x, second.y);
+          context.lineWidth = 0.5 + ((first.particle.depth + second.particle.depth) / 2) * 0.5;
+          context.strokeStyle = `rgba(245, 166, 35, ${clamp(
+            baseOpacity + glowBoost,
+            0.05,
+            0.32,
+          )})`;
+          context.stroke();
+        }
+      }
+    }
+
+    function drawFrame(timestamp: number, staticFrame = false) {
+      context.clearRect(0, 0, width, height);
+
+      if (!staticFrame) {
+        const deltaMs = lastTimestamp === 0 ? 16.67 : Math.min(33, timestamp - lastTimestamp);
+        const deltaFactor = deltaMs / 16.67;
+
+        updateParticles(deltaFactor, timestamp);
+        lastTimestamp = timestamp;
+      }
+
+      const displayPoints = particles.map((particle) => ({
+        particle,
+        x: particle.x + particle.offsetX,
+        y: particle.y + particle.offsetY,
+      }));
+
+      drawConnections(displayPoints);
+
+      for (const point of displayPoints) {
+        drawParticle(context, point.particle, point.x, point.y);
+      }
+    }
+
+    function stopAnimation() {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+        frameId = 0;
+      }
+    }
+
+    function animate(timestamp: number) {
+      drawFrame(timestamp);
+
+      if (!reduceMotionQuery.matches && isVisible) {
+        frameId = window.requestAnimationFrame(animate);
+      } else {
+        frameId = 0;
+      }
+    }
+
+    function startAnimation() {
+      stopAnimation();
+      lastTimestamp = 0;
+
+      if (reduceMotionQuery.matches || !isVisible) {
+        drawFrame(0, true);
+        return;
+      }
+
+      frameId = window.requestAnimationFrame(animate);
+    }
+
+    function handlePointerMove(event: PointerEvent) {
+      const rect = container.getBoundingClientRect();
+      const nextX = event.clientX - rect.left;
+      const nextY = event.clientY - rect.top;
+      const withinBounds =
+        nextX >= 0 && nextX <= rect.width && nextY >= 0 && nextY <= rect.height;
+
+      cursor.active = withinBounds;
+      cursor.x = nextX;
+      cursor.y = nextY;
+    }
+
+    function handlePointerLeave() {
+      cursor.active = false;
+    }
+
+    function handleMediaChange() {
+      resizeCanvas();
+      startAnimation();
+    }
+
+    resizeCanvas();
+    startAnimation();
+
+    resizeObserver = new ResizeObserver(() => {
+      resizeCanvas();
+      startAnimation();
+    });
+    resizeObserver.observe(container);
+
+    intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        isVisible = entry?.isIntersecting ?? true;
+
+        if (isVisible) {
+          startAnimation();
+        } else {
+          stopAnimation();
+        }
+      },
+      { threshold: 0.05 },
+    );
+    intersectionObserver.observe(container);
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    window.addEventListener("pointerleave", handlePointerLeave);
+    reduceMotionQuery.addEventListener("change", handleMediaChange);
+    mobileQuery.addEventListener("change", handleMediaChange);
+
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      document.documentElement.removeEventListener("mouseleave", onLeave);
+      stopAnimation();
+      resizeObserver?.disconnect();
+      intersectionObserver?.disconnect();
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerleave", handlePointerLeave);
+      reduceMotionQuery.removeEventListener("change", handleMediaChange);
+      mobileQuery.removeEventListener("change", handleMediaChange);
     };
   }, []);
 
   return (
     <div
+      ref={containerRef}
       aria-hidden="true"
       className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
     >
-      {/* eslint-disable-next-line react/no-danger */}
-      <style dangerouslySetInnerHTML={{ __html: STYLE_CSS }} />
-
-      {/* Depth vignette — tunnel / deep-void feel */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.4) 100%)",
-        }}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,10,10,0.98)_0%,rgba(10,10,10,0.92)_36%,rgba(10,10,10,0.76)_68%,rgba(10,10,10,0.22)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_18%,rgba(245,166,35,0.12)_0%,rgba(245,166,35,0.04)_22%,transparent_54%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_26%,rgba(0,0,0,0.26)_72%,rgba(0,0,0,0.62)_100%)]" />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 size-full"
+        style={{ transform: "translateZ(0)", willChange: "transform" }}
       />
-
-      {/* ── Layer 1: Far background (hidden on mobile) ── */}
-      <div
-        ref={l1}
-        className="absolute inset-0 hidden md:block"
-        style={{ willChange: "transform", transition: "transform 0.3s ease-out" }}
-      >
-        {FAR.map((p, i) => (
-          <div
-            key={`f${i}`}
-            className="pn-dot absolute rounded-full"
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              width: p.size,
-              height: p.size,
-              backgroundColor: "#8B6914",
-              opacity: p.opacity,
-              filter: "blur(1px)",
-              animation: `d${p.drift} ${p.dur.toFixed(1)}s ${p.delay.toFixed(1)}s linear infinite`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* ── Layer 2: Middle — particles + connection lines ── */}
-      <div
-        ref={l2}
-        className="absolute inset-0"
-        style={{ willChange: "transform", transition: "transform 0.3s ease-out" }}
-      >
-        {/* Static SVG connection lines */}
-        <svg className="absolute inset-0 size-full">
-          {MID_LINES.map((l, i) => (
-            <line
-              key={`ml${i}`}
-              x1={`${l.x1}%`}
-              y1={`${l.y1}%`}
-              x2={`${l.x2}%`}
-              y2={`${l.y2}%`}
-              stroke="#F5A623"
-              strokeWidth="0.6"
-              strokeOpacity={l.o}
-            />
-          ))}
-        </svg>
-
-        {MID.map((p, i) => (
-          <div
-            key={`m${i}`}
-            className="pn-dot absolute rounded-full"
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              width: p.size,
-              height: p.size,
-              backgroundColor: "#F5A623",
-              opacity: p.opacity,
-              animation: `d${p.drift} ${p.dur.toFixed(1)}s ${p.delay.toFixed(1)}s linear infinite`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* ── Layer 3: Foreground — bright, with glow + pulse ── */}
-      <div
-        ref={l3}
-        className="absolute inset-0"
-        style={{ willChange: "transform", transition: "transform 0.3s ease-out" }}
-      >
-        {NEAR.map((p, i) => (
-          <div
-            key={`n${i}`}
-            className="pn-dot pn-dot-pulse absolute rounded-full"
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              width: p.size,
-              height: p.size,
-              backgroundColor: "#FFD60A",
-              opacity: p.opacity,
-              boxShadow: "0 0 6px rgba(245,166,35,0.4)",
-              animation: `d${p.drift} ${p.dur.toFixed(1)}s ${p.delay.toFixed(1)}s linear infinite, glow-pulse ${p.pulseDur.toFixed(1)}s ${p.pulseDelay.toFixed(1)}s ease-in-out infinite`,
-            }}
-          />
-        ))}
-      </div>
     </div>
   );
 }

@@ -27,7 +27,8 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
   return (
     <section className="relative isolate overflow-hidden bg-[#0A0A0A]">
       <ParticleNetwork className="z-0" />
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[rgba(10,10,10,0.16)]" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(110deg,rgba(10,10,10,0.82)_14%,rgba(10,10,10,0.55)_42%,rgba(10,10,10,0.2)_74%,transparent_100%)]" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_22%_26%,rgba(255,214,10,0.06)_0%,rgba(255,214,10,0.02)_18%,transparent_42%)]" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_auto] lg:gap-16">
