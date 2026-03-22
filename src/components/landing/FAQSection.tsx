@@ -1,6 +1,3 @@
-"use client";
-
-import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
@@ -42,13 +39,7 @@ export function FAQSection() {
     <section className="py-20 sm:py-28">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         {/* Section header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center"
-        >
+        <div className="animate-in fade-in-0 slide-in-from-bottom-5 text-center duration-500">
           <Badge className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-brand-secondary backdrop-blur-sm">
             <span className="inline-flex items-center gap-2 text-sm font-medium">
               <span className="size-2 rounded-full bg-brand-primary" />
@@ -61,16 +52,10 @@ export function FAQSection() {
           <p className="mx-auto mt-3 max-w-lg text-brand-muted">
             პასუხები ყველაზე გავრცელებულ კითხვებზე
           </p>
-        </motion.div>
+        </div>
 
         {/* Accordion */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-          className="mt-12"
-        >
+        <div className="mt-12 animate-in fade-in-0 slide-in-from-bottom-5 duration-500" style={{ animationDelay: "150ms" }}>
           <Accordion type="single" collapsible className="space-y-3">
             {faqItems.map((faq, index) => (
               <AccordionItem
@@ -87,7 +72,7 @@ export function FAQSection() {
               </AccordionItem>
             ))}
           </Accordion>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

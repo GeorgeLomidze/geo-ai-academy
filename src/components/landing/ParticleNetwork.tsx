@@ -17,7 +17,6 @@ type Particle = {
   baseAlpha: number;
   color: RgbColor;
   depth: number;
-  glow: number;
   interactionX: number;
   interactionY: number;
   pulsePhase: number;
@@ -34,7 +33,6 @@ type AmbientMote = {
   vy: number;
   radius: number;
   alpha: number;
-  blur: number;
   color: RgbColor;
   depth: number;
   pulsePhase: number;
@@ -70,12 +68,13 @@ const PALETTE: RgbColor[] = [
 ];
 
 const BACKGROUND = "rgb(10 10 10 / 0.04)";
-const CONNECTION_DISTANCE = 150;
-const DEPTH_CONNECTION_DISTANCE = 210;
+const CONNECTION_DISTANCE = 100;
+const DEPTH_CONNECTION_DISTANCE = 150;
 const INTERACTION_RADIUS = 200;
-const DESKTOP_MAX_DPR = 1.5;
-const MOBILE_MAX_DPR = 1.2;
 const DEPTH_LAYER_FRAME_MS = 1000 / 18;
+const MAIN_FRAME_MS = 1000 / 30;
+const CURSOR_THROTTLE_MS = 50;
+const GRID_CELL_SIZE = CONNECTION_DISTANCE;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -89,30 +88,30 @@ function pickParticleCount(width: number, height: number, isMobile: boolean) {
   const area = width * height;
 
   if (isMobile) {
-    return clamp(Math.round(area / 5600), 55, 75);
+    return clamp(Math.round(area / 14000), 20, 30);
   }
 
-  return clamp(Math.round(area / 9000), 110, 150);
+  return clamp(Math.round(area / 18000), 50, 60);
 }
 
 function pickAmbientMoteCount(width: number, height: number, isMobile: boolean) {
   const area = width * height;
 
   if (isMobile) {
-    return clamp(Math.round(area / 15000), 28, 42);
+    return clamp(Math.round(area / 22000), 12, 20);
   }
 
-  return clamp(Math.round(area / 22000), 48, 70);
+  return clamp(Math.round(area / 30000), 25, 40);
 }
 
 function pickDepthNodeCount(width: number, height: number, isMobile: boolean) {
   const area = width * height;
 
   if (isMobile) {
-    return clamp(Math.round(area / 26000), 18, 26);
+    return clamp(Math.round(area / 32000), 10, 16);
   }
 
-  return clamp(Math.round(area / 38000), 28, 40);
+  return clamp(Math.round(area / 42000), 18, 28);
 }
 
 function createParticle(width: number, height: number): Particle {
@@ -144,7 +143,6 @@ function createParticle(width: number, height: number): Particle {
     baseAlpha,
     color,
     depth,
-    glow: isBright ? 22 + depth * 10 : 10 + depth * 7,
     interactionX: 0,
     interactionY: 0,
     pulsePhase: Math.random() * Math.PI * 2,
@@ -168,7 +166,6 @@ function createAmbientMote(width: number, height: number): AmbientMote {
     vy: Math.sin(angle) * speed * depth,
     radius: 0.6 + Math.random() * 1.1,
     alpha: 0.035 + Math.random() * 0.08,
-    blur: 8 + Math.random() * 14,
     color,
     depth,
     pulsePhase: Math.random() * Math.PI * 2,
@@ -197,6 +194,30 @@ function createDepthNode(width: number, height: number): DepthNode {
     pulsePhase: Math.random() * Math.PI * 2,
     pulseSpeed: 0.00032 + Math.random() * 0.00055,
   };
+}
+
+/** Spatial hash grid for O(n) connection lookups instead of O(n^2) */
+function buildSpatialGrid(
+  positions: Array<{ x: number; y: number }>,
+  cellSize: number,
+  gridCols: number,
+) {
+  const grid = new Map<number, number[]>();
+
+  for (let i = 0; i < positions.length; i++) {
+    const col = Math.floor(positions[i].x / cellSize);
+    const row = Math.floor(positions[i].y / cellSize);
+    const key = row * gridCols + col;
+    const cell = grid.get(key);
+
+    if (cell) {
+      cell.push(i);
+    } else {
+      grid.set(key, [i]);
+    }
+  }
+
+  return grid;
 }
 
 export function ParticleNetwork({ className }: ParticleNetworkProps) {
@@ -236,10 +257,12 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
     let particles: Particle[] = [];
     let ambientMotes: AmbientMote[] = [];
     let depthNodes: DepthNode[] = [];
-    let lastTimestamp = 0;
+    let lastFrameTimestamp = 0;
     let lastDepthLayerTimestamp = 0;
-    let isVisible = true;
+    let isVisible = false;
+    let hasBeenVisible = false;
     let intersectionObserver: IntersectionObserver | null = null;
+    let lastCursorUpdate = 0;
     const depthCanvas = document.createElement("canvas");
     const depthContext = depthCanvas.getContext("2d", {
       alpha: true,
@@ -256,10 +279,10 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
       const rect = host.getBoundingClientRect();
       width = Math.max(1, rect.width);
       height = Math.max(1, rect.height);
-      dpr = Math.min(
-        window.devicePixelRatio || 1,
-        mobileMediaQuery.matches ? MOBILE_MAX_DPR : DESKTOP_MAX_DPR,
-      );
+      // Mobile: 1x resolution. Desktop: capped at 1.5x
+      dpr = mobileMediaQuery.matches
+        ? 1
+        : Math.min(window.devicePixelRatio || 1, 1.5);
 
       surface.width = Math.round(width * dpr);
       surface.height = Math.round(height * dpr);
@@ -294,6 +317,13 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
     }
 
     function updateCursor(event: PointerEvent) {
+      const now = performance.now();
+
+      if (now - lastCursorUpdate < CURSOR_THROTTLE_MS) {
+        return;
+      }
+
+      lastCursorUpdate = now;
       const rect = host.getBoundingClientRect();
       const inside =
         event.clientX >= rect.left &&
@@ -317,7 +347,7 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
 
     function handleMobileChange() {
       resizeCanvas();
-      drawFrame(lastTimestamp);
+      drawFrame(lastFrameTimestamp);
     }
 
     function drawParticle(
@@ -346,69 +376,74 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
 
       ctx.beginPath();
       ctx.arc(drawX, drawY, particle.radius, 0, Math.PI * 2);
-      ctx.shadowBlur =
-        alpha > 0.58 || sparkProgress > 0.08 ? particle.glow : 0;
-      ctx.shadowColor = rgba(
-        particle.color,
-        clamp(alpha * 0.75, 0.18, 0.82),
-      );
       ctx.fillStyle = rgba(particle.color, alpha);
       ctx.fill();
-      ctx.shadowBlur = 0;
     }
 
     function drawConnections(positions: Array<{ x: number; y: number }>) {
-      for (let index = 0; index < particles.length; index += 1) {
+      const gridCols = Math.ceil(width / GRID_CELL_SIZE) + 1;
+      const grid = buildSpatialGrid(positions, GRID_CELL_SIZE, gridCols);
+
+      for (let index = 0; index < particles.length; index++) {
         const source = particles[index];
         const sourcePosition = positions[index];
+        const col = Math.floor(sourcePosition.x / GRID_CELL_SIZE);
+        const row = Math.floor(sourcePosition.y / GRID_CELL_SIZE);
 
-        for (
-          let comparisonIndex = index + 1;
-          comparisonIndex < particles.length;
-          comparisonIndex += 1
-        ) {
-          const target = particles[comparisonIndex];
-          const targetPosition = positions[comparisonIndex];
-          const deltaX = sourcePosition.x - targetPosition.x;
-          const deltaY = sourcePosition.y - targetPosition.y;
-          const distance = Math.hypot(deltaX, deltaY);
+        // Check only neighboring cells (3x3 grid around source)
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            const neighborKey = (row + dr) * gridCols + (col + dc);
+            const cell = grid.get(neighborKey);
 
-          if (distance > CONNECTION_DISTANCE) {
-            continue;
+            if (!cell) continue;
+
+            for (const comparisonIndex of cell) {
+              if (comparisonIndex <= index) continue;
+
+              const target = particles[comparisonIndex];
+              const targetPosition = positions[comparisonIndex];
+              const deltaX = sourcePosition.x - targetPosition.x;
+              const deltaY = sourcePosition.y - targetPosition.y;
+              const distSq = deltaX * deltaX + deltaY * deltaY;
+
+              if (distSq > CONNECTION_DISTANCE * CONNECTION_DISTANCE) {
+                continue;
+              }
+
+              const distance = Math.sqrt(distSq);
+              const distanceFade = 1 - distance / CONNECTION_DISTANCE;
+              let alpha =
+                distanceFade * distanceFade * (0.11 + (source.depth + target.depth) * 0.05);
+
+              if (cursor.active) {
+                const sdx = sourcePosition.x - cursor.x;
+                const sdy = sourcePosition.y - cursor.y;
+                const tdx = targetPosition.x - cursor.x;
+                const tdy = targetPosition.y - cursor.y;
+                const sourceDistance = Math.sqrt(sdx * sdx + sdy * sdy);
+                const targetDistance = Math.sqrt(tdx * tdx + tdy * tdy);
+                const cursorInfluence =
+                  Math.max(0, 1 - sourceDistance / INTERACTION_RADIUS) * 0.14 +
+                  Math.max(0, 1 - targetDistance / INTERACTION_RADIUS) * 0.14;
+
+                alpha += cursorInfluence;
+              }
+
+              ctx.beginPath();
+              ctx.moveTo(sourcePosition.x, sourcePosition.y);
+              ctx.lineTo(targetPosition.x, targetPosition.y);
+              ctx.lineWidth = 0.55 + ((source.depth + target.depth) * 0.2);
+              ctx.strokeStyle = rgba(PALETTE[0], clamp(alpha, 0.08, 0.34));
+              ctx.stroke();
+            }
           }
-
-          const distanceFade = 1 - distance / CONNECTION_DISTANCE;
-          let alpha =
-            distanceFade * distanceFade * (0.11 + (source.depth + target.depth) * 0.05);
-
-          if (cursor.active) {
-            const sourceDistance = Math.hypot(
-              sourcePosition.x - cursor.x,
-              sourcePosition.y - cursor.y,
-            );
-            const targetDistance = Math.hypot(
-              targetPosition.x - cursor.x,
-              targetPosition.y - cursor.y,
-            );
-            const cursorInfluence =
-              Math.max(0, 1 - sourceDistance / INTERACTION_RADIUS) * 0.14 +
-              Math.max(0, 1 - targetDistance / INTERACTION_RADIUS) * 0.14;
-
-            alpha += cursorInfluence;
-          }
-
-          ctx.beginPath();
-          ctx.moveTo(sourcePosition.x, sourcePosition.y);
-          ctx.lineTo(targetPosition.x, targetPosition.y);
-          ctx.lineWidth = 0.55 + ((source.depth + target.depth) * 0.2);
-          ctx.strokeStyle = rgba(PALETTE[0], clamp(alpha, 0.08, 0.34));
-          ctx.stroke();
         }
       }
     }
 
     function drawAmbientMotes(timestamp: number) {
-      ambientMotes.forEach((mote) => {
+      for (const mote of ambientMotes) {
         if (!reduceMotion) {
           mote.x += mote.vx;
           mote.y += mote.vy;
@@ -432,13 +467,9 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
 
         ctx.beginPath();
         ctx.arc(mote.x, mote.y, mote.radius, 0, Math.PI * 2);
-        ctx.shadowBlur = mote.blur;
-        ctx.shadowColor = rgba(mote.color, clamp(mote.alpha * 1.5, 0.04, 0.16));
         ctx.fillStyle = rgba(mote.color, clamp(mote.alpha * pulse, 0.03, 0.14));
         ctx.fill();
-      });
-
-      ctx.shadowBlur = 0;
+      }
     }
 
     function renderDepthFieldLayer(timestamp: number) {
@@ -514,12 +545,13 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
           const targetPosition = positions[comparisonIndex];
           const deltaX = sourcePosition.x - targetPosition.x;
           const deltaY = sourcePosition.y - targetPosition.y;
-          const distance = Math.hypot(deltaX, deltaY);
+          const distSq = deltaX * deltaX + deltaY * deltaY;
 
-          if (distance > DEPTH_CONNECTION_DISTANCE) {
+          if (distSq > DEPTH_CONNECTION_DISTANCE * DEPTH_CONNECTION_DISTANCE) {
             continue;
           }
 
+          const distance = Math.sqrt(distSq);
           const fade = 1 - distance / DEPTH_CONNECTION_DISTANCE;
           const lineAlpha =
             fade * fade * (0.05 + (source.depth + target.depth) * 0.03);
@@ -533,22 +565,6 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
             lineColor,
             clamp(lineAlpha * 0.34, 0.015, 0.06),
           );
-          depthCtx.shadowBlur = 18;
-          depthCtx.shadowColor = rgba(
-            lineColor,
-            clamp(lineAlpha * 0.5, 0.025, 0.08),
-          );
-          depthCtx.stroke();
-
-          depthCtx.beginPath();
-          depthCtx.moveTo(sourcePosition.x, sourcePosition.y);
-          depthCtx.lineTo(targetPosition.x, targetPosition.y);
-          depthCtx.lineWidth = 0.7 + ((source.depth + target.depth) * 0.14);
-          depthCtx.strokeStyle = rgba(
-            lineColor,
-            clamp(lineAlpha * 0.42, 0.02, 0.08),
-          );
-          depthCtx.shadowBlur = 0;
           depthCtx.stroke();
         }
       }
@@ -559,13 +575,9 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
 
         depthCtx.beginPath();
         depthCtx.arc(position.x, position.y, node.radius, 0, Math.PI * 2);
-        depthCtx.shadowBlur = 12 + node.depth * 8;
-        depthCtx.shadowColor = rgba(node.color, clamp(alpha * 0.9, 0.04, 0.16));
         depthCtx.fillStyle = rgba(node.color, alpha);
         depthCtx.fill();
       });
-
-      depthCtx.shadowBlur = 0;
     }
 
     function drawFrame(timestamp: number) {
@@ -623,9 +635,10 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
         if (cursor.active && !reduceMotion) {
           const deltaX = cursor.x - particle.x;
           const deltaY = cursor.y - particle.y;
-          const distance = Math.hypot(deltaX, deltaY);
+          const distSq = deltaX * deltaX + deltaY * deltaY;
 
-          if (distance < INTERACTION_RADIUS && distance > 0.001) {
+          if (distSq < INTERACTION_RADIUS * INTERACTION_RADIUS && distSq > 0.001) {
+            const distance = Math.sqrt(distSq);
             const influence = Math.pow(1 - distance / INTERACTION_RADIUS, 1.8);
             const shift = (10 + particle.depth * 7) * influence;
 
@@ -658,26 +671,40 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
         );
       });
 
-      lastTimestamp = timestamp;
+      lastFrameTimestamp = timestamp;
     }
 
     function animate(timestamp: number) {
       if (!isVisible) {
-        animationFrameId = window.requestAnimationFrame(animate);
+        // Fully stop requesting frames when off-screen
         return;
       }
 
-      drawFrame(timestamp);
+      // Frame skip: target ~30fps for canvas
+      if (timestamp - lastFrameTimestamp >= MAIN_FRAME_MS) {
+        drawFrame(timestamp);
+      }
+
       animationFrameId = window.requestAnimationFrame(animate);
     }
 
-    resizeCanvas();
+    function startAnimation() {
+      if (animationFrameId) return;
+      animationFrameId = window.requestAnimationFrame(animate);
+    }
+
+    function stopAnimation() {
+      if (animationFrameId) {
+        window.cancelAnimationFrame(animationFrameId);
+        animationFrameId = 0;
+      }
+    }
 
     resizeObserver = new ResizeObserver(() => {
       resizeCanvas();
 
       if (reduceMotion) {
-        drawFrame(lastTimestamp);
+        drawFrame(lastFrameTimestamp);
       }
     });
 
@@ -685,25 +712,34 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
     host.addEventListener("pointermove", updateCursor, { passive: true });
     host.addEventListener("pointerleave", resetCursor);
     mobileMediaQuery.addEventListener("change", handleMobileChange);
+
+    // IntersectionObserver: lazy start + pause when off-screen
     intersectionObserver = new IntersectionObserver(
       ([entry]) => {
-        isVisible = entry?.isIntersecting ?? true;
+        const nowVisible = entry?.isIntersecting ?? false;
+        isVisible = nowVisible;
+
+        if (nowVisible && !hasBeenVisible) {
+          hasBeenVisible = true;
+          resizeCanvas();
+
+          if (reduceMotion) {
+            drawFrame(performance.now());
+          } else {
+            startAnimation();
+          }
+        } else if (nowVisible && !reduceMotion) {
+          startAnimation();
+        } else if (!nowVisible) {
+          stopAnimation();
+        }
       },
       { threshold: 0.02 },
     );
     intersectionObserver.observe(host);
 
-    if (reduceMotion) {
-      drawFrame(performance.now());
-    } else {
-      animationFrameId = window.requestAnimationFrame(animate);
-    }
-
     return () => {
-      if (animationFrameId) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
-
+      stopAnimation();
       resizeObserver?.disconnect();
       intersectionObserver?.disconnect();
       host.removeEventListener("pointermove", updateCursor);

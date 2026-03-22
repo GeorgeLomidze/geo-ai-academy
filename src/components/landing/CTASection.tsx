@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -18,13 +15,7 @@ export function CTASection() {
         }}
       />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5 }}
-        className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8"
-      >
+      <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8 animate-in fade-in-0 slide-in-from-bottom-5 duration-500">
         <h2 className="font-display text-3xl font-bold text-white sm:text-4xl">
           მზად ხარ სწავლის დასაწყებად?
         </h2>
@@ -44,7 +35,7 @@ export function CTASection() {
             </Link>
           </Button>
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }

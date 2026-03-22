@@ -12,12 +12,16 @@ async function getFeaturedCourses() {
     where: { status: "PUBLISHED" },
     orderBy: { createdAt: "desc" },
     take: 3,
-    include: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      shortDescription: true,
+      thumbnailUrl: true,
+      price: true,
       modules: {
-        include: {
-          lessons: {
-            select: { id: true },
-          },
+        select: {
+          _count: { select: { lessons: true } },
         },
       },
     },
@@ -35,7 +39,7 @@ async function getFeaturedCourses() {
     thumbnailUrl: course.thumbnailUrl,
     price: course.price,
     lessonCount: course.modules.reduce(
-      (sum, mod) => sum + mod.lessons.length,
+      (sum, mod) => sum + mod._count.lessons,
       0
     ),
     averageRating: ratingSummaries[course.id]?.averageRating ?? null,
