@@ -1,11 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Trash2, X } from "lucide-react";
 import { CreditDisplay } from "@/components/ai/CreditDisplay";
 import { ImageGrid } from "@/components/ai/ImageGrid";
 import { ImagePreviewModal } from "@/components/ai/ImagePreviewModal";
 import { PromptBar } from "@/components/ai/PromptBar";
 import { AIHistoryItem } from "@/components/ai/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { getModelPrice } from "@/lib/credits/pricing";
 
 const MODEL_OPTIONS = [
@@ -147,6 +159,9 @@ export function ImageGenerator({
   const [previewItem, setPreviewItem] = useState<AIHistoryItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleteTargets, setDeleteTargets] = useState<AIHistoryItem[]>([]);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const selectedModelMeta =
     MODEL_OPTIONS.find((item) => item.id === selectedModel) ?? MODEL_OPTIONS[0];
@@ -160,6 +175,7 @@ export function ImageGenerator({
       (item.status === "PENDING" || item.status === "PROCESSING") &&
       !item.id.startsWith("temp-")
   );
+  const selectedItems = generations.filter((item) => selectedIds.includes(item.id));
 
   useEffect(() => {
     if (!qualityOptions.includes(quality)) {
@@ -226,6 +242,12 @@ export function ImageGenerator({
 
     return () => window.clearInterval(intervalId);
   }, [pendingGenerations]);
+
+  useEffect(() => {
+    setSelectedIds((current) =>
+      current.filter((id) => generations.some((item) => item.id === id)),
+    );
+  }, [generations]);
 
   async function requestImageGeneration(input: {
     temporaryId: string;
@@ -401,46 +423,122 @@ export function ImageGenerator({
     setError(null);
   }
 
-  async function handleDelete(item: AIHistoryItem) {
-    if (item.id.startsWith("temp-")) {
-      setGenerations((current) => current.filter((entry) => entry.id !== item.id));
-      setPreviewItem((current) => (current?.id === item.id ? null : current));
+  async function handleDeleteMany(items: AIHistoryItem[]) {
+    if (items.length === 0) {
       return;
     }
 
-    try {
-      const response = await fetch(`/api/ai/${item.id}`, {
-        method: "DELETE",
-      });
+    let failedCount = 0;
 
-      if (!response.ok) {
-        setError("გენერაციის წაშლა ვერ მოხერხდა");
-        return;
+    for (const item of items) {
+      if (item.id.startsWith("temp-")) {
+        setGenerations((current) => current.filter((entry) => entry.id !== item.id));
+        setPreviewItem((current) => (current?.id === item.id ? null : current));
+        continue;
       }
 
-      setGenerations((current) => current.filter((entry) => entry.id !== item.id));
-      setPreviewItem((current) => (current?.id === item.id ? null : current));
-    } catch {
-      setError("გენერაციის წაშლა ვერ მოხერხდა");
+      try {
+        const response = await fetch(`/api/ai/${item.id}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          failedCount += 1;
+          continue;
+        }
+
+        setGenerations((current) => current.filter((entry) => entry.id !== item.id));
+        setPreviewItem((current) => (current?.id === item.id ? null : current));
+      } catch {
+        failedCount += 1;
+      }
     }
+
+    setSelectedIds((current) => current.filter((id) => !items.some((item) => item.id === id)));
+
+    if (failedCount > 0) {
+      setError(
+        failedCount === items.length
+          ? "გენერაციის წაშლა ვერ მოხერხდა"
+          : `${failedCount} სურათის წაშლა ვერ მოხერხდა`,
+      );
+    }
+  }
+
+  function handleToggleSelect(item: AIHistoryItem) {
+    if (item.status === "PROCESSING" || item.status === "PENDING") {
+      return;
+    }
+
+    setSelectedIds((current) =>
+      current.includes(item.id)
+        ? current.filter((id) => id !== item.id)
+        : [...current, item.id],
+    );
+  }
+
+  function requestDelete(items: AIHistoryItem[]) {
+    if (items.length === 0) {
+      return;
+    }
+
+    setDeleteTargets(items);
+    setConfirmDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    const targets = deleteTargets;
+    setConfirmDeleteOpen(false);
+    setDeleteTargets([]);
+    await handleDeleteMany(targets);
   }
 
   return (
     <div className="-m-4 flex h-[calc(100dvh-4rem)] flex-col overflow-hidden bg-brand-background sm:-m-6 lg:-m-8">
       <div className="flex flex-1 flex-col overflow-hidden px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
         <div className="flex min-h-0 flex-1 flex-col border-b border-brand-border pb-4">
-          <div className="mt-4 flex min-h-0 flex-1 w-full flex-col overflow-hidden">
+          <div className="mt-4 flex min-h-0 w-full flex-1 flex-col overflow-hidden">
             <div className="mb-4 flex items-end justify-end">
               <CreditDisplay compact balance={balance} />
             </div>
 
+            {selectedItems.length > 0 ? (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-brand-surface px-4 py-3">
+                <p className="text-sm text-brand-secondary">
+                  მონიშნულია {selectedItems.length} სურათი
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => setSelectedIds([])}
+                  >
+                    <X className="size-4" />
+                    გასუფთავება
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => requestDelete(selectedItems)}
+                  >
+                    <Trash2 className="size-4" />
+                    მონიშნულების წაშლა
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="hide-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6">
               <ImageGrid
                 items={generations}
+                selectedIds={selectedIds}
                 onPreview={setPreviewItem}
                 onDownload={handleDownload}
                 onAddReference={handleAddReference}
-                onDelete={(item) => void handleDelete(item)}
+                onDeleteRequest={(item) => requestDelete([item])}
+                onToggleSelect={handleToggleSelect}
               />
             </div>
           </div>
@@ -484,8 +582,36 @@ export function ImageGenerator({
         }}
         onDownload={handleDownload}
         onAddReference={handleAddReference}
-        onDelete={(item) => void handleDelete(item)}
+        onDelete={(item) => requestDelete([item])}
       />
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent className="rounded-2xl border-brand-border bg-brand-surface text-brand-secondary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteTargets.length > 1
+                ? "მონიშნული სურათების წაშლა"
+                : "სურათის წაშლა"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-brand-muted">
+              {deleteTargets.length > 1
+                ? `ნამდვილად გსურს ${deleteTargets.length} მონიშნული სურათის წაშლა? ეს მოქმედება ვეღარ დაბრუნდება.`
+                : "ნამდვილად გსურს ამ სურათის წაშლა? ეს მოქმედება ვეღარ დაბრუნდება."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full border-brand-border">
+              გაუქმება
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-full bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => void confirmDelete()}
+            >
+              წაშლა
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

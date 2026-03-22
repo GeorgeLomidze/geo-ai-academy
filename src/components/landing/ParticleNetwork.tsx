@@ -73,6 +73,9 @@ const BACKGROUND = "rgb(10 10 10 / 0.04)";
 const CONNECTION_DISTANCE = 150;
 const DEPTH_CONNECTION_DISTANCE = 210;
 const INTERACTION_RADIUS = 200;
+const DESKTOP_MAX_DPR = 1.5;
+const MOBILE_MAX_DPR = 1.2;
+const DEPTH_LAYER_FRAME_MS = 1000 / 18;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -234,18 +237,40 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
     let ambientMotes: AmbientMote[] = [];
     let depthNodes: DepthNode[] = [];
     let lastTimestamp = 0;
+    let lastDepthLayerTimestamp = 0;
+    let isVisible = true;
+    let intersectionObserver: IntersectionObserver | null = null;
+    const depthCanvas = document.createElement("canvas");
+    const depthContext = depthCanvas.getContext("2d", {
+      alpha: true,
+      desynchronized: true,
+    });
+
+    if (!depthContext) {
+      return;
+    }
+
+    const depthCtx = depthContext;
 
     function resizeCanvas() {
       const rect = host.getBoundingClientRect();
       width = Math.max(1, rect.width);
       height = Math.max(1, rect.height);
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(
+        window.devicePixelRatio || 1,
+        mobileMediaQuery.matches ? MOBILE_MAX_DPR : DESKTOP_MAX_DPR,
+      );
 
       surface.width = Math.round(width * dpr);
       surface.height = Math.round(height * dpr);
       surface.style.width = `${width}px`;
       surface.style.height = `${height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      depthCanvas.width = Math.round(width * dpr);
+      depthCanvas.height = Math.round(height * dpr);
+      depthCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      lastDepthLayerTimestamp = 0;
 
       const particleCount = pickParticleCount(
         width,
@@ -416,7 +441,8 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
       ctx.shadowBlur = 0;
     }
 
-    function drawDepthField(timestamp: number) {
+    function renderDepthFieldLayer(timestamp: number) {
+      depthCtx.clearRect(0, 0, width, height);
       const positions = depthNodes.map((node) => {
         if (!reduceMotion) {
           node.x += node.vx;
@@ -448,7 +474,7 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
 
       positions.forEach((position, index) => {
         const node = depthNodes[index];
-        const haloGradient = ctx.createRadialGradient(
+        const haloGradient = depthCtx.createRadialGradient(
           position.x,
           position.y,
           0,
@@ -467,13 +493,13 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
         );
         haloGradient.addColorStop(1, rgba(node.color, 0));
 
-        ctx.beginPath();
-        ctx.fillStyle = haloGradient;
-        ctx.arc(position.x, position.y, node.haloRadius, 0, Math.PI * 2);
-        ctx.fill();
+        depthCtx.beginPath();
+        depthCtx.fillStyle = haloGradient;
+        depthCtx.arc(position.x, position.y, node.haloRadius, 0, Math.PI * 2);
+        depthCtx.fill();
       });
 
-      ctx.lineCap = "round";
+      depthCtx.lineCap = "round";
 
       for (let index = 0; index < depthNodes.length; index += 1) {
         const source = depthNodes[index];
@@ -499,22 +525,31 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
             fade * fade * (0.05 + (source.depth + target.depth) * 0.03);
           const lineColor = source.color;
 
-          ctx.beginPath();
-          ctx.moveTo(sourcePosition.x, sourcePosition.y);
-          ctx.lineTo(targetPosition.x, targetPosition.y);
-          ctx.lineWidth = 1.6 + ((source.depth + target.depth) * 0.55);
-          ctx.strokeStyle = rgba(lineColor, clamp(lineAlpha * 0.34, 0.015, 0.06));
-          ctx.shadowBlur = 18;
-          ctx.shadowColor = rgba(lineColor, clamp(lineAlpha * 0.5, 0.025, 0.08));
-          ctx.stroke();
+          depthCtx.beginPath();
+          depthCtx.moveTo(sourcePosition.x, sourcePosition.y);
+          depthCtx.lineTo(targetPosition.x, targetPosition.y);
+          depthCtx.lineWidth = 1.6 + ((source.depth + target.depth) * 0.55);
+          depthCtx.strokeStyle = rgba(
+            lineColor,
+            clamp(lineAlpha * 0.34, 0.015, 0.06),
+          );
+          depthCtx.shadowBlur = 18;
+          depthCtx.shadowColor = rgba(
+            lineColor,
+            clamp(lineAlpha * 0.5, 0.025, 0.08),
+          );
+          depthCtx.stroke();
 
-          ctx.beginPath();
-          ctx.moveTo(sourcePosition.x, sourcePosition.y);
-          ctx.lineTo(targetPosition.x, targetPosition.y);
-          ctx.lineWidth = 0.7 + ((source.depth + target.depth) * 0.14);
-          ctx.strokeStyle = rgba(lineColor, clamp(lineAlpha * 0.42, 0.02, 0.08));
-          ctx.shadowBlur = 0;
-          ctx.stroke();
+          depthCtx.beginPath();
+          depthCtx.moveTo(sourcePosition.x, sourcePosition.y);
+          depthCtx.lineTo(targetPosition.x, targetPosition.y);
+          depthCtx.lineWidth = 0.7 + ((source.depth + target.depth) * 0.14);
+          depthCtx.strokeStyle = rgba(
+            lineColor,
+            clamp(lineAlpha * 0.42, 0.02, 0.08),
+          );
+          depthCtx.shadowBlur = 0;
+          depthCtx.stroke();
         }
       }
 
@@ -522,15 +557,15 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
         const node = depthNodes[index];
         const alpha = clamp(node.alpha * position.pulse, 0.05, 0.16);
 
-        ctx.beginPath();
-        ctx.arc(position.x, position.y, node.radius, 0, Math.PI * 2);
-        ctx.shadowBlur = 12 + node.depth * 8;
-        ctx.shadowColor = rgba(node.color, clamp(alpha * 0.9, 0.04, 0.16));
-        ctx.fillStyle = rgba(node.color, alpha);
-        ctx.fill();
+        depthCtx.beginPath();
+        depthCtx.arc(position.x, position.y, node.radius, 0, Math.PI * 2);
+        depthCtx.shadowBlur = 12 + node.depth * 8;
+        depthCtx.shadowColor = rgba(node.color, clamp(alpha * 0.9, 0.04, 0.16));
+        depthCtx.fillStyle = rgba(node.color, alpha);
+        depthCtx.fill();
       });
 
-      ctx.shadowBlur = 0;
+      depthCtx.shadowBlur = 0;
     }
 
     function drawFrame(timestamp: number) {
@@ -541,7 +576,17 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
       ctx.clearRect(0, 0, width, height);
       ctx.fillStyle = BACKGROUND;
       ctx.fillRect(0, 0, width, height);
-      drawDepthField(timestamp);
+
+      if (
+        lastDepthLayerTimestamp === 0 ||
+        reduceMotion ||
+        timestamp - lastDepthLayerTimestamp >= DEPTH_LAYER_FRAME_MS
+      ) {
+        renderDepthFieldLayer(timestamp);
+        lastDepthLayerTimestamp = timestamp;
+      }
+
+      ctx.drawImage(depthCanvas, 0, 0, width, height);
       drawAmbientMotes(timestamp);
 
       const positions = particles.map((particle) => {
@@ -617,6 +662,11 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
     }
 
     function animate(timestamp: number) {
+      if (!isVisible) {
+        animationFrameId = window.requestAnimationFrame(animate);
+        return;
+      }
+
       drawFrame(timestamp);
       animationFrameId = window.requestAnimationFrame(animate);
     }
@@ -632,9 +682,16 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
     });
 
     resizeObserver.observe(host);
-    window.addEventListener("pointermove", updateCursor, { passive: true });
-    window.addEventListener("pointerleave", resetCursor);
+    host.addEventListener("pointermove", updateCursor, { passive: true });
+    host.addEventListener("pointerleave", resetCursor);
     mobileMediaQuery.addEventListener("change", handleMobileChange);
+    intersectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry?.isIntersecting ?? true;
+      },
+      { threshold: 0.02 },
+    );
+    intersectionObserver.observe(host);
 
     if (reduceMotion) {
       drawFrame(performance.now());
@@ -648,8 +705,9 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
       }
 
       resizeObserver?.disconnect();
-      window.removeEventListener("pointermove", updateCursor);
-      window.removeEventListener("pointerleave", resetCursor);
+      intersectionObserver?.disconnect();
+      host.removeEventListener("pointermove", updateCursor);
+      host.removeEventListener("pointerleave", resetCursor);
       mobileMediaQuery.removeEventListener("change", handleMobileChange);
     };
   }, [reduceMotion]);

@@ -18,17 +18,17 @@ export function CreditDisplay({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-3xl border border-brand-accent/20 bg-brand-surface px-4 py-4 shadow-sm",
+        "flex items-center gap-3 rounded-3xl border px-4 py-4 shadow-sm",
         compact
-          ? "w-auto rounded-full px-3 py-2.5"
-          : "justify-between p-5 sm:p-6"
+          ? "w-auto rounded-full border-white/10 bg-white/5 px-2.5 py-2"
+          : "justify-between border-brand-accent/20 bg-brand-surface p-5 sm:p-6"
       )}
     >
-      <div className="flex min-w-0 items-center gap-3">
+      <div className={cn("flex min-w-0 items-center", compact ? "gap-2.5" : "gap-3")}>
         <div
           className={cn(
             "flex items-center justify-center rounded-2xl border border-brand-accent/20 bg-brand-accent/10 text-brand-accent",
-            compact ? "size-10 rounded-full" : "size-14"
+            compact ? "size-9 rounded-full" : "size-14"
           )}
         >
           <Coins className={cn(compact ? "size-5" : "size-7")} />
@@ -38,7 +38,7 @@ export function CreditDisplay({
           <p
             className={cn(
               "font-ui text-brand-secondary tabular-nums",
-              compact ? "text-base font-semibold" : "text-3xl font-bold"
+              compact ? "text-sm font-semibold" : "text-3xl font-bold"
             )}
           >
             {formatInteger(balance)}
@@ -52,7 +52,7 @@ export function CreditDisplay({
             variant={compact ? "outline" : "default"}
             className={cn(
               compact
-                ? "rounded-full border-brand-accent bg-brand-accent px-3 text-black hover:bg-brand-accent-hover hover:text-black"
+                ? "h-9 rounded-full border-brand-accent bg-brand-accent px-3 text-sm text-black hover:bg-brand-accent-hover hover:text-black"
                 : "rounded-full bg-brand-accent text-black hover:bg-brand-accent-hover hover:text-black"
             )}
           >
