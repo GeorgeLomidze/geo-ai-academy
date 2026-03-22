@@ -167,9 +167,9 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
 
     if (!context) return;
 
-    const resolvedCanvas = canvas;
-    const resolvedContainer = container;
-    const resolvedContext = context;
+    const resolvedCanvas = canvas as HTMLCanvasElement;
+    const resolvedContainer = container as HTMLDivElement;
+    const resolvedContext = context as CanvasRenderingContext2D;
 
     resolvedContext.imageSmoothingEnabled = true;
 
