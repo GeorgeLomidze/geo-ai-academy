@@ -167,7 +167,11 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
 
     if (!context) return;
 
-    context.imageSmoothingEnabled = true;
+    const resolvedCanvas = canvas;
+    const resolvedContainer = container;
+    const resolvedContext = context;
+
+    resolvedContext.imageSmoothingEnabled = true;
 
     const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const mobileQuery = window.matchMedia(
@@ -191,18 +195,18 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
     }
 
     function resizeCanvas() {
-      const rect = container.getBoundingClientRect();
+      const rect = resolvedContainer.getBoundingClientRect();
       const nextWidth = Math.max(1, rect.width);
       const nextHeight = Math.max(1, rect.height);
       const dpr = Math.min(window.devicePixelRatio || 1, DPR_LIMIT);
 
       width = nextWidth;
       height = nextHeight;
-      canvas.width = Math.round(nextWidth * dpr);
-      canvas.height = Math.round(nextHeight * dpr);
-      canvas.style.width = `${nextWidth}px`;
-      canvas.style.height = `${nextHeight}px`;
-      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+      resolvedCanvas.width = Math.round(nextWidth * dpr);
+      resolvedCanvas.height = Math.round(nextHeight * dpr);
+      resolvedCanvas.style.width = `${nextWidth}px`;
+      resolvedCanvas.style.height = `${nextHeight}px`;
+      resolvedContext.setTransform(dpr, 0, 0, dpr, 0, 0);
       particles = createParticles(nextWidth, nextHeight, getParticleCount());
       drawFrame(0, true);
     }
@@ -294,22 +298,23 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
             }
           }
 
-          context.beginPath();
-          context.moveTo(first.x, first.y);
-          context.lineTo(second.x, second.y);
-          context.lineWidth = 0.5 + ((first.particle.depth + second.particle.depth) / 2) * 0.5;
-          context.strokeStyle = `rgba(245, 166, 35, ${clamp(
+          resolvedContext.beginPath();
+          resolvedContext.moveTo(first.x, first.y);
+          resolvedContext.lineTo(second.x, second.y);
+          resolvedContext.lineWidth =
+            0.5 + ((first.particle.depth + second.particle.depth) / 2) * 0.5;
+          resolvedContext.strokeStyle = `rgba(245, 166, 35, ${clamp(
             baseOpacity + glowBoost,
             0.05,
             0.32,
           )})`;
-          context.stroke();
+          resolvedContext.stroke();
         }
       }
     }
 
     function drawFrame(timestamp: number, staticFrame = false) {
-      context.clearRect(0, 0, width, height);
+      resolvedContext.clearRect(0, 0, width, height);
 
       if (!staticFrame) {
         const deltaMs = lastTimestamp === 0 ? 16.67 : Math.min(33, timestamp - lastTimestamp);
@@ -328,7 +333,7 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
       drawConnections(displayPoints);
 
       for (const point of displayPoints) {
-        drawParticle(context, point.particle, point.x, point.y);
+        drawParticle(resolvedContext, point.particle, point.x, point.y);
       }
     }
 
@@ -362,7 +367,7 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
     }
 
     function handlePointerMove(event: PointerEvent) {
-      const rect = container.getBoundingClientRect();
+      const rect = resolvedContainer.getBoundingClientRect();
       const nextX = event.clientX - rect.left;
       const nextY = event.clientY - rect.top;
       const withinBounds =
@@ -389,7 +394,7 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
       resizeCanvas();
       startAnimation();
     });
-    resizeObserver.observe(container);
+    resizeObserver.observe(resolvedContainer);
 
     intersectionObserver = new IntersectionObserver(
       (entries) => {
@@ -404,7 +409,7 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
       },
       { threshold: 0.05 },
     );
-    intersectionObserver.observe(container);
+    intersectionObserver.observe(resolvedContainer);
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerleave", handlePointerLeave);
