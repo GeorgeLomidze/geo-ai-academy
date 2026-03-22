@@ -12,19 +12,30 @@ type Particle = {
   vy: number;
   r: number;
   alpha: number;
+  baseAlpha: number;
   depth: number;
   ix: number;
   iy: number;
+  pulseT: number;
+  pulseSpd: number;
 };
 
 /* ── Tuning ── */
 const LINK_DIST = 120;
 const LINK_DIST_SQ = LINK_DIST * LINK_DIST;
-const CURSOR_R = 210;
+const CURSOR_R = 200;
 const CURSOR_R_SQ = CURSOR_R * CURSOR_R;
 const FRAME_MS = 1000 / 30;
 const CURSOR_THROTTLE = 40;
 const GRID = LINK_DIST;
+
+/* Cursor gravity: gentle 10-20px shift */
+const CURSOR_SHIFT_MIN = 10;
+const CURSOR_SHIFT_MAX = 20;
+
+/* Lerp rate for smooth return when cursor leaves */
+const LERP_TOWARD = 0.08;
+const LERP_RETURN = 0.04;
 
 function clamp(v: number, lo: number, hi: number) {
   return v < lo ? lo : v > hi ? hi : v;
@@ -39,11 +50,12 @@ function pCount(w: number, h: number, mobile: boolean) {
 
 function spawn(w: number, h: number): Particle {
   const depth = 0.3 + Math.random() * 0.7;
-  const spd = (0.06 + Math.random() * 0.15) * depth;
+
+  /* Cinematic slow drift: 0.2–0.5 px/frame scaled by depth */
+  const spd = (0.2 + Math.random() * 0.3) * depth;
   const ang = Math.random() * Math.PI * 2;
   const tier = Math.random();
 
-  /* Clean dot sizing — small crisp dots, some larger nodes */
   const r = tier < 0.5
     ? 1.0 + Math.random() * 0.5
     : tier < 0.85
@@ -51,7 +63,7 @@ function spawn(w: number, h: number): Particle {
       : 2.2 + Math.random() * 1.0;
 
   const bright = Math.random() < 0.22;
-  const alpha = bright
+  const baseAlpha = bright
     ? 0.7 + Math.random() * 0.3
     : 0.3 + Math.random() * 0.4;
 
@@ -60,8 +72,11 @@ function spawn(w: number, h: number): Particle {
     y: Math.random() * h,
     vx: Math.cos(ang) * spd,
     vy: Math.sin(ang) * spd,
-    r, alpha, depth,
+    r, alpha: baseAlpha, baseAlpha, depth,
     ix: 0, iy: 0,
+    /* Pulse: each particle has its own phase and speed */
+    pulseT: Math.random() * Math.PI * 2,
+    pulseSpd: 0.01 + Math.random() * 0.02,
   };
 }
 
@@ -130,7 +145,7 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
       const n = pts.length;
       const gCols = Math.ceil(w / GRID) + 1;
 
-      /* Move */
+      /* ── Move: continuous cinematic drift ── */
       if (!red) {
         for (const p of pts) {
           p.x += p.vx; p.y += p.vy;
@@ -139,7 +154,15 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
         }
       }
 
-      /* Cursor interaction */
+      /* ── Pulse: occasional gentle brightness variation ── */
+      for (const p of pts) {
+        p.pulseT += p.pulseSpd;
+        const pulse = Math.sin(p.pulseT);
+        /* Pulse adds up to +0.2 alpha, dips by -0.05 */
+        p.alpha = clamp(p.baseAlpha + pulse * 0.12, p.baseAlpha - 0.05, p.baseAlpha + 0.2);
+      }
+
+      /* ── Cursor interaction: gentle gravity ── */
       const px = new Float32Array(n);
       const py = new Float32Array(n);
       const bst = new Float32Array(n);
@@ -154,15 +177,18 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
           if (dSq < CURSOR_R_SQ && dSq > 1) {
             const d = Math.sqrt(dSq);
             const t = 1 - d / CURSOR_R;
+            /* Smoothstep for organic feel */
             const pull = t * t * (3 - 2 * t);
-            const shift = (22 + p.depth * 16) * pull;
+            /* Gentle shift: 10-20px toward cursor, scaled by depth */
+            const shift = (CURSOR_SHIFT_MIN + p.depth * (CURSOR_SHIFT_MAX - CURSOR_SHIFT_MIN)) * pull;
             tx = (ex / d) * shift;
             ty = (ey / d) * shift;
             b = pull;
           }
         }
 
-        const lr = red ? 1 : 0.1;
+        /* Smooth lerp: toward cursor when active, back to path when not */
+        const lr = red ? 1 : (tx !== 0 || ty !== 0) ? LERP_TOWARD : LERP_RETURN;
         p.ix += (tx - p.ix) * lr;
         p.iy += (ty - p.iy) * lr;
         px[i] = p.x + p.ix;
@@ -173,10 +199,6 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
       /* ── Lines — batched into opacity buckets ── */
       const g = buildGrid(pts, gCols);
 
-      /*
-       * 5 buckets with higher base opacities for crisp visible lines.
-       * Reference image shows clearly visible connections — not faint.
-       */
       const buckets: Array<{ ax: number; ay: number; bx: number; by: number; lw: number }[]> =
         [[], [], [], [], []];
       const bucketA = [0.08, 0.16, 0.28, 0.42, 0.58];
@@ -201,8 +223,8 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
               const fade = 1 - dist / LINK_DIST;
               const cb = (bst[i] + bst[j]) * 0.5;
 
-              /* Higher base alpha → clearly visible lines */
-              const rawA = fade * fade * (0.15 + (pts[i].depth + pts[j].depth) * 0.08) + cb * 0.4;
+              /* Lines near cursor glow brighter via cb boost */
+              const rawA = fade * fade * (0.15 + (pts[i].depth + pts[j].depth) * 0.08) + cb * 0.45;
               const lw = 0.4 + fade * 0.6 + cb * 1.0;
 
               const bi = rawA < 0.10 ? 0 : rawA < 0.18 ? 1 : rawA < 0.30 ? 2 : rawA < 0.45 ? 3 : 4;
@@ -212,7 +234,7 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
         }
       }
 
-      /* Draw lines — amber/gold color from site palette */
+      /* Draw lines */
       ctx.lineCap = "round";
       for (let bi = 0; bi < 5; bi++) {
         const lines = buckets[bi];
@@ -220,7 +242,6 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
 
         ctx.strokeStyle = `rgba(245,166,35,${bucketA[bi]})`;
 
-        /* Sub-batch by rounded lineWidth */
         const byW = new Map<number, typeof lines>();
         for (const l of lines) {
           const wk = Math.round(l.lw * 3);
@@ -239,22 +260,21 @@ export function ParticleNetwork({ className }: ParticleNetworkProps) {
         }
       }
 
-      /* ── Particles — clean crisp dots, no blurry glow ── */
+      /* ── Particles — crisp dots with pulse glow ── */
       for (let i = 0; i < n; i++) {
         const p = pts[i];
         const x = px[i], y = py[i];
         const b = bst[i];
 
-        /* Subtle warm halo — tight, not blurry (no sprite, just a slightly
-           larger semi-transparent circle underneath) */
+        /* Subtle warm halo — pulses with particle alpha */
         const haloR = (p.r + b * 2) * 2.5;
-        const haloA = clamp((p.alpha * 0.2 + b * 0.3) * p.depth, 0.03, 0.25);
+        const haloA = clamp((p.alpha * 0.22 + b * 0.3) * p.depth, 0.03, 0.28);
         ctx.beginPath();
         ctx.arc(x, y, haloR, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(245,166,35,${haloA})`;
         ctx.fill();
 
-        /* Bright core dot — white with amber tint */
+        /* Bright core dot */
         const coreA = clamp(p.alpha + b * 0.5, 0.4, 1);
         const coreR = p.r + b * 1.4;
         ctx.beginPath();
