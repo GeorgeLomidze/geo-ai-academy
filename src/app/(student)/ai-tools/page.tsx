@@ -50,11 +50,10 @@ const toolCards: ToolCardConfig[] = [
   {
     title: "აუდიო გენერაცია",
     href: "/ai-tools/audio",
-    ctaLabel: "გვერდის ნახვა",
+    ctaLabel: "გენერატორის გახსნა",
     icon: AudioWaveform,
     iconTone: "text-brand-accent",
-    available: false,
-    badge: "მალე",
+    available: true,
   },
   {
     title: "პროექტები",

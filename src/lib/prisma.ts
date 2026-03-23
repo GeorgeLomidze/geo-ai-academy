@@ -97,6 +97,8 @@ function hasExpectedModelFields(client: PrismaClient) {
     creditBalanceFields.includes("balance") &&
     creditTransactionFields.includes("amount") &&
     generationFields.includes("modelId") &&
+    generationFields.includes("outputText") &&
+    generationFields.includes("outputData") &&
     creditPurchaseFields.includes("coins")
   );
 }
@@ -109,10 +111,12 @@ function hasExpectedEnums(client: PrismaClient) {
   })._runtimeDataModel?.enums;
 
   const creditTransactionTypeValues = getEnumValues(enums?.CreditTransactionType);
+  const generationTypeValues = getEnumValues(enums?.GenerationType);
 
   return (
     creditTransactionTypeValues.includes("ADMIN_GRANT") &&
-    creditTransactionTypeValues.includes("ADMIN_DEDUCT")
+    creditTransactionTypeValues.includes("ADMIN_DEDUCT") &&
+    generationTypeValues.includes("AUDIO")
   );
 }
 
@@ -205,6 +209,11 @@ function getPrismaClient() {
   }
 
   return nextClient;
+}
+
+export function resetPrismaClient() {
+  globalForPrisma.prisma = undefined;
+  globalForPrisma.prismaConnectionKey = undefined;
 }
 
 export function getPrisma() {

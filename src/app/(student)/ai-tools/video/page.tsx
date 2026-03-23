@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getBalance } from "@/lib/credits/manager"
-import { getModelMetadata } from "@/lib/credits/pricing"
+import { VIDEO_MODELS, getModelMetadata } from "@/lib/credits/pricing"
 import { prisma } from "@/lib/prisma"
 import { VideoGenerator } from "@/components/ai/VideoGenerator"
 import { AIHistoryItem } from "@/components/ai/types"
@@ -11,10 +11,15 @@ export const metadata = {
 }
 
 async function getInitialVideoHistory(userId: string): Promise<AIHistoryItem[]> {
+  const videoModelIds = Object.keys(VIDEO_MODELS)
+
   const generations = await prisma.generation.findMany({
     where: {
       userId,
       type: "VIDEO",
+      modelId: {
+        in: videoModelIds,
+      },
     },
     orderBy: {
       createdAt: "desc",

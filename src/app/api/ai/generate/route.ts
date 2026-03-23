@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
 
     let generation: {
       id: string;
-      type: "IMAGE" | "VIDEO";
+      type: "IMAGE" | "VIDEO" | "AUDIO";
       creditsCost: number;
     };
 

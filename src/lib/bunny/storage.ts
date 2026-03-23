@@ -15,13 +15,54 @@ function getStorageConfig() {
 }
 
 function getStoragePath(
-  type: "IMAGE" | "VIDEO",
+  type: "IMAGE" | "VIDEO" | "AUDIO",
   userId: string,
-  generationId: string
+  generationId: string,
+  extension: string
 ) {
-  const folder = type === "IMAGE" ? "images" : "videos";
-  const ext = type === "IMAGE" ? "png" : "mp4";
-  return `generations/${folder}/${userId}/${generationId}.${ext}`;
+  const folder =
+    type === "IMAGE" ? "images" : type === "VIDEO" ? "videos" : "audio";
+  return `generations/${folder}/${userId}/${generationId}.${extension}`;
+}
+
+function inferFileExtension(sourceUrl: string, contentType: string | null, type: "IMAGE" | "VIDEO" | "AUDIO") {
+  const normalizedContentType = (contentType ?? "").toLowerCase();
+
+  if (normalizedContentType.includes("mpeg") || normalizedContentType.includes("mp3")) {
+    return "mp3";
+  }
+  if (normalizedContentType.includes("wav")) {
+    return "wav";
+  }
+  if (normalizedContentType.includes("ogg")) {
+    return "ogg";
+  }
+  if (normalizedContentType.includes("aac")) {
+    return "aac";
+  }
+  if (normalizedContentType.includes("mp4")) {
+    return type === "AUDIO" ? "m4a" : "mp4";
+  }
+  if (normalizedContentType.includes("png")) {
+    return "png";
+  }
+  if (normalizedContentType.includes("jpeg") || normalizedContentType.includes("jpg")) {
+    return "jpg";
+  }
+
+  try {
+    const pathname = new URL(sourceUrl).pathname;
+    const match = pathname.match(/\.([a-z0-9]+)$/i);
+    if (match?.[1]) {
+      return match[1].toLowerCase();
+    }
+  } catch {
+    // Ignore URL parsing errors and fall back to defaults below.
+  }
+
+  if (type === "IMAGE") return "png";
+  if (type === "VIDEO") return "mp4";
+  return "mp3";
 }
 
 export function getCdnUrl(path: string) {
@@ -83,7 +124,7 @@ export async function deleteFromStorage(path: string): Promise<void> {
  */
 export async function persistToBunnyStorage(
   sourceUrl: string,
-  type: "IMAGE" | "VIDEO",
+  type: "IMAGE" | "VIDEO" | "AUDIO",
   userId: string,
   generationId: string
 ): Promise<string | null> {
@@ -106,7 +147,12 @@ export async function persistToBunnyStorage(
       return null;
     }
 
-    const path = getStoragePath(type, userId, generationId);
+    const extension = inferFileExtension(
+      sourceUrl,
+      response.headers.get("content-type"),
+      type
+    );
+    const path = getStoragePath(type, userId, generationId, extension);
     return await uploadToStorage(buffer, path);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

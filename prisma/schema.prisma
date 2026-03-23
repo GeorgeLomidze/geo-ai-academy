@@ -42,6 +42,7 @@ enum CreditTransactionType {
 enum GenerationType {
   IMAGE
   VIDEO
+  AUDIO
 }
 
 enum GenerationStatus {
@@ -271,6 +272,8 @@ model Generation {
   status       GenerationStatus @default(PENDING)
   creditsCost  Int              @default(0)
   outputUrl    String?
+  outputText   String?          @db.Text
+  outputData   Json?
   sourceUrl    String?
   externalId   String?          @unique
   errorMessage String?          @db.Text

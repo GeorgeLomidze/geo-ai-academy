@@ -2,7 +2,7 @@ export type ModelPricing = {
   name: string;
   coins: number;
   kieModel: string;
-  type: "IMAGE" | "VIDEO";
+  type: "IMAGE" | "VIDEO" | "AUDIO";
   qualityOptions?: string[];
   defaultQuality?: string;
   coinsByQuality?: Record<string, number>;
@@ -35,6 +35,26 @@ export type VideoModelConfig = {
   variants?: { id: string; label: string }[];
   /** Supports one or two reference images as start/end keyframes. */
   supportsFirstLastFrames?: boolean;
+};
+
+export type AudioToolId =
+  | "audio_tts_flash"
+  | "audio_tts_pro"
+  | "audio_dialogue_flash"
+  | "audio_dialogue_pro"
+  | "audio_tts"
+  | "audio_dialogue"
+  | "audio_sfx"
+  | "audio_isolation"
+  | "audio_transcription";
+
+export type AudioModelConfig = {
+  name: string;
+  kieModel: string;
+  type: "AUDIO";
+  tool: "tts" | "dialogue" | "sfx" | "isolation" | "transcription";
+  baseKieCredits: number;
+  coins: number;
 };
 
 export const IMAGE_MODELS = {
@@ -422,6 +442,81 @@ export const VIDEO_MODELS: Record<string, VideoModelConfig> = {
   },
 };
 
+export const AUDIO_MODELS: Record<AudioToolId, AudioModelConfig> = {
+  audio_tts_flash: {
+    name: "წაკითხვა Flash",
+    kieModel: "gemini-2.5-flash-preview-tts",
+    type: "AUDIO",
+    tool: "tts",
+    baseKieCredits: 2,
+    coins: 3,
+  },
+  audio_tts_pro: {
+    name: "წაკითხვა Pro",
+    kieModel: "gemini-2.5-pro-preview-tts",
+    type: "AUDIO",
+    tool: "tts",
+    baseKieCredits: 4,
+    coins: 6,
+  },
+  audio_dialogue_flash: {
+    name: "დიალოგი Flash",
+    kieModel: "gemini-2.5-flash-preview-tts",
+    type: "AUDIO",
+    tool: "dialogue",
+    baseKieCredits: 3,
+    coins: 4,
+  },
+  audio_dialogue_pro: {
+    name: "დიალოგი Pro",
+    kieModel: "gemini-2.5-pro-preview-tts",
+    type: "AUDIO",
+    tool: "dialogue",
+    baseKieCredits: 5,
+    coins: 8,
+  },
+  audio_tts: {
+    name: "წაკითხვა",
+    kieModel: "elevenlabs/text-to-speech-multilingual-v2",
+    type: "AUDIO",
+    tool: "tts",
+    baseKieCredits: 4,
+    coins: 6,
+  },
+  audio_dialogue: {
+    name: "დიალოგი",
+    kieModel: "elevenlabs/text-to-dialogue-v3",
+    type: "AUDIO",
+    tool: "dialogue",
+    baseKieCredits: 6,
+    coins: 9,
+  },
+  audio_sfx: {
+    name: "ხმოვანი ეფექტები",
+    kieModel: "elevenlabs/sound-effect-v2",
+    type: "AUDIO",
+    tool: "sfx",
+    baseKieCredits: 5,
+    coins: 8,
+  },
+  audio_isolation: {
+    name: "ხმის იზოლაცია",
+    kieModel: "elevenlabs/audio-isolation",
+    type: "AUDIO",
+    tool: "isolation",
+    baseKieCredits: 6,
+    coins: 9,
+  },
+  audio_transcription: {
+    name: "ტრანსკრიფცია",
+    kieModel: "elevenlabs/speech-to-text",
+    type: "AUDIO",
+    tool: "transcription",
+    baseKieCredits: 8,
+    coins: 12,
+  },
+};
+
 /** Helper to get coin cost for a video model at a given resolution and duration */
 export function getVideoModelCoins(modelId: string, resolution?: string, durationSeconds?: number): number | null {
   const config = VIDEO_MODELS[modelId];
@@ -460,9 +555,13 @@ function buildVideoModelPricing(): Record<string, ModelPricing> {
 export const ALL_MODELS: Record<string, ModelPricing> = {
   ...IMAGE_MODELS,
   ...buildVideoModelPricing(),
+  ...AUDIO_MODELS,
 };
 
-export type SupportedModelId = keyof typeof IMAGE_MODELS | keyof typeof VIDEO_MODELS;
+export type SupportedModelId =
+  | keyof typeof IMAGE_MODELS
+  | keyof typeof VIDEO_MODELS
+  | keyof typeof AUDIO_MODELS;
 
 export function getImageModelCoins(modelId: string, quality?: string): number | null {
   const config = (IMAGE_MODELS as Record<string, ModelPricing>)[modelId];
@@ -482,6 +581,9 @@ export function getModelPrice(modelId: string, resolution?: string, durationSeco
   // For video models, use resolution + duration aware pricing
   if (modelId in VIDEO_MODELS) {
     return getVideoModelCoins(modelId, resolution, durationSeconds);
+  }
+  if (modelId in AUDIO_MODELS) {
+    return AUDIO_MODELS[modelId as AudioToolId].coins;
   }
   return getImageModelCoins(modelId, resolution);
 }
