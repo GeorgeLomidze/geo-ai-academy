@@ -245,6 +245,8 @@ export function NodeCard({
   const showPlus = hovered || selected;
   const promptBarScale = zoom > 0 ? 1 / zoom : 1;
   const promptBarTop = 24 + height + 12;
+  const promptBarWidth = width + 60;
+  const promptBarCenterX = HOVER_PAD + width / 2;
 
   return (
     <div
@@ -363,11 +365,11 @@ export function NodeCard({
           className="absolute z-20"
           data-prompt-bar=""
           style={{
-            width: width + 60,
-            left: -30,
+            width: promptBarWidth,
+            left: promptBarCenterX,
             top: promptBarTop,
-            transform: `scale(${promptBarScale})`,
-            transformOrigin: "top left",
+            transform: `translateX(-50%) scale(${promptBarScale})`,
+            transformOrigin: "top center",
           }}
         >
           {promptBar}

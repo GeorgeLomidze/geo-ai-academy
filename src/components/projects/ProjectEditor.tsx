@@ -239,7 +239,7 @@ const DEFAULT_IMAGE_ASPECT_RATIOS: readonly string[] = ["1:1", "4:5", "5:4", "3:
 
 const DEFAULT_NODE_SIZES: Record<NodeType, { width: number; height: number }> =
   {
-    IMAGE: { width: 420, height: 260 },
+    IMAGE: { width: 392, height: 244 },
     VIDEO: { width: 420, height: 260 },
     AUDIO: { width: 280, height: 180 },
     UPLOAD: { width: 320, height: 220 },
@@ -1038,7 +1038,7 @@ export function ProjectEditor({
     handleNodeDataChange(node.id, { prompt: promptValue, model: modelId, aspectRatio: ar });
 
     try {
-      const options: Record<string, string> = { aspectRatio: ar };
+      const options: Record<string, unknown> = { aspectRatio: ar };
       if (node.type === "IMAGE" && quality) {
         options.quality = quality;
       }
@@ -1046,8 +1046,8 @@ export function ProjectEditor({
         const vmeta = VIDEO_MODEL_LIST.find((m) => m.id === modelId);
         options.resolution = node.data.resolution ?? (vmeta?.defaultResolution || "720p");
         options.duration = node.data.duration ?? (vmeta?.defaultDuration || "5s");
-        options.audio = String(node.data.audio ?? false);
-        options.multiShot = String(node.data.multiShot ?? false);
+        options.audio = node.data.audio ?? false;
+        options.multiShot = node.data.multiShot ?? false;
       }
 
       // Resolve reference images from connections

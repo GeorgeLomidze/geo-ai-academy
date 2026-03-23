@@ -5,11 +5,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   AudioLines,
+  Check,
+  ChevronDown,
   Copy,
   FileAudio,
   Loader2,
   MessageCircleMore,
   Music2,
+  Pause,
+  Play,
   Trash2,
   Upload,
   Volume2,
@@ -84,6 +88,10 @@ type OutputState = {
 
 type AudioOutputData = {
   inlineAudioData?: string | null;
+};
+
+type VoicePreviewResponse = {
+  audioUrl?: string;
 };
 
 const TOOL_ITEMS: Array<{
@@ -247,6 +255,142 @@ function createDialogueSpeakers(): DialogueSpeaker[] {
   ];
 }
 
+function VoiceSelect({
+  value,
+  onValueChange,
+  model,
+  onPreview,
+  previewLoadingKey,
+  previewPlayingKey,
+}: {
+  value: GeminiVoiceOption["id"];
+  onValueChange: (value: GeminiVoiceOption["id"]) => void;
+  model: GeminiSingleSpeakerModelId | GeminiDialogueModelId;
+  onPreview: (
+    voice: GeminiVoiceOption["id"],
+    model: GeminiSingleSpeakerModelId | GeminiDialogueModelId
+  ) => void;
+  previewLoadingKey: string | null;
+  previewPlayingKey: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  const selectedVoice =
+    GEMINI_VOICE_OPTIONS.find((voice) => voice.id === value) ?? GEMINI_VOICE_OPTIONS[0];
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent | TouchEvent) {
+      if (!(event.target instanceof Node)) {
+        return;
+      }
+
+      if (rootRef.current && !rootRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className="flex h-12 w-full items-center justify-between gap-3 rounded-2xl border border-[#2A2A2A] bg-[#141414] px-3 text-left text-white transition-colors hover:border-[#3A3A3A]"
+      >
+        <span className="min-w-0">
+          <span className="block truncate">{selectedVoice.name}</span>
+          <span className="block truncate text-xs text-[#8A8A8A]">
+            {selectedVoice.description}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn("size-4 shrink-0 text-[#8A8A8A] transition-transform", open && "rotate-180")}
+        />
+      </button>
+
+      {open ? (
+        <div className="absolute top-full left-0 z-50 mt-2 w-full overflow-hidden rounded-2xl border border-[#2A2A2A] bg-[#141414] shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+          <div className="h-80 overflow-y-auto overscroll-contain p-1.5">
+            {GEMINI_VOICE_OPTIONS.map((voice) => {
+              const previewKey = `${model}:${voice.id}`;
+              const isLoading = previewLoadingKey === previewKey;
+              const isPlaying = previewPlayingKey === previewKey;
+              const isSelected = voice.id === value;
+
+              return (
+                <div
+                  key={voice.id}
+                  className={cn(
+                    "flex items-center gap-3 rounded-2xl px-2 py-2",
+                    isSelected ? "bg-[#F5A623]/10" : "hover:bg-[#1E1E1E]"
+                  )}
+                >
+                  <button
+                    type="button"
+                    aria-label={`${voice.name} ხმის მოსმენა`}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onPreview(voice.id, model);
+                    }}
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#F5A623] text-black transition-colors hover:bg-[#FFD60A]"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : isPlaying ? (
+                      <Pause className="size-4" />
+                    ) : (
+                      <Play className="size-4 fill-current" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onValueChange(voice.id);
+                      setOpen(false);
+                    }}
+                    className="flex min-w-0 flex-1 flex-col text-left"
+                  >
+                    <span className="truncate text-white">{voice.name}</span>
+                    <span className="truncate text-xs text-[#8A8A8A]">
+                      {voice.description}
+                    </span>
+                  </button>
+
+                  {isSelected ? (
+                    <Check className="size-4 shrink-0 text-[#F5A623]" />
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function SliderField({
   label,
   min,
@@ -350,9 +494,13 @@ export function AudioWorkspace({
   const [transcriptionDiarize, setTranscriptionDiarize] = useState(true);
 
   const [currentOutput, setCurrentOutput] = useState<OutputState | null>(null);
+  const [previewLoadingKey, setPreviewLoadingKey] = useState<string | null>(null);
+  const [previewPlayingKey, setPreviewPlayingKey] = useState<string | null>(null);
 
   const isolationInputRef = useRef<HTMLInputElement | null>(null);
   const transcriptionInputRef = useRef<HTMLInputElement | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewCacheRef = useRef<Record<string, string>>({});
 
   const activeToolConfig = getToolConfig(activeTool);
   const activeToolCost =
@@ -382,6 +530,15 @@ export function AudioWorkspace({
       });
     }
   }, [activeTool, currentOutput, filteredHistory]);
+
+  useEffect(() => {
+    return () => {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current = null;
+      }
+    };
+  }, []);
 
   function replaceLocalFile(
     current: LocalAudioFile | null,
@@ -665,23 +822,95 @@ export function AudioWorkspace({
     window.setTimeout(() => setCopySuccess(false), 1800);
   }
 
-  function renderVoiceSelect(value: string, onValueChange: (value: string) => void) {
+  function stopVoicePreview() {
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+      previewAudioRef.current.currentTime = 0;
+    }
+    setPreviewPlayingKey(null);
+  }
+
+  async function playVoicePreview(
+    voice: GeminiVoiceOption["id"],
+    model: GeminiSingleSpeakerModelId | GeminiDialogueModelId
+  ) {
+    const cacheKey = `${model}:${voice}`;
+
+    if (previewPlayingKey === cacheKey) {
+      stopVoicePreview();
+      return;
+    }
+
+    setPreviewLoadingKey(cacheKey);
+    setError(null);
+
+    try {
+      let audioUrl = previewCacheRef.current[cacheKey];
+
+      if (!audioUrl) {
+        const response = await fetch("/api/ai/audio/voice-preview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            voice,
+            model,
+          }),
+        });
+
+        const data = (await response.json()) as VoicePreviewResponse & { error?: string };
+
+        if (!response.ok || !data.audioUrl) {
+          throw new Error(data.error ?? "ხმის მოსმენა დროებით ვერ მოხერხდა");
+        }
+
+        audioUrl = data.audioUrl;
+        previewCacheRef.current[cacheKey] = audioUrl;
+      }
+
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+      }
+
+      const audio = new Audio(audioUrl);
+      audio.onended = () => setPreviewPlayingKey(null);
+      audio.onerror = () => {
+        setPreviewPlayingKey(null);
+        setError("ხმის მოსმენა დროებით ვერ მოხერხდა");
+      };
+      previewAudioRef.current = audio;
+      await audio.play();
+      setPreviewPlayingKey(cacheKey);
+    } catch (previewError) {
+      setError(
+        getSafeClientErrorMessage(
+          previewError instanceof Error
+            ? previewError.message
+            : "ხმის მოსმენა დროებით ვერ მოხერხდა"
+        )
+      );
+    } finally {
+      setPreviewLoadingKey(null);
+    }
+  }
+
+  function renderVoiceSelect(
+    value: string,
+    onValueChange: (value: string) => void,
+    model: GeminiSingleSpeakerModelId | GeminiDialogueModelId
+  ) {
     return (
-      <Select value={value} onValueChange={onValueChange}>
-        <SelectTrigger className="h-12 w-full rounded-2xl border-[#2A2A2A] bg-[#141414]">
-          <SelectValue placeholder="აირჩიე ხმა" />
-        </SelectTrigger>
-        <SelectContent className="max-h-80 border-[#2A2A2A] bg-[#141414]">
-          {GEMINI_VOICE_OPTIONS.map((voice) => (
-            <SelectItem key={voice.id} value={voice.id} className="focus:bg-[#F5A623]/10 focus:text-white">
-              <span className="flex flex-col items-start">
-                <span>{voice.name}</span>
-                <span className="text-xs text-[#8A8A8A]">{voice.description}</span>
-              </span>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <VoiceSelect
+        value={value as GeminiVoiceOption["id"]}
+        onValueChange={(nextValue) => onValueChange(nextValue)}
+        model={model}
+        onPreview={(voice, previewModel) => {
+          void playVoicePreview(voice, previewModel);
+        }}
+        previewLoadingKey={previewLoadingKey}
+        previewPlayingKey={previewPlayingKey}
+      />
     );
   }
 
@@ -829,8 +1058,10 @@ export function AudioWorkspace({
 
               <div className="space-y-2">
                 <p className="text-sm text-[#D1D1D1]">ხმა</p>
-                {renderVoiceSelect(ttsVoice, (value) =>
-                  setTtsVoice(value as GeminiVoiceOption["id"])
+                {renderVoiceSelect(
+                  ttsVoice,
+                  (value) => setTtsVoice(value as GeminiVoiceOption["id"]),
+                  ttsModel
                 )}
               </div>
             </div>
@@ -1045,8 +1276,10 @@ export function AudioWorkspace({
 
                       <div className="space-y-2">
                         <p className="text-sm text-[#D1D1D1]">ხმა</p>
-                        {renderVoiceSelect(speaker.voice, (value) =>
-                          updateDialogueSpeaker(speaker.id, "voice", value)
+                        {renderVoiceSelect(
+                          speaker.voice,
+                          (value) => updateDialogueSpeaker(speaker.id, "voice", value),
+                          dialogueModel
                         )}
                       </div>
                     </div>
@@ -1365,9 +1598,6 @@ export function AudioWorkspace({
             <div className="overflow-hidden rounded-[28px] border border-[#2A2A2A] bg-[#141414]">
               <div className="border-b border-[#2A2A2A] px-4 py-4">
                 <p className="font-display text-lg text-white">აუდიო სტუდია</p>
-                <p className="mt-1 text-sm text-[#8A8A8A]">
-                  Gemini TTS და ElevenLabs აუდიო ინსტრუმენტები
-                </p>
               </div>
 
               <div className="md:hidden">
@@ -1383,8 +1613,8 @@ export function AudioWorkspace({
                         className={cn(
                           "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors",
                           isActive
-                            ? "border-[#F5A623] bg-[#F5A623]/10 text-[#F5A623]"
-                            : "border-[#2A2A2A] bg-[#1E1E1E] text-[#D1D1D1]"
+                            ? "border-[#FFD60A] bg-[#FFD60A]/15 text-[#FFD60A]"
+                            : "border-[#2A2A2A] bg-[#1E1E1E] text-[#D1D1D1] hover:border-[#FFD60A]/30 hover:bg-[#FFD60A]/5"
                         )}
                       >
                         <Icon className="size-4" />
@@ -1407,16 +1637,13 @@ export function AudioWorkspace({
                       className={cn(
                         "flex w-full items-start gap-3 border-l-2 px-4 py-4 text-left transition-colors",
                         isActive
-                          ? "border-l-[#F5A623] bg-[#F5A623]/10 text-[#F5A623]"
-                          : "border-l-transparent text-[#D1D1D1] hover:bg-[#1E1E1E]"
+                          ? "border-l-[#FFD60A] bg-[#FFD60A]/15 text-[#FFD60A]"
+                          : "border-l-transparent text-[#D1D1D1] hover:bg-[#FFD60A]/5 hover:text-white"
                       )}
                     >
                       <Icon className="mt-0.5 size-5 shrink-0" />
                       <span className="min-w-0">
                         <span className="block font-medium">{item.title}</span>
-                        <span className="mt-1 block text-xs leading-5 text-[#8A8A8A]">
-                          {item.description}
-                        </span>
                       </span>
                     </button>
                   );
@@ -1425,7 +1652,7 @@ export function AudioWorkspace({
 
               <div className="border-t border-[#2A2A2A] px-4 py-4">
                 <p className="text-xs uppercase text-[#8A8A8A]">GEO კოინები</p>
-                <p className="mt-2 font-display text-2xl text-[#F5A623]">
+                <p className="mt-2 font-display text-2xl text-[#FFD60A]">
                   ✦ {balance.toLocaleString("ka-GE")}
                 </p>
               </div>

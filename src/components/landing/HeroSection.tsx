@@ -68,9 +68,9 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="mt-6 max-w-lg text-base leading-relaxed text-foreground sm:text-lg"
             >
-              შეისწავლე ხელოვნური ინტელექტის უახლესი ტექნოლოგიები პროფესიონალ
-              ტრენერთან ერთად. ვიდეო გაკვეთილები, პრაქტიკული პროექტები და
-              სერთიფიკატი.
+              შეისწავლე ხელოვნური ინტელექტის უახლესი მოდელები და გამოიყენე შენი
+              ცოდნა პლატფორმიდან გაუსვლელად. ვიდეო გაკვეთილები, პრაქტიკული
+              სამუშაოები და ტოპ ინსტრუმენტები.
             </motion.p>
 
             <motion.div

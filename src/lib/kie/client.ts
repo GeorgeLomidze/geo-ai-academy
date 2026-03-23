@@ -380,6 +380,31 @@ function normalizeImageInputOptions(
   return normalized;
 }
 
+function coerceBooleanOption(value: unknown) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+
+    if (normalized === "true" || normalized === "1") {
+      return true;
+    }
+
+    if (normalized === "false" || normalized === "0") {
+      return false;
+    }
+  }
+
+  if (typeof value === "number") {
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
+
+  return undefined;
+}
+
 /** Normalize video generation options for each model's expected API format */
 function normalizeVideoInputOptions(
   modelId: string,
@@ -398,6 +423,8 @@ function normalizeVideoInputOptions(
     ...rest
   } = input;
   const normalized: Record<string, unknown> = { ...rest };
+  const audioEnabled = coerceBooleanOption(audio);
+  const multiShotEnabled = coerceBooleanOption(multiShot);
 
   const durationStr = typeof duration === "string"
     ? duration.replace("s", "")
@@ -411,7 +438,7 @@ function normalizeVideoInputOptions(
       if (aspectRatio) normalized.aspect_ratio = aspectRatio;
       if (resolution) normalized.resolution = resolution;
       if (durationStr) normalized.duration = durationStr;
-      if (audio) normalized.sound = true;
+      if (audioEnabled) normalized.sound = true;
       break;
     }
 
@@ -451,8 +478,8 @@ function normalizeVideoInputOptions(
       } else {
         normalized.mode = "std";
       }
-      normalized.sound = Boolean(audio);
-      normalized.multi_shots = Boolean(multiShot);
+      if (audioEnabled) normalized.sound = true;
+      if (multiShotEnabled) normalized.multi_shots = true;
       break;
     }
 
@@ -466,7 +493,7 @@ function normalizeVideoInputOptions(
         else if (sec <= 8) normalized.duration = 8;
         else normalized.duration = 12;
       }
-      if (audio) normalized.generate_audio = true;
+      if (audioEnabled) normalized.generate_audio = true;
       break;
     }
 
