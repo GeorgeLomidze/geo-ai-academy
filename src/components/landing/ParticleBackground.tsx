@@ -10,11 +10,23 @@ const Particles = dynamic(() => import("@tsparticles/react").then((m) => m.Parti
   ssr: false,
 });
 
+function isChrome(): boolean {
+  const ua = navigator.userAgent;
+  return ua.includes("Chrome") && !ua.includes("Edg") && !ua.includes("OPR");
+}
+
+function resolveParticleCount(isMobile: boolean): number {
+  if (isMobile) return 20;
+  if (isChrome() && window.devicePixelRatio > 1) return 25;
+  return 40;
+}
+
 function buildOptions(particleCount: number): ISourceOptions {
   return {
     fullScreen: false,
-    fpsLimit: 30,
-    detectRetina: true,
+    fpsLimit: 24,
+    detectRetina: false,
+    smooth: true,
     particles: {
       number: {
         value: particleCount,
@@ -33,9 +45,7 @@ function buildOptions(particleCount: number): ISourceOptions {
       opacity: {
         value: { min: 0.1, max: 0.5 },
         animation: {
-          enable: true,
-          speed: 1,
-          sync: false,
+          enable: false,
         },
       },
       size: {
@@ -48,8 +58,8 @@ function buildOptions(particleCount: number): ISourceOptions {
         enable: true,
         distance: 120,
         color: "#F5A623",
-        opacity: 0.15,
-        width: 1,
+        opacity: 0.1,
+        width: 0.5,
       },
       move: {
         enable: true,
@@ -89,18 +99,15 @@ function buildOptions(particleCount: number): ISourceOptions {
   };
 }
 
-const DESKTOP_OPTIONS = buildOptions(60);
-const MOBILE_OPTIONS = buildOptions(25);
-
 export function ParticleBackground() {
   const [engineReady, setEngineReady] = useState(false);
-  const [options, setOptions] = useState<ISourceOptions>(DESKTOP_OPTIONS);
+  const [options, setOptions] = useState<ISourceOptions | null>(null);
 
   useEffect(() => {
     const mobileQuery = window.matchMedia("(max-width: 767px)");
 
     function resolveOptions() {
-      return mobileQuery.matches ? MOBILE_OPTIONS : DESKTOP_OPTIONS;
+      return buildOptions(resolveParticleCount(mobileQuery.matches));
     }
 
     setOptions(resolveOptions());
@@ -122,7 +129,17 @@ export function ParticleBackground() {
     };
   }, []);
 
-  if (!engineReady) return null;
+  // Apply canvas CSS optimizations after tsParticles mounts the canvas
+  useEffect(() => {
+    if (!engineReady) return;
+    const canvas = document.querySelector<HTMLCanvasElement>("#hero-particles canvas");
+    if (canvas) {
+      canvas.style.imageRendering = "pixelated";
+      canvas.style.willChange = "transform";
+    }
+  }, [engineReady]);
+
+  if (!engineReady || !options) return null;
 
   return (
     <Particles
