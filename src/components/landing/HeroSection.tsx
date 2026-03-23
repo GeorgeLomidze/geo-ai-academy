@@ -179,7 +179,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
       </div>
 
       {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 z-10 h-24 w-full bg-linear-to-t from-brand-background to-transparent" />
+      <div className="absolute bottom-0 left-0 z-10 h-48 w-full bg-linear-to-t from-brand-background via-brand-background/80 to-transparent" />
     </section>
   );
 }
