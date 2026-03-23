@@ -33,7 +33,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
           alt=""
           fill
           priority
-          className="object-cover object-right opacity-60 blur-[2px]"
+          className="object-cover object-right opacity-45"
         />
       </div>
 
