@@ -3,7 +3,6 @@ import { FeaturedCourses } from "@/components/landing/FeaturedCourses";
 import { AIToolsSection } from "@/components/landing/AIToolsSection";
 import { WhyUs } from "@/components/landing/WhyUs";
 import { FAQSection } from "@/components/landing/FAQSection";
-import { CTASection } from "@/components/landing/CTASection";
 import { ContactSection } from "@/components/layout/ContactSection";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,7 +19,6 @@ export default async function HomePage() {
       <AIToolsSection />
       <WhyUs />
       <FAQSection />
-      <CTASection />
       <ContactSection
         user={
           user
