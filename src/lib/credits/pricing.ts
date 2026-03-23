@@ -536,6 +536,95 @@ export function getVideoModelCoins(modelId: string, resolution?: string, duratio
   return config.coinsByResolution[res] ?? Object.values(config.coinsByResolution)[0] ?? null;
 }
 
+export function getNormalizedVideoDuration(
+  modelId: string,
+  requested?: string | number | null
+): string | null {
+  const config = VIDEO_MODELS[modelId];
+
+  if (!config) {
+    if (typeof requested === "number") {
+      return `${requested}s`;
+    }
+
+    return typeof requested === "string" ? requested : null;
+  }
+
+  if (modelId === "kling3") {
+    const minSeconds = 3;
+    const maxSeconds = 15;
+    const defaultSeconds = Number.parseInt(config.defaultDuration, 10) || 5;
+    const requestedSeconds =
+      typeof requested === "number"
+        ? requested
+        : typeof requested === "string"
+          ? Number.parseInt(requested, 10)
+          : Number.NaN;
+
+    if (Number.isNaN(requestedSeconds)) {
+      return `${defaultSeconds}s`;
+    }
+
+    const clampedSeconds = Math.min(
+      maxSeconds,
+      Math.max(minSeconds, requestedSeconds)
+    );
+    return `${clampedSeconds}s`;
+  }
+
+  const allowedDurations = config.durations.filter(Boolean);
+  const defaultDuration =
+    allowedDurations.find((duration) => duration === config.defaultDuration) ??
+    allowedDurations[0] ??
+    config.defaultDuration;
+
+  if (allowedDurations.length === 0) {
+    if (typeof requested === "number") {
+      return `${requested}s`;
+    }
+
+    return typeof requested === "string" ? requested : defaultDuration || null;
+  }
+
+  const requestedLabel =
+    typeof requested === "number"
+      ? `${requested}s`
+      : typeof requested === "string"
+        ? requested
+        : null;
+
+  if (requestedLabel && allowedDurations.includes(requestedLabel)) {
+    return requestedLabel;
+  }
+
+  const requestedSeconds =
+    typeof requested === "number"
+      ? requested
+      : typeof requested === "string"
+        ? Number.parseInt(requested, 10)
+        : Number.NaN;
+
+  if (Number.isNaN(requestedSeconds)) {
+    return defaultDuration || null;
+  }
+
+  let closestDuration = allowedDurations[0];
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  for (const duration of allowedDurations) {
+    const seconds = Number.parseInt(duration, 10);
+    if (Number.isNaN(seconds)) continue;
+
+    const distance = Math.abs(seconds - requestedSeconds);
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestDuration = duration;
+    }
+  }
+
+  return closestDuration ?? defaultDuration ?? null;
+}
+
 /** Backward-compatible: flat model pricing for both image + video */
 function buildVideoModelPricing(): Record<string, ModelPricing> {
   const result: Record<string, ModelPricing> = {};

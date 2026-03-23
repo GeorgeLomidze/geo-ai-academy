@@ -9,7 +9,11 @@ import {
 } from "@/lib/api-error";
 import { requireAuth } from "@/lib/auth";
 import { deductCreditsWithClient, hasEnoughCredits } from "@/lib/credits/manager";
-import { getModelMetadata, getModelPrice } from "@/lib/credits/pricing";
+import {
+  getModelMetadata,
+  getModelPrice,
+  getNormalizedVideoDuration,
+} from "@/lib/credits/pricing";
 import {
   getKieModelConfig,
   KieApiError,
@@ -121,6 +125,10 @@ function getKieErrorMessage(error: KieApiError) {
     return "ვიდეოს საწყისი და ბოლო კადრები ერთნაირი პროპორციით უნდა იყოს";
   }
 
+  if (normalized.includes("duration") || normalized.includes("seconds")) {
+    return "არჩეული ხანგრძლივობა ამ ვიდეო მოდელს არ უჭერს მხარს";
+  }
+
   if (normalized.includes("balance") || normalized.includes("insufficient") || normalized.includes("credit")) {
     return "KIE API ბალანსი არასაკმარისია. გთხოვთ დაუკავშირდეთ ადმინისტრატორს";
   }
@@ -143,6 +151,30 @@ function isRetryablePrismaTransactionError(error: unknown) {
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === "P2034"
   );
+}
+
+function normalizeRequestedOptions(
+  modelId: string,
+  type: "IMAGE" | "VIDEO",
+  options?: Record<string, unknown>
+) {
+  if (type !== "VIDEO" || !options) {
+    return options;
+  }
+
+  const normalizedOptions = { ...options };
+  const normalizedDuration = getNormalizedVideoDuration(
+    modelId,
+    typeof options.duration === "string" || typeof options.duration === "number"
+      ? options.duration
+      : null
+  );
+
+  if (normalizedDuration) {
+    normalizedOptions.duration = normalizedDuration;
+  }
+
+  return normalizedOptions;
 }
 
 export async function POST(request: NextRequest) {
@@ -172,6 +204,7 @@ export async function POST(request: NextRequest) {
     const modelMetadata = getModelMetadata(effectiveModel);
     const kieModelConfig = getKieModelConfig(effectiveModel);
     const normalizedPrompt = prompt?.trim() ?? "";
+    const normalizedOptions = normalizeRequestedOptions(effectiveModel, type, options);
     const klingHasFrames = effectiveModel === "kling3" && Boolean(primaryImageUrl || endFrameUrl);
     const veoHasFrames =
       (effectiveModel === "veo31" || effectiveModel === "veo31fast") &&
@@ -219,12 +252,15 @@ export async function POST(request: NextRequest) {
 
     // Resolution + duration aware pricing for video models
     const resolution =
-      typeof options?.resolution === "string"
-        ? options.resolution
-        : typeof options?.quality === "string"
-          ? options.quality
+      typeof normalizedOptions?.resolution === "string"
+        ? normalizedOptions.resolution
+        : typeof normalizedOptions?.quality === "string"
+          ? normalizedOptions.quality
           : undefined;
-    const durationStr = typeof options?.duration === "string" ? options.duration : undefined;
+    const durationStr =
+      typeof normalizedOptions?.duration === "string"
+        ? normalizedOptions.duration
+        : undefined;
     const durationSec = durationStr ? Number.parseInt(durationStr, 10) : undefined;
     const coinsCost = getModelPrice(effectiveModel, resolution, durationSec) ?? modelMetadata.coins;
 
@@ -292,7 +328,7 @@ export async function POST(request: NextRequest) {
       const callbackUrl = buildKieCallbackUrl();
       const kieOptions = {
         ...(callbackUrl ? { callBackUrl: callbackUrl } : {}),
-        input: options,
+        input: normalizedOptions,
         refund: {
           userId: auth.userId,
           generationId: generation.id,

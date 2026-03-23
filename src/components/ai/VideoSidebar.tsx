@@ -256,15 +256,14 @@ export function VideoSidebar({
   const hasResolutions = selected.resolutions.length > 0
   const hasAspectRatios = selected.aspectRatios.length > 0
   const hasDurations = selected.durations.length > 0
+  const usesDurationSlider = selectedModel === "kling3"
 
-  // Parse duration range from the durations array
+  // Duration values are explicit allowed options from model config.
   const durationValues = selected.durations
     .map((d) => Number.parseInt(d, 10))
     .filter((n) => !Number.isNaN(n))
-  const minDuration = durationValues.length > 0 ? Math.min(...durationValues) : 5
-  const maxDuration = durationValues.length > 0 ? Math.max(...durationValues) : 5
-  // Use discrete buttons when there are 3+ specific values (not a continuous range)
-  const isDiscreteRange = durationValues.length >= 3
+  const minDuration = durationValues.length > 0 ? Math.min(...durationValues) : 3
+  const maxDuration = durationValues.length > 0 ? Math.max(...durationValues) : 15
 
   let frameUploadSection: React.ReactNode = null
 
@@ -459,26 +458,7 @@ export function VideoSidebar({
         </div>
 
         <div className="space-y-3">
-          {hasDurations && isDiscreteRange ? (
-            <div>
-              <p className="mb-2 text-xs text-brand-muted">ხანგრძლივობა</p>
-              <div className="flex flex-wrap gap-2">
-                {durationValues.map((dur) => (
-                  <button
-                    key={dur}
-                    type="button"
-                    className={cn(
-                      "rounded-md border border-brand-border bg-[#101010] px-3 py-2 text-sm text-brand-muted transition-colors",
-                      dur === durationSeconds && "border-brand-accent/30 bg-brand-accent/10 text-brand-accent"
-                    )}
-                    onClick={() => onDurationChange(dur)}
-                  >
-                    {dur} წმ
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : hasDurations && minDuration !== maxDuration ? (
+          {hasDurations && usesDurationSlider ? (
             <div>
               <p className="mb-2 text-xs text-brand-muted">ხანგრძლივობა</p>
               <div className="rounded-lg border border-brand-border bg-[#101010] px-4 py-4">
@@ -503,8 +483,20 @@ export function VideoSidebar({
           ) : hasDurations ? (
             <div>
               <p className="mb-2 text-xs text-brand-muted">ხანგრძლივობა</p>
-              <div className="rounded-lg border border-brand-border bg-[#101010] px-4 py-3 text-sm text-brand-secondary">
-                {minDuration} წმ
+              <div className="flex flex-wrap gap-2">
+                {durationValues.map((dur) => (
+                  <button
+                    key={dur}
+                    type="button"
+                    className={cn(
+                      "rounded-md border border-brand-border bg-[#101010] px-3 py-2 text-sm text-brand-muted transition-colors",
+                      dur === durationSeconds && "border-brand-accent/30 bg-brand-accent/10 text-brand-accent"
+                    )}
+                    onClick={() => onDurationChange(dur)}
+                  >
+                    {dur} წმ
+                  </button>
+                ))}
               </div>
             </div>
           ) : null}

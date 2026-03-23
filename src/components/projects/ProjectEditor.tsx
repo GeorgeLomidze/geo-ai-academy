@@ -27,6 +27,7 @@ import {
   getImageModelCoins,
   getModelMetadata,
   VIDEO_MODELS as VIDEO_MODELS_MAP,
+  getNormalizedVideoDuration,
   getVideoModelCoins,
 } from "@/lib/credits/pricing";
 import type { ProjectNode, ProjectNodeData, NodeType, NodeConnection } from "./types";
@@ -961,7 +962,9 @@ export function ProjectEditor({
         VIDEO_MODEL_LIST[0];
       // Dynamic pricing for video
       const resolution = node.data.resolution ?? meta.defaultResolution;
-      const durationStr = node.data.duration ?? meta.defaultDuration;
+      const durationStr =
+        getNormalizedVideoDuration(modelId, node.data.duration ?? meta.defaultDuration) ??
+        meta.defaultDuration;
       const durationSec = parseInt(durationStr, 10) || undefined;
       const dynamicCoins = getVideoModelCoins(modelId, resolution, durationSec) ?? meta.coins;
       return { list, modelId, meta: { ...meta, coins: dynamicCoins } };
@@ -1045,7 +1048,14 @@ export function ProjectEditor({
       if (node.type === "VIDEO") {
         const vmeta = VIDEO_MODEL_LIST.find((m) => m.id === modelId);
         options.resolution = node.data.resolution ?? (vmeta?.defaultResolution || "720p");
-        options.duration = node.data.duration ?? (vmeta?.defaultDuration || "5s");
+        const normalizedDuration =
+          getNormalizedVideoDuration(modelId, node.data.duration ?? (vmeta?.defaultDuration || "5s")) ??
+          vmeta?.defaultDuration ??
+          "5s";
+        options.duration = normalizedDuration;
+        if (node.data.duration !== normalizedDuration) {
+          handleNodeDataChange(node.id, { duration: normalizedDuration });
+        }
         options.audio = node.data.audio ?? false;
         options.multiShot = node.data.multiShot ?? false;
       }
@@ -1697,7 +1707,11 @@ export function ProjectEditor({
                   openDropdown("duration", e);
                 }}
               >
-                {node.data.duration ??
+                {getNormalizedVideoDuration(
+                  modelId,
+                  node.data.duration ??
+                    (VIDEO_MODEL_LIST.find((m) => m.id === modelId)?.defaultDuration || "5s")
+                ) ??
                   (VIDEO_MODEL_LIST.find((m) => m.id === modelId)?.defaultDuration || "5s")}
               </button>
             </>
@@ -2189,31 +2203,40 @@ export function ProjectEditor({
                 )}
 
                 {activeDropdown === "duration" && (() => {
-                  const vmeta = VIDEO_MODEL_LIST.find((m) => m.id === modelId);
-                  const hasPerSecond = !!vmeta?.coinsPerSecondByResolution;
-                  const durNums = durationOpts.map((d) => parseInt(d, 10)).filter((n) => !isNaN(n));
-                  const minDur = Math.min(...durNums);
-                  const maxDur = Math.max(...durNums);
-                  const curDur = parseInt(selectedNode.data.duration ?? defaultDur, 10) || minDur;
+                  const normalizedDuration =
+                    getNormalizedVideoDuration(modelId, selectedNode.data.duration ?? defaultDur) ??
+                    defaultDur;
+                  const durationNumbers = durationOpts
+                    .map((d) => parseInt(d, 10))
+                    .filter((n) => !Number.isNaN(n));
 
-                  if (hasPerSecond && minDur !== maxDur) {
+                  if (modelId === "kling3" && durationNumbers.length > 0) {
+                    const minDuration = Math.min(...durationNumbers);
+                    const maxDuration = Math.max(...durationNumbers);
+                    const currentDuration =
+                      parseInt(normalizedDuration, 10) ||
+                      parseInt(defaultDur, 10) ||
+                      minDuration;
+
                     return (
                       <div className="w-56 p-3">
                         <div className="flex items-center justify-between text-xs text-white/50">
-                          <span>{minDur} წმ</span>
+                          <span>{minDuration} წმ</span>
                           <span className="rounded-md border border-brand-accent/20 bg-brand-accent/10 px-2.5 py-1 text-brand-accent tabular-nums">
-                            {curDur} წმ
+                            {currentDuration} წმ
                           </span>
-                          <span>{maxDur} წმ</span>
+                          <span>{maxDuration} წმ</span>
                         </div>
                         <input
                           type="range"
-                          min={minDur}
-                          max={maxDur}
+                          min={minDuration}
+                          max={maxDuration}
                           step={1}
-                          value={curDur}
+                          value={currentDuration}
                           onChange={(e) => {
-                            handleNodeDataChange(selectedNode.id, { duration: `${e.target.value}s` });
+                            handleNodeDataChange(selectedNode.id, {
+                              duration: `${e.target.value}s`,
+                            });
                           }}
                           className="mt-3 h-2 w-full cursor-pointer accent-[#FFD60A]"
                         />
@@ -2227,7 +2250,7 @@ export function ProjectEditor({
                         <button
                           key={d}
                           className={`select-none rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                            (selectedNode.data.duration ?? defaultDur) === d
+                            normalizedDuration === d
                               ? "bg-brand-accent/15 text-brand-accent"
                               : "text-white/45 hover:bg-white/5 hover:text-white/65"
                           }`}

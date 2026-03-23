@@ -478,8 +478,8 @@ function normalizeVideoInputOptions(
       } else {
         normalized.mode = "std";
       }
-      if (audioEnabled) normalized.sound = true;
-      if (multiShotEnabled) normalized.multi_shots = true;
+      normalized.sound = audioEnabled ?? false;
+      normalized.multi_shots = multiShotEnabled ?? false;
       break;
     }
 

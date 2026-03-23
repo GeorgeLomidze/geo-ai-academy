@@ -5,7 +5,12 @@ import { CreditDisplay } from "@/components/ai/CreditDisplay"
 import { AIHistoryItem } from "@/components/ai/types"
 import { VideoHistory } from "@/components/ai/VideoHistory"
 import { VideoSidebar } from "@/components/ai/VideoSidebar"
-import { VIDEO_MODELS, getVideoModelCoins, type VideoModelConfig } from "@/lib/credits/pricing"
+import {
+  VIDEO_MODELS,
+  getNormalizedVideoDuration,
+  getVideoModelCoins,
+  type VideoModelConfig,
+} from "@/lib/credits/pricing"
 
 const VIDEO_MODEL_LIST = Object.entries(VIDEO_MODELS).map(([id, config]) => ({
   id,
@@ -56,7 +61,10 @@ export function VideoGenerator({
   const [audio, setAudio] = useState(false)
   const [multiShot, setMultiShot] = useState(false)
   const [durationSeconds, setDurationSeconds] = useState(
-    Number.parseInt(defaultModel.defaultDuration, 10) || 5
+    Number.parseInt(
+      getNormalizedVideoDuration(defaultModel.id, defaultModel.defaultDuration) ?? defaultModel.defaultDuration,
+      10
+    ) || 5
   )
   const [aspectRatio, setAspectRatio] = useState(defaultModel.defaultAspectRatio || "16:9")
   const [resolution, setResolution] = useState(defaultModel.defaultResolution || "720p")
@@ -97,18 +105,13 @@ export function VideoGenerator({
       setResolution(meta.defaultResolution || meta.resolutions[0])
     }
 
-    // Validate duration against allowed values
     if (meta.durations.length > 0) {
-      const allowed = meta.durations.map((d) => Number.parseInt(d, 10)).filter((n) => !Number.isNaN(n))
-      const min = Math.min(...allowed)
-      const max = Math.max(...allowed)
-      const isDiscrete = allowed.length >= 3
       setDurationSeconds((prev) => {
-        if (isDiscrete && !allowed.includes(prev)) {
-          return Number.parseInt(meta.defaultDuration, 10) || allowed[0]
-        }
-        if (!isDiscrete && (prev < min || prev > max)) {
-          return Number.parseInt(meta.defaultDuration, 10) || min
+        const normalizedDuration =
+          getNormalizedVideoDuration(meta.id, prev) ?? meta.defaultDuration
+        const nextSeconds = Number.parseInt(normalizedDuration, 10)
+        if (!Number.isNaN(nextSeconds) && nextSeconds !== prev) {
+          return nextSeconds
         }
         return prev
       })
@@ -317,7 +320,12 @@ export function VideoGenerator({
     setReferenceVideoUrl(null)
     setAudio(false)
     setMultiShot(false)
-    setDurationSeconds(Number.parseInt(model.defaultDuration, 10) || 5)
+    setDurationSeconds(
+      Number.parseInt(
+        getNormalizedVideoDuration(model.id, model.defaultDuration) ?? model.defaultDuration,
+        10
+      ) || 5
+    )
     setAspectRatio(model.defaultAspectRatio || "16:9")
     setResolution(model.defaultResolution || "720p")
 
@@ -332,7 +340,11 @@ export function VideoGenerator({
       startFrameUrl: item.sourceUrl,
       endFrameUrl: null,
       referenceVideoUrl: null,
-      durationSeconds: Number.parseInt(model.defaultDuration, 10) || 5,
+      durationSeconds:
+        Number.parseInt(
+          getNormalizedVideoDuration(model.id, model.defaultDuration) ?? model.defaultDuration,
+          10
+        ) || 5,
       aspectRatio: model.defaultAspectRatio || "16:9",
       resolution: model.defaultResolution || "720p",
       audio: false,
