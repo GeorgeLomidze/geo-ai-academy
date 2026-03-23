@@ -46,9 +46,10 @@ function clearAuthCookies(request: NextRequest, response: NextResponse) {
     .map(({ name }) => name)
     .filter(
       (name) =>
-        name === authCookieBaseName ||
-        name.startsWith(`${authCookieBaseName}.`) ||
-        name.startsWith(`${authCookieBaseName}-`)
+        (name === authCookieBaseName ||
+          name.startsWith(`${authCookieBaseName}.`) ||
+          name.startsWith(`${authCookieBaseName}-`)) &&
+        !name.endsWith("-code-verifier")
     );
 
   for (const name of authCookieNames) {
