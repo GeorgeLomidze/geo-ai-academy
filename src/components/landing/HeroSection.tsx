@@ -1,9 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { ParticleBackground } from "@/components/landing/ParticleBackground";
 import { SocialLinks } from "@/components/layout/SocialLinks";
 import { Button } from "@/components/ui/button";
 import { socialLinks } from "@/lib/constants";
@@ -26,94 +26,97 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
 
   return (
     <section className="relative isolate overflow-hidden bg-[#0A0A0A]">
-      {/* Particles — full section, pointer-events-none so links/buttons remain clickable */}
+      {/* Background image — blurred, covers full section */}
       <div className="pointer-events-none absolute inset-0 z-0">
-        <ParticleBackground />
+        <Image
+          src="/bg.png"
+          alt=""
+          fill
+          priority
+          className="object-cover object-right opacity-60 blur-[2px]"
+        />
       </div>
 
+      {/* Cinematic gradient overlay — dark left for text, face visible right */}
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(135deg,rgba(10,10,10,0.95)_0%,rgba(10,10,10,0.85)_30%,rgba(10,10,10,0.4)_60%,transparent_100%)]" />
+
       {/* Elegant amber gradient layers */}
-      {/* Top-left warm bloom */}
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_80%_60%_at_-10%_-10%,rgba(245,166,35,0.13)_0%,rgba(245,166,35,0.04)_45%,transparent_70%)]" />
-      {/* Bottom-right cool depth */}
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_60%_50%_at_110%_110%,rgba(224,144,0,0.10)_0%,rgba(224,144,0,0.03)_50%,transparent_70%)]" />
-      {/* Center-right glow behind orbit */}
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_40%_55%_at_78%_48%,rgba(255,214,10,0.07)_0%,transparent_65%)]" />
-      {/* Subtle horizontal vignette — darkens edges, focuses center */}
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.28)_0%,transparent_30%,transparent_70%,rgba(0,0,0,0.18)_100%)]" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_auto] lg:gap-16">
-        <div className="max-w-2xl">
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="font-display text-4xl font-bold leading-[1.1] text-white sm:text-5xl lg:text-6xl"
-          >
-            ისწავლე და
-            <br />
-            გამოიყენე AI
-            <br />
-            <span className="bg-linear-to-r from-brand-primary via-brand-primary to-brand-accent bg-clip-text text-transparent">
-              ინსტრუმენტები
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-6 max-w-lg text-base leading-relaxed text-foreground sm:text-lg"
-          >
-            შეისწავლე ხელოვნური ინტელექტის უახლესი ტექნოლოგიები პროფესიონალ
-            ტრენერთან ერთად. ვიდეო გაკვეთილები, პრაქტიკული პროექტები და
-            სერთიფიკატი.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-8 flex flex-wrap items-center gap-4"
-          >
-            <Button
-              asChild
-              size="lg"
-              className="h-12 rounded-2xl bg-brand-accent px-6 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
+          <div className="max-w-2xl">
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="font-display text-4xl font-bold leading-[1.1] text-white sm:text-5xl lg:text-6xl"
             >
-              <Link href={primaryCtaHref}>
-                დაიწყე სწავლა
-                <ArrowRight className="ml-1 size-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="ghost"
-              size="lg"
-              className="h-12 rounded-2xl border border-brand-border bg-brand-surface/40 text-base text-foreground hover:bg-brand-surface-light hover:text-brand-secondary"
-            >
-              <Link href={aiToolsHref}>AI ინსტრუმენტები</Link>
-            </Button>
-          </motion.div>
+              ისწავლე და
+              <br />
+              გამოიყენე AI
+              <br />
+              <span className="bg-linear-to-r from-brand-primary via-brand-primary to-brand-accent bg-clip-text text-transparent">
+                ინსტრუმენტები
+              </span>
+            </motion.h1>
 
-          {/* Social links */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="mt-12 border-t border-brand-border pt-6"
-          >
-            <p className="text-sm text-brand-muted">
-              გვიპოვე სოციალურ ქსელებში
-            </p>
-            <SocialLinks
-              items={heroSocialLinks}
-              className="mt-4 gap-3"
-              itemClassName="group inline-flex size-12 items-center justify-center rounded-full border border-brand-border bg-brand-surface/55 text-white shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-accent hover:bg-brand-surface-light hover:shadow-md"
-              iconClassName="size-5 text-brand-secondary transition-transform duration-200 ease-out group-hover:scale-110 group-hover:text-brand-accent"
-            />
-          </motion.div>
-        </div>
+            <motion.p
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="mt-6 max-w-lg text-base leading-relaxed text-foreground sm:text-lg"
+            >
+              შეისწავლე ხელოვნური ინტელექტის უახლესი ტექნოლოგიები პროფესიონალ
+              ტრენერთან ერთად. ვიდეო გაკვეთილები, პრაქტიკული პროექტები და
+              სერთიფიკატი.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="mt-8 flex flex-wrap items-center gap-4"
+            >
+              <Button
+                asChild
+                size="lg"
+                className="h-12 rounded-2xl bg-brand-accent px-6 text-base font-bold text-black transition-all duration-200 hover:scale-[1.02] hover:bg-brand-accent-hover"
+              >
+                <Link href={primaryCtaHref}>
+                  დაიწყე სწავლა
+                  <ArrowRight className="ml-1 size-4" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="ghost"
+                size="lg"
+                className="h-12 rounded-2xl border border-brand-border bg-brand-surface/40 text-base text-foreground hover:bg-brand-surface-light hover:text-brand-secondary"
+              >
+                <Link href={aiToolsHref}>AI ინსტრუმენტები</Link>
+              </Button>
+            </motion.div>
+
+            {/* Social links */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.5 }}
+              className="mt-12 border-t border-brand-border pt-6"
+            >
+              <p className="text-sm text-brand-muted">
+                გვიპოვე სოციალურ ქსელებში
+              </p>
+              <SocialLinks
+                items={heroSocialLinks}
+                className="mt-4 gap-3"
+                itemClassName="group inline-flex size-12 items-center justify-center rounded-full border border-brand-border bg-brand-surface/55 text-white shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-brand-accent hover:bg-brand-surface-light hover:shadow-md"
+                iconClassName="size-5 text-brand-secondary transition-transform duration-200 ease-out group-hover:scale-110 group-hover:text-brand-accent"
+              />
+            </motion.div>
+          </div>
 
           {/* Right side decorative element */}
           <motion.div
