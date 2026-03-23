@@ -114,8 +114,8 @@ export default async function CourseDetailPage({
   return (
     <div className="bg-brand-background">
       {/* Hero section */}
-      <section className="relative overflow-hidden bg-[linear-gradient(180deg,#0A0A0A_0%,#1a1000_50%,#0A0A0A_100%)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(245,166,35,0.18),transparent)]" />
+      <section className="relative overflow-hidden bg-[linear-gradient(180deg,#0A0A0A_0%,#171400_50%,#0A0A0A_100%)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(255,214,10,0.18),transparent)]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.04]">
           <div
             className="absolute inset-0"

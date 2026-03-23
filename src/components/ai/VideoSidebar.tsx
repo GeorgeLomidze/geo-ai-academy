@@ -496,7 +496,7 @@ export function VideoSidebar({
                   step={1}
                   value={durationSeconds}
                   onChange={(event) => onDurationChange(Number(event.target.value))}
-                  className="mt-4 h-2 w-full cursor-pointer accent-[#F5A623]"
+                  className="mt-4 h-2 w-full cursor-pointer accent-[#FFD60A]"
                 />
               </div>
             </div>

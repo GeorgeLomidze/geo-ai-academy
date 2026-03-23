@@ -49,7 +49,7 @@ export function AddNodeMenu({ x, y, onAdd, onClose }: AddNodeMenuProps) {
               <Icon className="size-4" />
               {option.label}
               {option.badge && (
-                <span className="ml-auto rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">
+                <span className="ml-auto rounded-full border border-brand-accent/30 bg-brand-accent/10 px-2 py-0.5 text-[10px] text-brand-accent">
                   {option.badge}
                 </span>
               )}

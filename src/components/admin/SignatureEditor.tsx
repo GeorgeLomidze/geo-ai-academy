@@ -43,7 +43,7 @@ const TEXT_COLORS = [
   { color: "#888888", label: "ნაცრისფერი" },
   { color: "#333333", label: "მუქი ნაცრისფერი" },
   { color: "#000000", label: "შავი" },
-  { color: "#F5A623", label: "ოქროსფერი" },
+  { color: "#FFD60A", label: "ოქროსფერი" },
   { color: "#FF4444", label: "წითელი" },
   { color: "#22C55E", label: "მწვანე" },
   { color: "#3B82F6", label: "ლურჯი" },
@@ -54,7 +54,7 @@ const TEXT_COLORS = [
 
 const BG_COLORS = [
   { color: "", label: "გარეშე" },
-  { color: "#F5A623", label: "ოქროსფერი" },
+  { color: "#FFD60A", label: "ოქროსფერი" },
   { color: "#FF4444", label: "წითელი" },
   { color: "#22C55E", label: "მწვანე" },
   { color: "#3B82F6", label: "ლურჯი" },
@@ -132,7 +132,7 @@ export function SignatureEditor({ onSaved }: SignatureEditorProps) {
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          style: "color: #F5A623; text-decoration: underline;",
+          style: "color: #FFD60A; text-decoration: underline;",
         },
       }),
       TextAlign.configure({
@@ -279,7 +279,7 @@ export function SignatureEditor({ onSaved }: SignatureEditorProps) {
         .chain()
         .focus()
         .insertContent(
-          `<a href="${safeUrl}" style="color: #F5A623; text-decoration: underline;">${linkText}</a>`
+          `<a href="${safeUrl}" style="color: #FFD60A; text-decoration: underline;">${linkText}</a>`
         )
         .run();
     } else {

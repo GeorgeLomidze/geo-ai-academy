@@ -107,9 +107,9 @@
   --color-chart-1: var(--chart-1);
 
   /* Brand colors */
-  --color-brand-primary: #F5A623;
-  --color-brand-primary-hover: #E09000;
-  --color-brand-primary-light: rgb(245 166 35 / 0.1);
+  --color-brand-primary: #FFD60A;
+  --color-brand-primary-hover: #E6C009;
+  --color-brand-primary-light: rgb(255 214 10 / 0.1);
   --color-brand-secondary: #FFFFFF;
   --color-brand-accent: #FFD60A;
   --color-brand-accent-hover: #E6C009;
@@ -141,7 +141,7 @@
   --card-foreground: #D1D1D1;
   --popover: #141414;
   --popover-foreground: #D1D1D1;
-  --primary: #F5A623;
+  --primary: #FFD60A;
   --primary-foreground: #0A0A0A;
   --secondary: #1E1E1E;
   --secondary-foreground: #FFFFFF;
@@ -152,20 +152,20 @@
   --destructive: #FF4444;
   --border: #2A2A2A;
   --input: #2A2A2A;
-  --ring: #F5A623;
-  --chart-1: #F5A623;
+  --ring: #FFD60A;
+  --chart-1: #FFD60A;
   --chart-2: #FFD60A;
   --chart-3: #F59E0B;
   --chart-4: #FF4444;
   --chart-5: #8A8A8A;
   --sidebar: #0A0A0A;
   --sidebar-foreground: #D1D1D1;
-  --sidebar-primary: rgb(245 166 35 / 0.1);
-  --sidebar-primary-foreground: #F5A623;
+  --sidebar-primary: rgb(255 214 10 / 0.1);
+  --sidebar-primary-foreground: #FFD60A;
   --sidebar-accent: #141414;
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: #2A2A2A;
-  --sidebar-ring: #F5A623;
+  --sidebar-ring: #FFD60A;
 }
 
 @layer base {
@@ -224,7 +224,7 @@
   }
 
   .brand-scrollbar {
-    scrollbar-color: rgb(245 166 35 / 0.9) #141414;
+    scrollbar-color: rgb(255 214 10 / 0.9) #141414;
     scrollbar-width: thin;
   }
 
@@ -238,7 +238,7 @@
   }
 
   .brand-scrollbar::-webkit-scrollbar-thumb {
-    background: #f5a623;
+    background: #ffd60a;
     border: 2px solid #141414;
     border-radius: 9999px;
   }
@@ -269,7 +269,7 @@
 }
 
 .tiptap-editor a {
-  color: #f5a623;
+  color: #ffd60a;
   text-decoration: underline;
 }
 
@@ -281,6 +281,6 @@
 }
 
 .tiptap-editor img.ProseMirror-selectednode {
-  outline: 2px solid #f5a623;
+  outline: 2px solid #ffd60a;
   outline-offset: 2px;
 }

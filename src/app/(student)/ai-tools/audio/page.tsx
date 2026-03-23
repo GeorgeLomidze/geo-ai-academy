@@ -21,7 +21,7 @@ export default function AudioGeneratorPage() {
         მუსიკის და აუდიო ეფექტების გენერაცია მალე დაემატება
       </p>
 
-      <span className="mt-6 inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-sm font-medium text-amber-400">
+      <span className="mt-6 inline-flex rounded-full border border-brand-accent/30 bg-brand-accent/10 px-4 py-1.5 text-sm font-medium text-brand-accent">
         მალე
       </span>
 

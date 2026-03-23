@@ -267,7 +267,7 @@ export default async function AdminOverviewPage() {
           return (
             <div
               key={stat.label}
-              className="rounded-2xl border border-brand-border bg-brand-surface p-5 transition-all duration-200 hover:border-brand-primary/30 hover:shadow-[0_0_30px_rgba(245,166,35,0.1)]"
+              className="rounded-2xl border border-brand-border bg-brand-surface p-5 transition-all duration-200 hover:border-brand-primary/30 hover:shadow-[0_0_30px_rgba(255,214,10,0.1)]"
             >
               <div className="flex items-center justify-between gap-4">
                 <div

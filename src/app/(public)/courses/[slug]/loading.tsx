@@ -1,7 +1,7 @@
 export default function CourseDetailLoading() {
   return (
     <div className="bg-brand-background">
-      <section className="bg-[linear-gradient(180deg,#0A0A0A_0%,#1a1000_50%,#0A0A0A_100%)]">
+      <section className="bg-[linear-gradient(180deg,#0A0A0A_0%,#171400_50%,#0A0A0A_100%)]">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
           <div className="grid items-center gap-10 lg:grid-cols-[1fr_400px] lg:gap-16">
             <div className="space-y-5">

@@ -5,7 +5,7 @@ import { TrainerPortrait } from "@/components/landing/TrainerPortrait";
 export function AboutTrainer() {
   return (
     <section className="relative overflow-hidden bg-[#141414] py-16 sm:py-20 lg:py-24">
-      <div className="absolute inset-0 bg-[#F5A623]" aria-hidden="true" />
+      <div className="absolute inset-0 bg-[#FFD60A]" aria-hidden="true" />
       <div
         className="absolute inset-0 bg-[#0A0A0A] [clip-path:polygon(34%_0,100%_0,100%_100%,48%_100%)] sm:[clip-path:polygon(32%_0,100%_0,100%_100%,45%_100%)] lg:[clip-path:polygon(30%_0,100%_0,100%_100%,43%_100%)]"
         aria-hidden="true"
@@ -20,10 +20,10 @@ export function AboutTrainer() {
           <div className="max-w-2xl">
             <div className="flex items-center gap-5">
               <span
-                className="h-1 w-12 rounded-full bg-[#F5A623]"
+                className="h-1 w-12 rounded-full bg-[#FFD60A]"
                 aria-hidden="true"
               />
-              <p className="text-3xl font-bold uppercase text-[#F5A623] sm:text-4xl">
+              <p className="text-3xl font-bold uppercase text-[#FFD60A] sm:text-4xl">
                 მე ვარ გიორგი ლომიძე
               </p>
             </div>
@@ -40,10 +40,10 @@ export function AboutTrainer() {
 
             <Link
               href="/courses"
-              className="mt-10 inline-flex items-center rounded-full border border-[#F5A623] py-2 pl-7 pr-2 text-sm font-semibold text-white transition-colors duration-200 hover:border-[#FFD60A] hover:text-[#FFD60A]"
+              className="mt-10 inline-flex items-center rounded-full border border-[#FFD60A] py-2 pl-7 pr-2 text-sm font-semibold text-white transition-colors duration-200 hover:border-[#E6C009] hover:text-[#FFD60A]"
             >
               <span>კურსების ნახვა</span>
-              <span className="ml-5 flex size-12 items-center justify-center rounded-full bg-[#F5A623] text-black">
+              <span className="ml-5 flex size-12 items-center justify-center rounded-full bg-[#FFD60A] text-black">
                 <ArrowRight className="size-5" />
               </span>
             </Link>

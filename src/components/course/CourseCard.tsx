@@ -30,7 +30,7 @@ export function CourseCard({
   totalReviews = 0,
 }: CourseCardProps) {
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-brand-border bg-brand-surface transition-all duration-300 will-change-transform hover:-translate-y-1 hover:border-brand-primary/30 hover:shadow-[0_0_30px_rgba(245,166,35,0.1)]">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-brand-border bg-brand-surface transition-all duration-300 will-change-transform hover:-translate-y-1 hover:border-brand-primary/30 hover:shadow-[0_0_30px_rgba(255,214,10,0.1)]">
       {/* Thumbnail */}
       <Link
         href={`/courses/${slug}`}

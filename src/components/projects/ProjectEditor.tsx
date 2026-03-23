@@ -1915,7 +1915,7 @@ export function ProjectEditor({
                       <Icon className="size-4 text-brand-accent/50" />
                       {item.label}
                       {item.disabled && (
-                        <span className="ml-auto rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">
+                        <span className="ml-auto rounded-full bg-brand-accent/10 px-2 py-0.5 text-[10px] text-brand-accent">
                           მალე
                         </span>
                       )}
@@ -1960,7 +1960,7 @@ export function ProjectEditor({
                     <Icon className="size-4 text-brand-accent/50" />
                     {item.label}
                     {item.disabled && (
-                      <span className="ml-auto rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400">
+                      <span className="ml-auto rounded-full bg-brand-accent/10 px-2 py-0.5 text-[10px] text-brand-accent">
                         მალე
                       </span>
                     )}
@@ -2215,7 +2215,7 @@ export function ProjectEditor({
                           onChange={(e) => {
                             handleNodeDataChange(selectedNode.id, { duration: `${e.target.value}s` });
                           }}
-                          className="mt-3 h-2 w-full cursor-pointer accent-[#F5A623]"
+                          className="mt-3 h-2 w-full cursor-pointer accent-[#FFD60A]"
                         />
                       </div>
                     );

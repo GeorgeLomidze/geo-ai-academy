@@ -50,7 +50,7 @@ export function WhyUs() {
           backgroundSize: "48px 48px",
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_52%,rgba(245,166,35,0.14),transparent_24%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_52%,rgba(255,214,10,0.14),transparent_24%)]" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
@@ -71,7 +71,7 @@ export function WhyUs() {
 
         <div className="relative mt-14 grid gap-4 sm:grid-cols-2 lg:block lg:min-h-[690px]">
           <div
-            className="relative mx-auto flex size-[280px] items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(145deg,#ffcf33_0%,#f5a623_54%,#7a4a00_100%)] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.56)] animate-in fade-in-0 slide-in-from-bottom-6 duration-500 sm:size-[320px] lg:absolute lg:left-1/2 lg:top-1/2 lg:z-10 lg:size-[360px] lg:-translate-x-1/2 lg:-translate-y-1/2 xl:size-[400px]"
+            className="relative mx-auto flex size-[280px] items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(145deg,#fff4a3_0%,#ffd60a_54%,#a88a00_100%)] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.56)] animate-in fade-in-0 slide-in-from-bottom-6 duration-500 sm:size-[320px] lg:absolute lg:left-1/2 lg:top-1/2 lg:z-10 lg:size-[360px] lg:-translate-x-1/2 lg:-translate-y-1/2 xl:size-[400px]"
           >
             <div className="relative flex size-full flex-col items-center justify-center rounded-full border border-brand-border bg-[radial-gradient(circle_at_50%_30%,#262626_0%,#0a0a0a_74%)] px-8 text-center">
               <h3 className="text-3xl text-white sm:text-4xl">
@@ -93,7 +93,7 @@ export function WhyUs() {
               <article
                 key={feature.number}
                 className={cn(
-                  "group relative overflow-visible rounded-[18px] border border-[#e0a315] bg-[linear-gradient(180deg,#ffcc2e_0%,#f2aa19_100%)] p-5 text-black shadow-[0_16px_36px_rgba(0,0,0,0.34)] transition-all duration-300 hover:translate-y-[-2px] hover:shadow-[0_18px_42px_rgba(0,0,0,0.42)] sm:p-6 lg:absolute lg:min-h-[132px] lg:w-[330px] xl:w-[348px]",
+                  "group relative overflow-visible rounded-[18px] border border-[#E6C009] bg-[linear-gradient(180deg,#ffe45e_0%,#ffd60a_100%)] p-5 text-black shadow-[0_16px_36px_rgba(0,0,0,0.34)] transition-all duration-300 hover:translate-y-[-2px] hover:shadow-[0_18px_42px_rgba(0,0,0,0.42)] sm:p-6 lg:absolute lg:min-h-[132px] lg:w-[330px] xl:w-[348px]",
                   "animate-in fade-in-0 slide-in-from-bottom-6 duration-500",
                   feature.desktopClass,
                 )}

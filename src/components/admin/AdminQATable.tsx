@@ -293,13 +293,13 @@ export function AdminQATable({
                 key={question.id}
                 className={cn(
                   "border-brand-border align-top",
-                  isUnread && "bg-amber-500/5"
+                  isUnread && "bg-brand-accent/5"
                 )}
               >
                 <TableCell
                   className={cn(
                     "px-4",
-                    isUnread && "border-l-2 border-l-amber-400/80"
+                    isUnread && "border-l-2 border-l-brand-accent/80"
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -315,7 +315,7 @@ export function AdminQATable({
                     <div>
                       <p className="flex items-center gap-2 font-medium text-brand-secondary">
                         {isUnread ? (
-                          <span className="size-2 rounded-full bg-amber-400" />
+                          <span className="size-2 rounded-full bg-brand-accent" />
                         ) : null}
                         {question.student.name ?? "უსახელო სტუდენტი"}
                       </p>
@@ -338,7 +338,7 @@ export function AdminQATable({
                         variant="outline"
                         className={
                           isUnread
-                            ? "rounded-full border-amber-400/40 bg-amber-400/10 text-amber-200"
+                            ? "rounded-full border-brand-accent/40 bg-brand-accent/10 text-brand-accent"
                             : "rounded-full text-brand-muted"
                         }
                       >

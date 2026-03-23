@@ -227,7 +227,7 @@ function StatCard({
   const colors = colorMap[color];
 
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-brand-border bg-brand-surface p-5 transition-all duration-300 hover:border-brand-primary/30 hover:shadow-[0_0_30px_rgba(245,166,35,0.1)]">
+    <div className="flex items-center gap-4 rounded-2xl border border-brand-border bg-brand-surface p-5 transition-all duration-300 hover:border-brand-primary/30 hover:shadow-[0_0_30px_rgba(255,214,10,0.1)]">
       <div
         className={`flex size-12 shrink-0 items-center justify-center rounded-xl ${colors.bg}`}
       >
@@ -257,7 +257,7 @@ function DashboardCourseCard({
   return (
     <Link
       href={`/learn/${course.slug}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-brand-border bg-brand-surface transition-all duration-300 hover:-translate-y-1 hover:border-brand-primary/30 hover:shadow-[0_0_30px_rgba(245,166,35,0.1)]"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-brand-border bg-brand-surface transition-all duration-300 hover:-translate-y-1 hover:border-brand-primary/30 hover:shadow-[0_0_30px_rgba(255,214,10,0.1)]"
     >
       {/* Thumbnail */}
       <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-brand-primary/20 via-brand-primary/10 to-brand-accent/10">

@@ -41,8 +41,8 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
       <div className="pointer-events-none absolute inset-0 z-0 bg-[linear-gradient(135deg,rgba(10,10,10,0.95)_0%,rgba(10,10,10,0.85)_30%,rgba(10,10,10,0.4)_60%,transparent_100%)]" />
 
       {/* Elegant amber gradient layers */}
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_80%_60%_at_-10%_-10%,rgba(245,166,35,0.13)_0%,rgba(245,166,35,0.04)_45%,transparent_70%)]" />
-      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_60%_50%_at_110%_110%,rgba(224,144,0,0.10)_0%,rgba(224,144,0,0.03)_50%,transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_80%_60%_at_-10%_-10%,rgba(255,214,10,0.13)_0%,rgba(255,214,10,0.04)_45%,transparent_70%)]" />
+      <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_60%_50%_at_110%_110%,rgba(255,214,10,0.10)_0%,rgba(255,214,10,0.03)_50%,transparent_70%)]" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_auto] lg:gap-16">
@@ -57,7 +57,7 @@ export function HeroSection({ isAuthenticated }: HeroSectionProps) {
               <br />
               გამოიყენე AI
               <br />
-              <span className="bg-linear-to-r from-brand-primary via-brand-primary to-brand-accent bg-clip-text text-transparent">
+              <span className="bg-linear-to-r from-[#F5A623] via-[#F5A623] to-brand-accent bg-clip-text text-transparent">
                 ინსტრუმენტები
               </span>
             </motion.h1>
