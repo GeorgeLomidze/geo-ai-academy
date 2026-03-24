@@ -21,10 +21,8 @@ export function SiteLoader() {
 
     setState("visible");
 
-    // Reduced-motion: skip long animation, show briefly then dismiss quickly
+    // Reduced-motion: show briefly then dismiss (CSS zeroes out animation durations)
     const fadeStart = reducedMotion ? 500 : 2200;
-    // Fade-out is forced to ~0ms by the global CSS reduced-motion rule,
-    // so we only need a short cleanup delay in that case.
     const removeDelay = reducedMotion ? 50 : 420;
 
     const t1 = setTimeout(() => setState("fading"), fadeStart);
@@ -46,20 +44,18 @@ export function SiteLoader() {
       role="presentation"
       aria-hidden="true"
       className={cn(
-        // Full-screen overlay on top of everything
-        "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-brand-background",
-        // Fade-out state: animate out and stop blocking clicks
-        state === "fading" && "[animation:var(--anim-loader-fadeout)] pointer-events-none"
+        "fixed inset-0 z-9999 flex flex-col items-center justify-center bg-brand-background",
+        state === "fading" && "loader-animate-fadeout"
       )}
     >
       {/* Ambient amber glow — pulsing softly behind the logo */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute size-[420px] rounded-full [animation:var(--anim-loader-glow)] [background:radial-gradient(circle,rgba(245,166,35,0.15)_0%,transparent_65%)]"
+        className="loader-animate-glow pointer-events-none absolute size-105 rounded-full"
       />
 
       {/* Logo — cinematic scale-fade reveal */}
-      <div className="relative [animation:var(--anim-loader-logo)]">
+      <div className="loader-animate-logo relative">
         <Image
           src="/logo.png"
           alt="GEO AI Academy"
@@ -70,14 +66,10 @@ export function SiteLoader() {
         />
       </div>
 
-      {/* Loading bar */}
-      <div
-        className="relative mt-8 h-[2px] w-[200px] overflow-hidden rounded-full bg-white/[0.07] [animation:var(--anim-loader-bar-track)]"
-      >
-        {/* Amber fill — animates scaleX 0 → 1 from the left */}
-        <div
-          className="absolute inset-y-0 left-0 w-full origin-left rounded-full bg-[#F5A623] [animation:var(--anim-loader-bar)] [box-shadow:0_0_10px_rgba(245,166,35,0.65)]"
-        />
+      {/* Loading bar track */}
+      <div className="loader-animate-bar-track relative mt-8 h-0.5 w-50 overflow-hidden rounded-full bg-white/[0.07]">
+        {/* Amber fill — scaleX 0 → 1 from origin-left */}
+        <div className="loader-animate-bar absolute inset-y-0 left-0 w-full origin-left rounded-full bg-[#F5A623]" />
       </div>
     </div>
   );

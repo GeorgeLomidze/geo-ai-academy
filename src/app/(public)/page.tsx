@@ -8,7 +8,7 @@ import { ContactSection } from "@/components/layout/ContactSection";
 // Statically cache landing page, revalidate every hour
 export const revalidate = 3600;
 
-export default function HomePage() {
+export default async function HomePage() {
   return (
     <>
       <HeroSection />
