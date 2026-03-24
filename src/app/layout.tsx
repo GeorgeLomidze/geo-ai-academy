@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SiteLoader } from "@/components/ui/SiteLoader";
 
 export const metadata: Metadata = {
   title: "GEO AI Academy",
@@ -35,6 +36,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        <SiteLoader />
         {children}
       </body>
     </html>
