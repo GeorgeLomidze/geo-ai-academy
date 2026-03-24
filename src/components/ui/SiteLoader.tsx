@@ -38,7 +38,7 @@ export function SiteLoader() {
     const minDelay = new Promise<void>(r => setTimeout(r, 3000));
     const pageLoad = new Promise<void>(r => {
       if (document.readyState === "complete") r();
-      else window.addEventListener("load", r, { once: true });
+      else window.addEventListener("load", () => r(), { once: true });
     });
 
     Promise.all([minDelay, pageLoad]).then(() => {
