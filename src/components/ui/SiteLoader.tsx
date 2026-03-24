@@ -35,10 +35,16 @@ export function SiteLoader() {
     let cancelled = false;
 
     // Show loader for the LONGER of: 3 seconds OR full page load
-    const minDelay = new Promise<void>(r => setTimeout(r, 3000));
-    const pageLoad = new Promise<void>(r => {
-      if (document.readyState === "complete") r();
-      else window.addEventListener("load", () => r(), { once: true });
+    const minDelay = new Promise<void>(resolve => {
+      setTimeout(() => resolve(), 3000);
+    });
+    const pageLoad = new Promise<void>(resolve => {
+      if (document.readyState === "complete") {
+        resolve();
+      } else {
+        const onLoad = (): void => resolve();
+        window.addEventListener("load", onLoad, { once: true });
+      }
     });
 
     Promise.all([minDelay, pageLoad]).then(() => {
