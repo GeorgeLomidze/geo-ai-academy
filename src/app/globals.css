@@ -260,24 +260,46 @@
 /* ─────────────────────────────────────────────
    Site Loader — keyframes & utility classes
 ───────────────────────────────────────────── */
+
+/* --- Keyframes --- */
 @keyframes loader-logo-in {
-  from { opacity: 0; transform: scale(0.85); }
-  to   { opacity: 1; transform: scale(1);    }
+  from { opacity: 0; transform: scale(0.82); filter: blur(10px); }
+  to   { opacity: 1; transform: scale(1);    filter: blur(0);    }
 }
 
-@keyframes loader-reveal {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+@keyframes loader-tagline-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 
-@keyframes loader-bar-fill {
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
+@keyframes loader-emoji-enter {
+  from { opacity: 0; transform: scale(0.25) translateY(14px); filter: blur(6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    filter: blur(0);   }
+}
+
+@keyframes loader-emoji-exit {
+  from { opacity: 1; transform: scale(1)    translateY(0);     filter: blur(0);   }
+  to   { opacity: 0; transform: scale(1.35) translateY(-14px); filter: blur(6px); }
 }
 
 @keyframes loader-glow-pulse {
-  0%, 100% { opacity: 0.2;  transform: scale(1);    }
-  50%       { opacity: 0.45; transform: scale(1.07); }
+  0%, 100% { opacity: 0.14; transform: scale(1);    }
+  50%       { opacity: 0.32; transform: scale(1.09); }
+}
+
+@keyframes loader-ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0px  rgba(245, 166, 35, 0.55); }
+  60%       { box-shadow: 0 0 0 10px rgba(245, 166, 35, 0);    }
+}
+
+@keyframes loader-bar-to-80 {
+  from { transform: scaleX(0);   }
+  to   { transform: scaleX(0.8); }
+}
+
+@keyframes loader-bar-to-full {
+  from { transform: scaleX(0.8); }
+  to   { transform: scaleX(1);   }
 }
 
 @keyframes loader-fade-out {
@@ -285,27 +307,69 @@
   to   { opacity: 0; }
 }
 
-/* Utility classes used by SiteLoader.tsx */
-.loader-animate-logo {
-  animation: loader-logo-in 600ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+/* --- Utility classes used by SiteLoader.tsx --- */
+
+/* Subtle amber grid in background */
+.loader-grid {
+  background-image:
+    linear-gradient(rgba(255, 214, 10, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 214, 10, 0.07) 1px, transparent 1px);
+  background-size: 64px 64px;
 }
 
-.loader-animate-bar-track {
-  animation: loader-reveal 400ms ease-out 300ms both;
+/* Ambient glow orb */
+.loader-glow {
+  background: radial-gradient(circle, rgba(245, 166, 35, 0.22) 0%, rgba(245, 166, 35, 0.07) 45%, transparent 70%);
+  animation: loader-glow-pulse 3s ease-in-out infinite;
 }
 
-.loader-animate-bar {
-  animation: loader-bar-fill 1700ms cubic-bezier(0.4, 0, 0.2, 1) 300ms both;
-  box-shadow: 0 0 10px rgba(245, 166, 35, 0.65);
+/* Logo reveal — blur + scale + opacity */
+.loader-logo-animate {
+  animation: loader-logo-in 750ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
 }
 
-.loader-animate-glow {
-  animation: loader-glow-pulse 3s ease-in-out 200ms infinite;
-  background: radial-gradient(circle, rgba(245, 166, 35, 0.15) 0%, transparent 65%);
+/* Logo ambient glow via drop-shadow */
+.loader-logo-glow {
+  filter: drop-shadow(0 0 36px rgba(245, 166, 35, 0.32));
 }
 
-.loader-animate-fadeout {
-  animation: loader-fade-out 400ms ease-out forwards;
+/* Tagline slides up after logo */
+.loader-tagline-animate {
+  animation: loader-tagline-in 500ms ease-out 820ms both;
+}
+
+/* Emoji enter — spring bounce from below */
+.loader-emoji-enter {
+  animation: loader-emoji-enter 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Emoji exit — dissolves upward */
+.loader-emoji-exit {
+  animation: loader-emoji-exit 300ms ease-in both;
+}
+
+/* Circular ring that pulses outward */
+.loader-emoji-ring {
+  animation: loader-ring-pulse 1.6s ease-out 1.2s infinite;
+}
+
+/* Bar: fills to 80% over the loading period */
+.loader-bar-filling {
+  animation: loader-bar-to-80 2600ms cubic-bezier(0.4, 0, 0.6, 1) 400ms both;
+  background: linear-gradient(90deg, #F5A623 0%, #FFD60A 50%, #F5A623 100%);
+  box-shadow: 0 0 12px rgba(245, 166, 35, 0.85), 0 0 4px rgba(255, 214, 10, 0.5);
+}
+
+/* Bar: snaps to 100% when loader is done */
+.loader-bar-completing {
+  animation: loader-bar-to-full 300ms ease-out both;
+  background: linear-gradient(90deg, #F5A623 0%, #FFD60A 50%, #F5A623 100%);
+  box-shadow: 0 0 18px rgba(245, 166, 35, 1), 0 0 8px rgba(255, 214, 10, 0.9);
+}
+
+/* Full overlay fade-out */
+.loader-fade-out {
+  animation: loader-fade-out 520ms ease-out forwards;
   pointer-events: none;
 }
 
