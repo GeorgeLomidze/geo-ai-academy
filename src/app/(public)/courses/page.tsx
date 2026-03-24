@@ -6,6 +6,8 @@ import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { getPublicCourses } from "@/lib/public-courses";
 
+export const revalidate = 600;
+
 export const metadata = {
   title: "კურსების კატალოგი - GEO AI Academy",
   description: "შეარჩიე შენთვის სასურველი კურსი და დაიწყე სწავლა",

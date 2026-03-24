@@ -1,6 +1,7 @@
 const KIE_CREDIT_URL = "https://api.kie.ai/api/v1/chat/credit";
 const LOW_BALANCE_THRESHOLD = 5000;
 const ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+const BALANCE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export type KieBalance = {
   credits: number;
@@ -8,6 +9,7 @@ export type KieBalance = {
 };
 
 let lastAlertTimestamp = 0;
+let cachedBalance: { expiresAt: number; balance: KieBalance } | null = null;
 
 export function shouldSendLowBalanceAlert(): boolean {
   return Date.now() - lastAlertTimestamp > ALERT_COOLDOWN_MS;
@@ -18,6 +20,10 @@ export function markAlertSent(): void {
 }
 
 export async function fetchKieBalance(): Promise<KieBalance> {
+  if (cachedBalance && cachedBalance.expiresAt > Date.now()) {
+    return cachedBalance.balance;
+  }
+
   const apiKey = process.env.KIE_AI_API_KEY;
 
   if (!apiKey) {
@@ -52,8 +58,12 @@ export async function fetchKieBalance(): Promise<KieBalance> {
     data.balance ??
     0;
 
-  return {
+  const result: KieBalance = {
     credits: Math.round(credits),
     lowBalance: credits < LOW_BALANCE_THRESHOLD,
   };
+
+  cachedBalance = { expiresAt: Date.now() + BALANCE_CACHE_TTL_MS, balance: result };
+
+  return result;
 }

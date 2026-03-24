@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
@@ -7,13 +8,19 @@ import { ArrowRight } from "lucide-react";
 import { SocialLinks } from "@/components/layout/SocialLinks";
 import { Button } from "@/components/ui/button";
 import { socialLinks } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/client";
 
-type HeroSectionProps = {
-  isAuthenticated: boolean;
-};
-
-export function HeroSection({ isAuthenticated }: HeroSectionProps) {
+export function HeroSection() {
   const reduceMotion = useReducedMotion();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthenticated(!!data.session);
+    });
+  }, []);
+
   const primaryCtaHref = isAuthenticated ? "/courses" : "/register";
   const aiToolsHref = "/ai-tools";
   const heroSocialLinks = [

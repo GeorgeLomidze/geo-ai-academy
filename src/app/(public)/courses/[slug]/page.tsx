@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -34,31 +35,35 @@ interface CourseDetailPageProps {
   params: Promise<{ slug: string }>;
 }
 
-async function getCourse(slug: string) {
-  return prisma.course.findUnique({
-    where: { slug, status: "PUBLISHED" },
-    include: {
-      modules: {
-        orderBy: { sortOrder: "asc" },
-        include: {
-          lessons: {
-            orderBy: { sortOrder: "asc" },
-            select: {
-              id: true,
-              title: true,
-              type: true,
-              duration: true,
-              isFree: true,
+const getCourse = unstable_cache(
+  async (slug: string) => {
+    return prisma.course.findUnique({
+      where: { slug, status: "PUBLISHED" },
+      include: {
+        modules: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            lessons: {
+              orderBy: { sortOrder: "asc" },
+              select: {
+                id: true,
+                title: true,
+                type: true,
+                duration: true,
+                isFree: true,
+              },
             },
           },
         },
+        enrollments: {
+          select: { userId: true },
+        },
       },
-      enrollments: {
-        select: { userId: true },
-      },
-    },
-  });
-}
+    });
+  },
+  ["course-detail"],
+  { revalidate: 600, tags: ["course"] }
+);
 
 function formatDuration(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);

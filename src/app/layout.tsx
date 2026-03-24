@@ -17,6 +17,23 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ka">
+      <head>
+        {/* Preload critical above-the-fold fonts to prevent FOIT */}
+        <link
+          rel="preload"
+          href="/fonts/MontserratAlternates-Bold.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/margo-32328915633.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="font-sans antialiased">
         {children}
       </body>
