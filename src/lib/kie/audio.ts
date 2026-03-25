@@ -3,6 +3,7 @@ import { logDebug } from "@/lib/logger";
 import { KieApiError } from "@/lib/kie/client";
 
 const KIE_API_BASE_URL = "https://api.kie.ai";
+const KIE_FILE_UPLOAD_BASE_URL = "https://kieai.redpandaai.co";
 const KIE_V1_BASE_URL = `${KIE_API_BASE_URL}/api/v1`;
 const KIE_CREATE_TASK_PATH = "/jobs/createTask";
 const KIE_TASK_STATUS_PATH = "/jobs/recordInfo";
@@ -258,7 +259,7 @@ export async function uploadAudioFileToKie(params: {
   formData.set("uploadPath", params.uploadPath);
   formData.set("fileName", params.fileName);
 
-  const response = await fetch(`${KIE_API_BASE_URL}${KIE_FILE_UPLOAD_PATH}`, {
+  const response = await fetch(`${KIE_FILE_UPLOAD_BASE_URL}${KIE_FILE_UPLOAD_PATH}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${getApiKey()}`,

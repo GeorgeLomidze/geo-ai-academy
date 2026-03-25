@@ -39,6 +39,19 @@ const transcriptionSchema = z.object({
   diarize: z.boolean().default(true),
 });
 
+function getPublicAudioFailureMessage(
+  tool: "sfx" | "isolation" | "transcription" | null
+) {
+  switch (tool) {
+    case "transcription":
+      return "სამწუხაროდ ტრანსკრიფცია ვერ მოხერხდა. სცადეთ თავიდან";
+    case "isolation":
+      return "სამწუხაროდ ხმის იზოლაცია ვერ მოხერხდა. სცადეთ თავიდან";
+    default:
+      return "სამწუხაროდ გენერაცია ვერ მოხერხდა. სცადეთ თავიდან";
+  }
+}
+
 const ACCEPTED_AUDIO_EXTENSIONS = [
   ".mp3",
   ".wav",
@@ -48,6 +61,16 @@ const ACCEPTED_AUDIO_EXTENSIONS = [
   ".mpeg",
   ".m4a",
 ] as const;
+
+const AUDIO_MIME_BY_EXTENSION: Record<(typeof ACCEPTED_AUDIO_EXTENSIONS)[number], string> = {
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".aac": "audio/aac",
+  ".mp4": "audio/mp4",
+  ".ogg": "audio/ogg",
+  ".mpeg": "audio/mpeg",
+  ".m4a": "audio/mp4",
+};
 
 function isAudioSchemaDbError(error: unknown) {
   const message =
@@ -64,7 +87,10 @@ function isAudioSchemaDbError(error: unknown) {
   );
 }
 
-function getAudioRouteErrorMessage(error: unknown) {
+function getAudioRouteErrorMessage(
+  error: unknown,
+  tool: "sfx" | "isolation" | "transcription" | null = null
+) {
   if (error instanceof ApiError) {
     return error.userMessage;
   }
@@ -85,7 +111,15 @@ function getAudioRouteErrorMessage(error: unknown) {
     }
 
     if (error.statusCode === 422 || message.includes("validation")) {
-      return error.message;
+      return getPublicAudioFailureMessage(tool);
+    }
+
+    if (
+      error.statusCode === 404 ||
+      message.includes("no message available") ||
+      message.includes("not found")
+    ) {
+      return "აუდიო ფაილის ატვირთვა ვერ შესრულდა. სცადეთ თავიდან";
     }
 
     if (error.statusCode === 429 || message.includes("rate")) {
@@ -93,10 +127,10 @@ function getAudioRouteErrorMessage(error: unknown) {
     }
 
     if (error.statusCode === 455 || error.statusCode === 500 || error.statusCode === 501) {
-      return `Kie.ai შეცდომა: ${error.message}`;
+      return getPublicAudioFailureMessage(tool);
     }
 
-    return error.message;
+    return getPublicAudioFailureMessage(tool);
   }
 
   if (error instanceof Prisma.PrismaClientValidationError) {
@@ -168,6 +202,32 @@ function assertAudioFile(file: File, maxSizeMb: number) {
   }
 }
 
+function inferAudioMimeType(file: File) {
+  if (file.type && file.type !== "application/octet-stream") {
+    return file.type;
+  }
+
+  const extension = getFileExtension(file.name);
+  if (!extension) {
+    return "application/octet-stream";
+  }
+
+  return AUDIO_MIME_BY_EXTENSION[extension] ?? "application/octet-stream";
+}
+
+function normalizeUploadFileName(fileName: string) {
+  const extension = getFileExtension(fileName) ?? "";
+  const baseName = extension ? fileName.slice(0, -extension.length) : fileName;
+  const safeBaseName =
+    baseName
+      .normalize("NFKD")
+      .replace(/[^\w.-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "audio-file";
+
+  return `${safeBaseName}${extension}`;
+}
+
 async function parseRequestPayload(request: NextRequest) {
   const contentType = request.headers.get("content-type") ?? "";
 
@@ -216,6 +276,8 @@ async function parseRequestPayload(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let requestedTool: "sfx" | "isolation" | "transcription" | null = null;
+
   try {
     const auth = await requireAuth(request);
     if (!auth.authenticated) return auth.response;
@@ -227,6 +289,8 @@ export async function POST(request: NextRequest) {
         payload: error ?? "მონაცემები არასწორია",
       });
     }
+
+    requestedTool = payload.tool;
 
     const modelId = getAudioModelId(payload.tool);
     const model = AUDIO_MODELS[modelId];
@@ -329,10 +393,11 @@ export async function POST(request: NextRequest) {
       if (payload.tool === "sfx") {
         input = parsedParams as z.infer<typeof soundEffectSchema>;
       } else {
+        const uploadFileName = normalizeUploadFileName(file!.name);
         const uploadUrl = await uploadAudioFileToKie({
           fileBuffer: await file!.arrayBuffer(),
-          fileName: file!.name,
-          mimeType: file!.type || "application/octet-stream",
+          fileName: uploadFileName,
+          mimeType: inferAudioMimeType(file!),
           uploadPath: `audio-inputs/${auth.userId}`,
         });
 
@@ -349,12 +414,44 @@ export async function POST(request: NextRequest) {
               };
       }
 
-      const taskId = await createAudioTask({
-        model: model.kieModel,
-        input,
-      });
+      const runAudioTask = async (taskInput: Record<string, unknown>) => {
+        const taskId = await createAudioTask({
+          model: model.kieModel,
+          input: taskInput,
+        });
 
-      const taskResult = await waitForAudioTaskResult(taskId, model.tool);
+        return waitForAudioTaskResult(taskId, model.tool);
+      };
+
+      let taskResult;
+
+      try {
+        taskResult = await runAudioTask(input);
+      } catch (error) {
+        if (
+          payload.tool === "transcription" &&
+          input.language_code &&
+          typeof sourceUrl === "string" &&
+          error instanceof KieApiError
+        ) {
+          console.warn(
+            "POST /api/ai/audio/generate transcription retrying with auto language detection",
+            {
+              fileName: file?.name,
+              requestedLanguageCode: input.language_code,
+            }
+          );
+
+          taskResult = await runAudioTask({
+            audio_url: sourceUrl,
+            language_code: "",
+            tag_audio_events: input.tag_audio_events,
+            diarize: input.diarize,
+          });
+        } else {
+          throw error;
+        }
+      }
 
       if (taskResult.kind === "audio") {
         const bunnyUrl =
@@ -370,7 +467,7 @@ export async function POST(request: NextRequest) {
             where: { id: generation.id },
             data: {
               status: "SUCCEEDED",
-              externalId: taskId,
+              externalId: taskResult.taskId,
               outputUrl: bunnyUrl,
               sourceUrl,
             },
@@ -392,17 +489,23 @@ export async function POST(request: NextRequest) {
       }
 
       const transcriptBuffer = new TextEncoder().encode(taskResult.text);
-      const transcriptUrl = await uploadToStorage(
-        transcriptBuffer.buffer as ArrayBuffer,
-        `generations/transcripts/${auth.userId}/${generation.id}.txt`
-      );
+      let transcriptUrl: string | null = null;
+
+      try {
+        transcriptUrl = await uploadToStorage(
+          transcriptBuffer.buffer as ArrayBuffer,
+          `generations/transcripts/${auth.userId}/${generation.id}.txt`
+        );
+      } catch (storageError) {
+        console.warn("POST /api/ai/audio/generate transcript storage fallback", storageError);
+      }
 
       try {
         await prisma.generation.update({
           where: { id: generation.id },
           data: {
             status: "SUCCEEDED",
-            externalId: taskId,
+            externalId: taskResult.taskId,
             outputUrl: transcriptUrl,
             outputText: taskResult.text,
             outputData: taskResult.segments,
@@ -415,7 +518,7 @@ export async function POST(request: NextRequest) {
             where: { id: generation.id },
             data: {
               status: "SUCCEEDED",
-              externalId: taskId,
+              externalId: taskResult.taskId,
               outputUrl: transcriptUrl,
               sourceUrl,
             },
@@ -454,10 +557,32 @@ export async function POST(request: NextRequest) {
       throw error;
     }
   } catch (error) {
-    const mappedMessage = getAudioRouteErrorMessage(error);
-    if (mappedMessage !== "დროებითი შეფერხება. გთხოვთ სცადოთ მოგვიანებით") {
-      return handleApiError(new ApiError(500, mappedMessage), "POST /api/ai/audio/generate failed");
+    const mappedMessage = getAudioRouteErrorMessage(error, requestedTool);
+    if (error instanceof ApiError) {
+      return handleApiError(
+        new ApiError(error.statusCode, mappedMessage, error.fieldErrors),
+        "POST /api/ai/audio/generate failed"
+      );
     }
+
+    if (error instanceof KieApiError) {
+      const rawStatusCode = error.statusCode ?? 500;
+      const statusCode =
+        rawStatusCode >= 400 && rawStatusCode < 600 ? rawStatusCode : 500;
+
+      return handleApiError(
+        new ApiError(statusCode, mappedMessage),
+        "POST /api/ai/audio/generate failed"
+      );
+    }
+
+    if (mappedMessage !== "დროებითი შეფერხება. გთხოვთ სცადოთ მოგვიანებით") {
+      return handleApiError(
+        new ApiError(500, mappedMessage),
+        "POST /api/ai/audio/generate failed"
+      );
+    }
+
     return handleApiError(error, "POST /api/ai/audio/generate failed");
   }
 }

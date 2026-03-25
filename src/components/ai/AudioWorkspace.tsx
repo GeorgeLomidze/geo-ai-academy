@@ -4,7 +4,6 @@ import type { ReactNode, RefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
-  AudioLines,
   Check,
   ChevronDown,
   Copy,
@@ -21,6 +20,15 @@ import {
 } from "lucide-react";
 import { AudioPlayer } from "@/components/ai/AudioPlayer";
 import type { AIHistoryItem } from "@/components/ai/types";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -72,18 +80,6 @@ type TranscriptSegment = {
 type LocalAudioFile = {
   file: File;
   previewUrl: string;
-};
-
-type OutputState = {
-  generationId: string | null;
-  tool: ToolKey;
-  outputUrl: string | null;
-  outputText: string | null;
-  outputData: TranscriptSegment[];
-  status: AIHistoryItem["status"];
-  creditsUsed: number;
-  createdAt: string;
-  prompt: string | null;
 };
 
 type AudioOutputData = {
@@ -145,14 +141,23 @@ const SOUND_EFFECT_FORMATS = [
 ];
 
 const LANGUAGE_OPTIONS = [
-  { value: "kat", label: "ქართული" },
-  { value: "eng", label: "ინგლისური" },
-  { value: "rus", label: "რუსული" },
-  { value: "tur", label: "თურქული" },
-  { value: "deu", label: "გერმანული" },
-  { value: "fra", label: "ფრანგული" },
-  { value: "spa", label: "ესპანური" },
+  { value: "", label: "ავტომატურად" },
+  { value: "ka", label: "ქართული" },
+  { value: "en", label: "ინგლისური" },
+  { value: "ru", label: "რუსული" },
+  { value: "tr", label: "თურქული" },
+  { value: "de", label: "გერმანული" },
+  { value: "fr", label: "ფრანგული" },
+  { value: "es", label: "ესპანური" },
 ];
+
+const audioDateFormatter = new Intl.DateTimeFormat("ka-GE", {
+  timeZone: "Asia/Tbilisi",
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 function getToolConfig(tool: ToolKey) {
   return TOOL_ITEMS.find((item) => item.key === tool) ?? TOOL_ITEMS[0];
@@ -176,17 +181,26 @@ function getToolByModel(modelId: string): ToolKey {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("ka-GE", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return audioDateFormatter.format(new Date(value));
 }
 
-function getSafeClientErrorMessage(message: string | null | undefined) {
+function getToolFailureMessage(tool: ToolKey) {
+  switch (tool) {
+    case "transcription":
+      return "სამწუხაროდ ტრანსკრიფცია ვერ მოხერხდა. სცადეთ თავიდან";
+    case "isolation":
+      return "სამწუხაროდ ხმის იზოლაცია ვერ მოხერხდა. სცადეთ თავიდან";
+    default:
+      return "სამწუხაროდ გენერაცია ვერ მოხერხდა. სცადეთ თავიდან";
+  }
+}
+
+function getSafeClientErrorMessage(
+  message: string | null | undefined,
+  fallbackMessage: string
+) {
   if (!message) {
-    return "გენერაციის დროს მოხდა შეცდომა. სცადეთ თავიდან";
+    return fallbackMessage;
   }
 
   const normalized = message.toLowerCase();
@@ -200,9 +214,18 @@ function getSafeClientErrorMessage(message: string | null | undefined) {
     normalized.includes("syntaxerror") ||
     normalized.includes("at ") ||
     normalized.includes("expected generationtype") ||
-    normalized.includes("invalid value for argument")
+    normalized.includes("invalid value for argument") ||
+    normalized.includes("invalid ") ||
+    normalized.includes("documentation") ||
+    normalized.includes("supported language") ||
+    normalized.includes("server exception") ||
+    normalized.includes("no message available") ||
+    normalized.includes("please try again later") ||
+    normalized.includes("kie.ai") ||
+    normalized.includes("language_code") ||
+    /^[\x00-\x7f\s.,:;!?'"\-_/()[\]]+$/.test(message)
   ) {
-    return "გენერაციის დროს მოხდა შეცდომა. სცადეთ თავიდან";
+    return fallbackMessage;
   }
 
   return message;
@@ -228,9 +251,69 @@ function getResolvedAudioUrl(
   return null;
 }
 
-function createDialogueSegment(speakerId = "speaker-1"): DialogueSegment {
+function getTranscriptSegments(outputData: unknown): TranscriptSegment[] {
+  if (!Array.isArray(outputData)) {
+    return [];
+  }
+
+  return outputData.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+
+    const text = "text" in item ? item.text : null;
+    const speaker = "speaker" in item ? item.speaker : null;
+
+    if (typeof text !== "string") {
+      return [];
+    }
+
+    return [
+      {
+        text,
+        speaker: typeof speaker === "string" ? speaker : null,
+      },
+    ];
+  });
+}
+
+function getTranscriptText(item: AIHistoryItem) {
+  const segments = getTranscriptSegments(item.outputData);
+
+  if (segments.length > 0) {
+    return segments
+      .map((segment) =>
+        segment.speaker ? `${segment.speaker}: ${segment.text}` : segment.text
+      )
+      .join("\n");
+  }
+
+  return item.outputText ?? "";
+}
+
+function getHistoryPreview(item: AIHistoryItem) {
+  return item.prompt?.trim() || item.outputText?.trim() || "ფაილზე დაფუძნებული გენერაცია";
+}
+
+function getStatusLabel(status: AIHistoryItem["status"]) {
+  if (status === "SUCCEEDED") {
+    return "მზადაა";
+  }
+
+  if (status === "FAILED" || status === "CANCELED") {
+    return "ვერ შესრულდა";
+  }
+
+  return "მუშავდება";
+}
+
+function getAudioDownloadName(tool: ToolKey) {
+  return tool === "tts" || tool === "dialogue" ? `${tool}.wav` : `${tool}.mp3`;
+}
+
+function createDialogueSegment(id: string, speakerId = "speaker-1"): DialogueSegment {
   return {
-    id: crypto.randomUUID(),
+    id,
     text: "",
     speakerId,
   };
@@ -456,12 +539,16 @@ export function AudioWorkspace({
   initialBalance,
   initialHistory,
 }: AudioWorkspaceProps) {
+  const dialogueSegmentCounterRef = useRef(2);
   const [activeTool, setActiveTool] = useState<ToolKey>("tts");
   const [balance, setBalance] = useState(initialBalance);
   const [history, setHistory] = useState(initialHistory);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [copiedHistoryId, setCopiedHistoryId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AIHistoryItem | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [ttsStyleInstructions, setTtsStyleInstructions] = useState("");
   const [ttsText, setTtsText] = useState("");
@@ -470,8 +557,8 @@ export function AudioWorkspace({
   const [ttsTemperature, setTtsTemperature] = useState(1);
 
   const [dialogueSegments, setDialogueSegments] = useState<DialogueSegment[]>([
-    createDialogueSegment("speaker-1"),
-    createDialogueSegment("speaker-2"),
+    createDialogueSegment("segment-1", "speaker-1"),
+    createDialogueSegment("segment-2", "speaker-2"),
   ]);
   const [dialogueSpeakers, setDialogueSpeakers] = useState<DialogueSpeaker[]>(
     createDialogueSpeakers()
@@ -489,11 +576,10 @@ export function AudioWorkspace({
 
   const [isolationFile, setIsolationFile] = useState<LocalAudioFile | null>(null);
   const [transcriptionFile, setTranscriptionFile] = useState<LocalAudioFile | null>(null);
-  const [transcriptionLanguage, setTranscriptionLanguage] = useState("kat");
+  const [transcriptionLanguage, setTranscriptionLanguage] = useState("");
   const [transcriptionTagEvents, setTranscriptionTagEvents] = useState(true);
   const [transcriptionDiarize, setTranscriptionDiarize] = useState(true);
 
-  const [currentOutput, setCurrentOutput] = useState<OutputState | null>(null);
   const [previewLoadingKey, setPreviewLoadingKey] = useState<string | null>(null);
   const [previewPlayingKey, setPreviewPlayingKey] = useState<string | null>(null);
 
@@ -513,23 +599,6 @@ export function AudioWorkspace({
     () => history.filter((item) => getToolByModel(item.modelId) === activeTool),
     [activeTool, history]
   );
-
-  useEffect(() => {
-    if ((!currentOutput || currentOutput.tool !== activeTool) && filteredHistory[0]) {
-      const firstItem = filteredHistory[0];
-      setCurrentOutput({
-        generationId: firstItem.id,
-        tool: getToolByModel(firstItem.modelId),
-        outputUrl: getResolvedAudioUrl(firstItem.outputUrl, firstItem.outputData),
-        outputText: firstItem.outputText ?? null,
-        outputData: (firstItem.outputData as TranscriptSegment[] | undefined) ?? [],
-        status: firstItem.status,
-        creditsUsed: firstItem.creditsUsed,
-        createdAt: firstItem.createdAt,
-        prompt: firstItem.prompt,
-      });
-    }
-  }, [activeTool, currentOutput, filteredHistory]);
 
   useEffect(() => {
     return () => {
@@ -572,10 +641,11 @@ export function AudioWorkspace({
 
   function resetDialogue() {
     const speakers = createDialogueSpeakers();
+    dialogueSegmentCounterRef.current = 2;
     setDialogueSpeakers(speakers);
     setDialogueSegments([
-      createDialogueSegment(speakers[0].id),
-      createDialogueSegment(speakers[1].id),
+      createDialogueSegment("segment-1", speakers[0].id),
+      createDialogueSegment("segment-2", speakers[1].id),
     ]);
     setDialogueStyleInstructions("");
     setDialogueModel("audio_dialogue_flash");
@@ -583,9 +653,11 @@ export function AudioWorkspace({
   }
 
   function addDialogueSegment() {
+    dialogueSegmentCounterRef.current += 1;
     setDialogueSegments((current) => [
       ...current,
       createDialogueSegment(
+        `segment-${dialogueSegmentCounterRef.current}`,
         current.length % 2 === 0 ? "speaker-1" : "speaker-2"
       ),
     ]);
@@ -627,18 +699,9 @@ export function AudioWorkspace({
     );
   }
 
-  const dialogueRawStructure = [
-    dialogueStyleInstructions.trim() ? dialogueStyleInstructions.trim() : "სტილის ინსტრუქცია",
-    ...dialogueSegments.map((segment) => {
-      const speaker = getDialogueSpeaker(segment.speakerId);
-      return `${speaker.name}: ${segment.text.trim() || "ტექსტი"}`;
-    }),
-  ].join("\n");
-
   async function runGeneration() {
     setSubmitting(true);
     setError(null);
-    setCopySuccess(false);
 
     try {
       let response: Response;
@@ -788,23 +851,14 @@ export function AudioWorkspace({
 
       setBalance((current) => current - historyItem.creditsUsed);
       setHistory((current) => [historyItem, ...current]);
-      setCurrentOutput({
-        generationId: historyItem.id,
-        tool,
-        outputUrl: getResolvedAudioUrl(historyItem.outputUrl, historyItem.outputData),
-        outputText: historyItem.outputText ?? null,
-        outputData: (historyItem.outputData as TranscriptSegment[] | undefined) ?? [],
-        status: historyItem.status,
-        creditsUsed: historyItem.creditsUsed,
-        createdAt: historyItem.createdAt,
-        prompt: historyItem.prompt,
-      });
     } catch (generationError) {
+      const fallbackMessage = getToolFailureMessage(activeTool);
       setError(
         getSafeClientErrorMessage(
           generationError instanceof Error
             ? generationError.message
-            : "გენერაციის დროს მოხდა შეცდომა. სცადეთ თავიდან"
+            : fallbackMessage,
+          fallbackMessage
         )
       );
     } finally {
@@ -812,14 +866,77 @@ export function AudioWorkspace({
     }
   }
 
-  async function copyTranscript() {
-    if (!currentOutput?.outputText) {
+  async function copyTranscript(item: AIHistoryItem) {
+    const transcriptText = getTranscriptText(item);
+
+    if (!transcriptText) {
       return;
     }
 
-    await navigator.clipboard.writeText(currentOutput.outputText);
-    setCopySuccess(true);
-    window.setTimeout(() => setCopySuccess(false), 1800);
+    await navigator.clipboard.writeText(transcriptText);
+    setCopiedHistoryId(item.id);
+    window.setTimeout(() => {
+      setCopiedHistoryId((current) => (current === item.id ? null : current));
+    }, 1800);
+  }
+
+  function downloadTranscript(item: AIHistoryItem) {
+    const transcriptText = getTranscriptText(item);
+
+    if (!transcriptText) {
+      return;
+    }
+
+    if (item.outputUrl) {
+      const link = document.createElement("a");
+      link.href = item.outputUrl;
+      link.download = "transcript.txt";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      return;
+    }
+
+    const blob = new Blob([transcriptText], {
+      type: "text/plain;charset=utf-8",
+    });
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = "transcript.txt";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+  }
+
+  async function deleteHistoryItem() {
+    if (!deleteTarget) {
+      return;
+    }
+
+    setDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      const response = await fetch(`/api/ai/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      const isJson = response.headers.get("content-type")?.includes("application/json");
+      const data = isJson ? ((await response.json()) as { error?: string }) : null;
+
+      if (!response.ok) {
+        setDeleteError(data?.error ?? "შედეგის წაშლა ვერ მოხერხდა");
+        return;
+      }
+
+      setHistory((current) => current.filter((item) => item.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch {
+      setDeleteError("კავშირის შეცდომა, სცადეთ თავიდან");
+    } finally {
+      setDeletePending(false);
+    }
   }
 
   function stopVoicePreview() {
@@ -883,11 +1000,13 @@ export function AudioWorkspace({
       await audio.play();
       setPreviewPlayingKey(cacheKey);
     } catch (previewError) {
+      const fallbackMessage = "ხმის მოსმენა დროებით ვერ მოხერხდა";
       setError(
         getSafeClientErrorMessage(
           previewError instanceof Error
             ? previewError.message
-            : "ხმის მოსმენა დროებით ვერ მოხერხდა"
+            : fallbackMessage,
+          fallbackMessage
         )
       );
     } finally {
@@ -999,7 +1118,7 @@ export function AudioWorkspace({
             </div>
           }
         >
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-5">
               <div className="space-y-2">
                 <p className="text-sm text-[#D1D1D1]">სტილის ინსტრუქცია</p>
@@ -1022,7 +1141,7 @@ export function AudioWorkspace({
               </div>
             </div>
 
-            <div className="space-y-4 rounded-[24px] border border-[#2A2A2A] bg-[#141414] p-4">
+            <div className="space-y-4 rounded-[24px] border border-[#2A2A2A] bg-[#141414] p-4 lg:self-start">
               <div className="space-y-2">
                 <p className="text-sm text-[#D1D1D1]">მოდელი</p>
                 <Select
@@ -1102,7 +1221,7 @@ export function AudioWorkspace({
             </div>
           }
         >
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="space-y-5">
               <div className="space-y-2">
                 <p className="text-sm text-[#D1D1D1]">სტილის ინსტრუქცია</p>
@@ -1114,107 +1233,93 @@ export function AudioWorkspace({
                 />
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)]">
-                <div className="space-y-4 rounded-[24px] border border-[#2A2A2A] bg-[#141414] p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-white">სცენარის აწყობა</p>
-                      <p className="mt-1 text-xs leading-5 text-[#8A8A8A]">
-                        ააწყვე მიმდევრობა და თითოეულ ხაზს მიუთითე რომელ სპიკერს ეკუთვნის.
-                      </p>
-                    </div>
+              <div className="space-y-4 rounded-[24px] border border-[#2A2A2A] bg-[#141414] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-white">სცენარის აწყობა</p>
+                    <p className="mt-1 text-xs leading-5 text-[#8A8A8A]">
+                      ააწყვე მიმდევრობა და თითოეულ ხაზს მიუთითე რომელ სპიკერს ეკუთვნის.
+                    </p>
                   </div>
-
-                  <div className="space-y-4">
-                    {dialogueSegments.map((segment, index) => {
-                      const speaker = getDialogueSpeaker(segment.speakerId);
-                      return (
-                        <div
-                          key={segment.id}
-                          className="rounded-3xl border border-[#2A2A2A] bg-[#0A0A0A] p-4"
-                        >
-                          <div className="mb-4 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <span className={cn("size-3 rounded-full", speaker.dotClassName)} />
-                              <span
-                                className={cn(
-                                  "rounded-full border px-3 py-1 text-xs font-medium",
-                                  speaker.toneClassName
-                                )}
-                              >
-                                {speaker.name}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeDialogueSegment(segment.id)}
-                              className="text-sm text-[#8A8A8A] hover:text-[#F5A623]"
-                            >
-                              წაშლა
-                            </button>
-                          </div>
-
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <p className="text-sm text-[#D1D1D1]">რომელი სპიკერი საუბრობს</p>
-                              <Select
-                                value={segment.speakerId}
-                                onValueChange={(value) =>
-                                  updateDialogueSegment(segment.id, "speakerId", value)
-                                }
-                              >
-                                <SelectTrigger className="h-12 rounded-2xl border-[#2A2A2A] bg-[#141414]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="border-[#2A2A2A] bg-[#141414]">
-                                  {dialogueSpeakers.map((item) => (
-                                    <SelectItem key={item.id} value={item.id}>
-                                      {item.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <Textarea
-                              value={segment.text}
-                              onChange={(event) =>
-                                updateDialogueSegment(segment.id, "text", event.target.value)
-                              }
-                              placeholder="დაწერე ამ სპიკერის ტექსტი..."
-                              className="min-h-28 rounded-3xl border-[#2A2A2A] bg-[#141414]"
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addDialogueSegment}
-                    className="w-full rounded-3xl border-dashed border-[#2A2A2A] bg-transparent py-6 text-white hover:border-[#F5A623] hover:bg-[#F5A623]/5"
-                  >
-                    + დიალოგის დამატება
-                  </Button>
                 </div>
 
-                <details className="rounded-[24px] border border-[#2A2A2A] bg-[#141414] p-4">
-                  <summary className="cursor-pointer list-none text-sm font-medium text-white">
-                    ტექსტური სტრუქტურა
-                  </summary>
-                  <p className="mt-2 text-xs leading-5 text-[#8A8A8A]">
-                    ეს არის ტექსტური სტრუქტურა, რომელსაც Gemini დიალოგის გენერაციისთვის იღებს.
-                  </p>
-                  <pre className="mt-4 overflow-x-auto whitespace-pre-wrap rounded-3xl border border-[#2A2A2A] bg-[#0A0A0A] p-4 text-xs leading-6 text-[#D1D1D1]">
-                    {dialogueRawStructure}
-                  </pre>
-                </details>
+                <div className="space-y-4">
+                  {dialogueSegments.map((segment) => {
+                    const speaker = getDialogueSpeaker(segment.speakerId);
+                    return (
+                      <div
+                        key={segment.id}
+                        className="rounded-3xl border border-[#2A2A2A] bg-[#0A0A0A] p-4"
+                      >
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className={cn("size-3 rounded-full", speaker.dotClassName)} />
+                            <span
+                              className={cn(
+                                "rounded-full border px-3 py-1 text-xs font-medium",
+                                speaker.toneClassName
+                              )}
+                            >
+                              {speaker.name}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeDialogueSegment(segment.id)}
+                            className="text-sm text-[#8A8A8A] hover:text-[#F5A623]"
+                          >
+                            წაშლა
+                          </button>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <p className="text-sm text-[#D1D1D1]">რომელი სპიკერი საუბრობს</p>
+                            <Select
+                              value={segment.speakerId}
+                              onValueChange={(value) =>
+                                updateDialogueSegment(segment.id, "speakerId", value)
+                              }
+                            >
+                              <SelectTrigger className="h-12 rounded-2xl border-[#2A2A2A] bg-[#141414]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="border-[#2A2A2A] bg-[#141414]">
+                                {dialogueSpeakers.map((item) => (
+                                  <SelectItem key={item.id} value={item.id}>
+                                    {item.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Textarea
+                            value={segment.text}
+                            onChange={(event) =>
+                              updateDialogueSegment(segment.id, "text", event.target.value)
+                            }
+                            placeholder="დაწერე ამ სპიკერის ტექსტი..."
+                            className="min-h-28 rounded-3xl border-[#2A2A2A] bg-[#141414]"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addDialogueSegment}
+                  className="w-full rounded-3xl border-dashed border-[#2A2A2A] bg-transparent py-6 text-white hover:border-[#F5A623] hover:bg-[#F5A623]/5"
+                >
+                  + დიალოგის დამატება
+                </Button>
               </div>
             </div>
 
-            <div className="space-y-4 rounded-[24px] border border-[#2A2A2A] bg-[#141414] p-4">
+            <div className="space-y-4 rounded-[24px] border border-[#2A2A2A] bg-[#141414] p-4 lg:self-start">
               <div className="space-y-2">
                 <p className="text-sm text-[#D1D1D1]">მოდელი</p>
                 <Select
@@ -1484,112 +1589,6 @@ export function AudioWorkspace({
     );
   }
 
-  function renderOutputPanel() {
-    const outputToolMatches = currentOutput?.tool === activeTool;
-    const output = outputToolMatches ? currentOutput : null;
-
-    if (activeTool === "transcription" && output?.outputText) {
-      return (
-        <Panel
-          title="ტექსტური შედეგი"
-          description="ტრანსკრიფცია მზადაა. შეგიძლია ტექსტი დააკოპირო ან TXT ფაილად გადმოწერო."
-          footer={
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="text-xs text-[#8A8A8A]">
-                {formatDate(output.createdAt)} · ✦ {output.creditsUsed}
-              </span>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void copyTranscript()}
-                  className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
-                >
-                  <Copy className="size-4" />
-                  {copySuccess ? "დაკოპირდა" : "კოპირება"}
-                </Button>
-                {output.outputUrl ? (
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
-                  >
-                    <a href={output.outputUrl} download="transcript.txt">
-                      ჩამოტვირთვა
-                    </a>
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          }
-        >
-          <div className="max-h-[28rem] overflow-y-auto rounded-3xl border border-[#2A2A2A] bg-[#141414] p-4">
-            <div className="space-y-4">
-              {output.outputData.length > 0 ? (
-                output.outputData.map((segment, index) => (
-                  <div key={`${segment.speaker ?? "s"}-${index}`} className="rounded-2xl border border-[#2A2A2A] bg-[#0A0A0A] p-3">
-                    {segment.speaker ? (
-                      <p className="mb-2 text-xs font-medium text-[#F5A623]">
-                        {segment.speaker}
-                      </p>
-                    ) : null}
-                    <p className="text-sm leading-7 text-[#D1D1D1]">{segment.text}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="whitespace-pre-wrap text-sm leading-7 text-[#D1D1D1]">
-                  {output.outputText}
-                </p>
-              )}
-            </div>
-          </div>
-        </Panel>
-      );
-    }
-
-    if (output?.outputUrl) {
-      return (
-        <Panel
-          title="აუდიო შედეგი"
-          description="მოსმენა, ხმაურის კონტროლი და ჩამოტვირთვა ერთ პანელში."
-          footer={
-            <span className="text-xs text-[#8A8A8A]">
-              {formatDate(output.createdAt)} · ✦ {output.creditsUsed}
-            </span>
-          }
-        >
-          <AudioPlayer
-            src={output.outputUrl}
-            downloadName={
-              activeTool === "tts" || activeTool === "dialogue"
-                ? `${activeTool}.wav`
-                : `${activeTool}.mp3`
-            }
-          />
-        </Panel>
-      );
-    }
-
-    return (
-      <Panel
-        title="შედეგი"
-        description="გენერაციის დასრულების შემდეგ შედეგი აქ გამოჩნდება."
-      >
-        <div className="flex min-h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-[#2A2A2A] bg-[#141414] px-6 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-[#F5A623]/10 text-[#F5A623]">
-            <AudioLines className="size-6" />
-          </div>
-          <p className="mt-5 text-lg text-white">{activeToolConfig.title}</p>
-          <p className="mt-2 max-w-sm text-sm leading-6 text-[#8A8A8A]">
-            {activeTool === "transcription"
-              ? "ტრანსკრიფციის ტექსტი აქ გამოჩნდება."
-              : "აუდიო შედეგი აქ გამოჩნდება და შეძლებ მოსმენას."}
-          </p>
-        </div>
-      </Panel>
-    );
-  }
-
   return (
     <div className="min-h-[calc(100dvh-8rem)] bg-[#0A0A0A]">
       <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
@@ -1660,23 +1659,8 @@ export function AudioWorkspace({
           </aside>
 
           <main className="space-y-6">
-            <header className="rounded-[28px] border border-[#2A2A2A] bg-[#141414] px-5 py-5 sm:px-6">
-              <p className="text-sm text-[#F5A623]">{activeToolConfig.title}</p>
-              <h1 className="mt-2 font-display text-3xl text-white sm:text-4xl">
-                აუდიო გენერაცია
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-[#A3A3A3] sm:text-base">
-                {activeToolConfig.description}
-              </p>
-              {error ? (
-                <p className="mt-3 text-sm text-[#F5A623]">{error}</p>
-              ) : null}
-            </header>
-
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,11fr)_minmax(360px,9fr)]">
-              {renderInputPanel()}
-              {renderOutputPanel()}
-            </div>
+            {error ? <p className="text-sm text-[#F5A623]">{error}</p> : null}
+            {renderInputPanel()}
 
             <section
               id="audio-history"
@@ -1694,63 +1678,154 @@ export function AudioWorkspace({
               {filteredHistory.length > 0 ? (
                 <div className="grid gap-3">
                   {filteredHistory.slice(0, 10).map((item) => {
-                    const isSelected = currentOutput?.generationId === item.id;
                     const itemTool = getToolByModel(item.modelId);
+                    const outputUrl = getResolvedAudioUrl(item.outputUrl, item.outputData);
+                    const transcriptSegments = getTranscriptSegments(item.outputData);
+                    const transcriptText = getTranscriptText(item);
+                    const isTranscript = itemTool === "transcription";
+                    const isSucceeded = item.status === "SUCCEEDED";
+                    const isFailed = item.status === "FAILED" || item.status === "CANCELED";
+                    const isProcessing =
+                      item.status === "PENDING" || item.status === "PROCESSING";
+                    const isDeleting = deletePending && deleteTarget?.id === item.id;
+
                     return (
-                      <button
+                      <article
                         key={item.id}
-                        type="button"
-                        onClick={() => {
-                          setActiveTool(itemTool);
-                          setCurrentOutput({
-                            generationId: item.id,
-                            tool: itemTool,
-                            outputUrl: getResolvedAudioUrl(item.outputUrl, item.outputData),
-                            outputText: item.outputText ?? null,
-                            outputData:
-                              (item.outputData as TranscriptSegment[] | undefined) ?? [],
-                            status: item.status,
-                            creditsUsed: item.creditsUsed,
-                            createdAt: item.createdAt,
-                            prompt: item.prompt,
-                          });
-                        }}
-                        className={cn(
-                          "rounded-3xl border px-4 py-4 text-left transition-colors",
-                          isSelected
-                            ? "border-[#F5A623] bg-[#F5A623]/10"
-                            : "border-[#2A2A2A] bg-[#1E1E1E] hover:border-[#F5A623]/40"
-                        )}
+                        className="rounded-[28px] border border-[#2A2A2A] bg-[#1E1E1E] p-5 sm:p-6"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-medium text-white">{item.modelName}</p>
-                            <p className="mt-1 text-xs text-[#8A8A8A]">
-                              {formatDate(item.createdAt)} · ✦ {item.creditsUsed}
-                            </p>
+                          <p className="text-xs text-[#8A8A8A]">
+                            {formatDate(item.createdAt)} · ✦ {item.creditsUsed}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={cn(
+                                "rounded-full px-3 py-1 text-xs",
+                                item.status === "SUCCEEDED"
+                                  ? "bg-[#F5A623]/10 text-[#F5A623]"
+                                  : item.status === "FAILED" || item.status === "CANCELED"
+                                    ? "bg-[#2A2A2A] text-[#A3A3A3]"
+                                    : "bg-[#F5A623]/10 text-[#F5A623]"
+                              )}
+                            >
+                              {getStatusLabel(item.status)}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => {
+                                setDeleteError(null);
+                                setDeleteTarget(item);
+                              }}
+                              disabled={isDeleting}
+                              className="size-10 rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
+                              aria-label="შედეგის წაშლა"
+                            >
+                              {isDeleting ? (
+                                <Loader2 className="size-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="size-4" />
+                              )}
+                            </Button>
                           </div>
-                          <span
-                            className={cn(
-                              "rounded-full px-3 py-1 text-xs",
-                              item.status === "SUCCEEDED"
-                                ? "bg-[#F5A623]/10 text-[#F5A623]"
-                                : item.status === "FAILED"
-                                  ? "bg-[#2A2A2A] text-[#A3A3A3]"
-                                  : "bg-[#F5A623]/10 text-[#F5A623]"
-                            )}
-                          >
-                            {item.status === "SUCCEEDED"
-                              ? "მზადაა"
-                              : item.status === "FAILED"
-                                ? "ვერ შესრულდა"
-                                : "მუშავდება"}
-                          </span>
                         </div>
 
-                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#D1D1D1]">
-                          {item.outputText ?? item.prompt ?? "ფაილზე დაფუძნებული გენერაცია"}
+                        <p className="mt-4 text-sm leading-6 text-[#A3A3A3]">
+                          {getToolConfig(itemTool).description}
                         </p>
-                      </button>
+
+                        <div className="mt-5 rounded-3xl border border-[#2A2A2A] bg-[#141414] p-4">
+                          {isSucceeded && isTranscript ? (
+                            <div className="space-y-4">
+                              <div className="max-h-[24rem] overflow-y-auto rounded-3xl border border-[#2A2A2A] bg-[#0A0A0A] p-4">
+                                <div className="space-y-3">
+                                  {transcriptSegments.length > 0 ? (
+                                    transcriptSegments.map((segment, index) => (
+                                      <div
+                                        key={`${segment.speaker ?? "speaker"}-${index}`}
+                                        className="rounded-2xl border border-[#2A2A2A] bg-[#141414] p-3"
+                                      >
+                                        {segment.speaker ? (
+                                          <p className="mb-2 text-xs font-medium text-[#F5A623]">
+                                            {segment.speaker}
+                                          </p>
+                                        ) : null}
+                                        <p className="text-sm leading-7 text-[#D1D1D1]">
+                                          {segment.text}
+                                        </p>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="whitespace-pre-wrap text-sm leading-7 text-[#D1D1D1]">
+                                      {transcriptText || "ტრანსკრიფცია მზადაა"}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#2A2A2A] pt-1">
+                                <p className="text-xs text-[#8A8A8A]">
+                                  ტექსტის კოპირება ან ფაილად ჩამოტვირთვა
+                                </p>
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => void copyTranscript(item)}
+                                    className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
+                                  >
+                                    <Copy className="size-4" />
+                                    {copiedHistoryId === item.id ? "დაკოპირდა" : "კოპირება"}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => downloadTranscript(item)}
+                                    className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
+                                  >
+                                    ჩამოტვირთვა
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : isSucceeded && outputUrl ? (
+                            <AudioPlayer
+                              src={outputUrl}
+                              downloadName={getAudioDownloadName(itemTool)}
+                            />
+                          ) : isProcessing ? (
+                            <div className="flex min-h-44 flex-col items-center justify-center text-center">
+                              <Loader2 className="size-7 animate-spin text-[#F5A623]" />
+                              <p className="mt-4 text-lg text-white">აუდიო მუშავდება</p>
+                              <p className="mt-2 max-w-md text-sm leading-6 text-[#8A8A8A]">
+                                გენერაცია მიმდინარეობს. დასრულების შემდეგ შედეგი აქ გამოჩნდება.
+                              </p>
+                            </div>
+                          ) : isFailed ? (
+                            <div className="flex min-h-44 flex-col items-center justify-center text-center">
+                              <p className="text-lg text-white">გენერაცია ვერ შესრულდა</p>
+                              <p className="mt-2 max-w-md text-sm leading-6 text-[#8A8A8A]">
+                                {item.errorMessage ?? "სცადე თავიდან ან შეცვალე პარამეტრები."}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex min-h-44 flex-col items-center justify-center text-center">
+                              <p className="text-lg text-white">შედეგი ჯერ არ არის ხელმისაწვდომი</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-4 rounded-3xl border border-[#2A2A2A] bg-[#141414] px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.12em] text-[#8A8A8A]">
+                            აღწერა
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#D1D1D1]">
+                            {getHistoryPreview(item)}
+                          </p>
+                        </div>
+                      </article>
                     );
                   })}
                 </div>
@@ -1763,6 +1838,49 @@ export function AudioWorkspace({
                 </div>
               )}
             </section>
+
+            <AlertDialog
+              open={Boolean(deleteTarget)}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setDeleteTarget(null);
+                  setDeleteError(null);
+                }
+              }}
+            >
+              <AlertDialogContent className="rounded-[28px] border-[#2A2A2A] bg-[#141414] text-white">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>შედეგის წაშლა</AlertDialogTitle>
+                  <AlertDialogDescription className="text-[#A3A3A3]">
+                    ნამდვილად გსურს ამ გენერირებული შედეგის წაშლა? მოქმედება ვეღარ დაბრუნდება.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {deleteTarget ? (
+                  <div className="rounded-3xl border border-[#2A2A2A] bg-[#0A0A0A] px-4 py-3">
+                    <p className="text-sm text-white">{deleteTarget.modelName}</p>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#8A8A8A]">
+                      {getHistoryPreview(deleteTarget)}
+                    </p>
+                  </div>
+                ) : null}
+                {deleteError ? <p className="text-sm text-[#F5A623]">{deleteError}</p> : null}
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:bg-[#1E1E1E]">
+                    გაუქმება
+                  </AlertDialogCancel>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => void deleteHistoryItem()}
+                    disabled={deletePending}
+                    className="rounded-full"
+                  >
+                    {deletePending ? <Loader2 className="size-4 animate-spin" /> : null}
+                    წაშლა
+                  </Button>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </main>
         </div>
       </div>

@@ -19,18 +19,21 @@ type State     = "visible" | "bar-complete" | "fading" | "idle";
 type EmojiPhase = "entering" | "exiting";
 
 export function SiteLoader() {
-  // ── Start as "visible" so the server renders the loader and it appears
-  //    on the very first paint — no flash of site content before loader.
-  const [state,      setState]      = useState<State>("visible");
+  const [mounted,    setMounted]    = useState(false);
+  const [state,      setState]      = useState<State>("idle");
   const [emojiIdx,   setEmojiIdx]   = useState(0);
   const [emojiPhase, setEmojiPhase] = useState<EmojiPhase>("entering");
 
   useEffect(() => {
+    setMounted(true);
+
     // Returning visitor within the same tab session — instantly hide
     if (sessionStorage.getItem(SESSION_KEY)) {
       setState("idle");
       return;
     }
+
+    setState("visible");
 
     let cancelled = false;
 
@@ -81,7 +84,7 @@ export function SiteLoader() {
     };
   }, []);
 
-  if (state === "idle") return null;
+  if (!mounted || state === "idle") return null;
 
   return (
     <div
