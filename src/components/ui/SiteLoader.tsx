@@ -19,21 +19,27 @@ type State     = "visible" | "bar-complete" | "fading" | "idle";
 type EmojiPhase = "entering" | "exiting";
 
 export function SiteLoader() {
-  const [mounted,    setMounted]    = useState(false);
-  const [state,      setState]      = useState<State>("idle");
+  const [state,      setState]      = useState<State>("visible");
   const [emojiIdx,   setEmojiIdx]   = useState(0);
   const [emojiPhase, setEmojiPhase] = useState<EmojiPhase>("entering");
 
   useEffect(() => {
-    setMounted(true);
+    const root = document.documentElement;
+    const clearPendingClass = () => root.classList.remove("site-loader-pending");
 
-    // Returning visitor within the same tab session — instantly hide
-    if (sessionStorage.getItem(SESSION_KEY)) {
+    let hasSeenLoaderInSession = false;
+
+    try {
+      hasSeenLoaderInSession = sessionStorage.getItem(SESSION_KEY) === "true";
+    } catch {
+      hasSeenLoaderInSession = false;
+    }
+
+    if (hasSeenLoaderInSession) {
+      clearPendingClass();
       setState("idle");
       return;
     }
-
-    setState("visible");
 
     let cancelled = false;
 
@@ -62,7 +68,13 @@ export function SiteLoader() {
         setTimeout(() => {
           if (cancelled) return;
           setState("idle");
-          sessionStorage.setItem(SESSION_KEY, "true");
+          clearPendingClass();
+
+          try {
+            sessionStorage.setItem(SESSION_KEY, "true");
+          } catch {
+            // Ignore storage failures and still allow the page through.
+          }
         }, 540);
       }, 360);
     });
@@ -84,7 +96,7 @@ export function SiteLoader() {
     };
   }, []);
 
-  if (!mounted || state === "idle") return null;
+  if (state === "idle") return null;
 
   return (
     <div
@@ -92,7 +104,7 @@ export function SiteLoader() {
       role="presentation"
       aria-hidden="true"
       className={cn(
-        "fixed inset-0 z-9999 flex flex-col items-center justify-center overflow-hidden bg-brand-background",
+        "fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-brand-background",
         state === "fading" && "loader-fade-out"
       )}
     >
@@ -100,7 +112,10 @@ export function SiteLoader() {
       <div aria-hidden="true" className="loader-grid pointer-events-none absolute inset-0" />
 
       {/* Large ambient glow centered behind logo */}
-      <div aria-hidden="true" className="loader-glow pointer-events-none absolute size-130 rounded-full" />
+      <div
+        aria-hidden="true"
+        className="loader-glow pointer-events-none absolute h-[32rem] w-[32rem] rounded-full sm:h-[36rem] sm:w-[36rem]"
+      />
 
       {/* ── Main content ── */}
       <div className="relative z-10 flex flex-col items-center">

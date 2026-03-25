@@ -19,6 +19,21 @@ export default function RootLayout({
   return (
     <html lang="ka">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  if (!sessionStorage.getItem("geo-ai-loaded")) {
+                    document.documentElement.classList.add("site-loader-pending");
+                  }
+                } catch (error) {
+                  document.documentElement.classList.add("site-loader-pending");
+                }
+              })();
+            `,
+          }}
+        />
         {/* Preload critical above-the-fold fonts to prevent FOIT */}
         <link
           rel="preload"
@@ -37,7 +52,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <SiteLoader />
-        {children}
+        <div id="site-content">{children}</div>
       </body>
     </html>
   );

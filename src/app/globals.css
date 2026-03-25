@@ -179,6 +179,13 @@
   body {
     @apply bg-background font-sans text-foreground antialiased;
   }
+  html.site-loader-pending,
+  html.site-loader-pending body {
+    overflow: hidden;
+  }
+  html.site-loader-pending #site-content {
+    visibility: hidden;
+  }
   h1,
   h2,
   h3,
