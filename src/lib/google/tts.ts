@@ -151,8 +151,55 @@ export const GEMINI_VOICE_OPTIONS: GeminiVoiceOption[] = GEMINI_TTS_VOICES.map(
   })
 );
 
+const envFileCache = new Map<string, string>();
+
+function getEnvFileValue(key: string) {
+  if (typeof window !== "undefined") {
+    return "";
+  }
+
+  if (envFileCache.has(key)) {
+    return envFileCache.get(key) ?? "";
+  }
+
+  const envFiles = [".env.local", ".env"];
+
+  for (const fileName of envFiles) {
+    try {
+      const runtimeRequire = Function("return require")() as NodeRequire;
+      const { existsSync, readFileSync } = runtimeRequire("node:fs") as typeof import("node:fs");
+      const { join } = runtimeRequire("node:path") as typeof import("node:path");
+      const filePath = join(process.cwd(), fileName);
+      if (!existsSync(filePath)) {
+        continue;
+      }
+
+      const contents = readFileSync(filePath, "utf8");
+      const match = contents.match(new RegExp(`^${key}=(.*)$`, "m"));
+      const rawValue = match?.[1]?.trim();
+
+      if (rawValue) {
+        const normalizedValue = rawValue.replace(/^['"]|['"]$/g, "");
+        envFileCache.set(key, normalizedValue);
+        return normalizedValue;
+      }
+    } catch {
+      // Ignore local env file parsing issues and fall back to process.env only.
+    }
+  }
+
+  envFileCache.set(key, "");
+  return "";
+}
+
 function getApiKey() {
-  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  const apiKey =
+    process.env.GOOGLE_AI_API_KEY?.trim() ||
+    getEnvFileValue("GOOGLE_AI_API_KEY") ||
+    process.env.GEMINI_API_KEY?.trim() ||
+    getEnvFileValue("GEMINI_API_KEY") ||
+    process.env.GOOGLE_API_KEY?.trim() ||
+    getEnvFileValue("GOOGLE_API_KEY");
 
   if (!apiKey) {
     throw new ApiError(500, "ხმის სერვისი არ არის კონფიგურირებული");
