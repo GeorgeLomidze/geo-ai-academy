@@ -12,11 +12,15 @@ import {
   markAudioGenerationFailedAndRefund,
   markAudioGenerationSucceeded,
 } from "@/lib/audio/generation";
-import { uploadToStorage } from "@/lib/bunny/storage";
+import {
+  BunnyStorageError,
+  uploadToStorage,
+  warnBunnyUnauthorizedOnce,
+} from "@/lib/bunny/storage";
 import { hasEnoughCredits } from "@/lib/credits/manager";
 import { AUDIO_MODELS } from "@/lib/credits/pricing";
 import {
-  GEMINI_DIALOGUE_MODEL_OPTIONS,
+  AUDIO_DIALOGUE_MODEL_ID,
   GEMINI_TTS_VOICES,
   GoogleTtsError,
   generateDialogue,
@@ -30,12 +34,6 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
 const bodySchema = z.object({
   styleInstructions: z.string().trim().max(400).default(""),
   temperature: z.number().min(0).max(2).default(1),
-  model: z.enum(
-    GEMINI_DIALOGUE_MODEL_OPTIONS.map((item) => item.id) as [
-      (typeof GEMINI_DIALOGUE_MODEL_OPTIONS)[number]["id"],
-      ...(typeof GEMINI_DIALOGUE_MODEL_OPTIONS)[number]["id"][],
-    ]
-  ),
   segments: z
     .array(
       z.object({
@@ -65,15 +63,15 @@ function getRouteErrorMessage(error: unknown) {
     }
 
     if (error.statusCode === 429) {
-      return "Google TTS დროებით გადატვირთულია. სცადეთ ცოტა მოგვიანებით";
+      return "ხმის სერვისი დროებით გადატვირთულია. სცადეთ ცოტა მოგვიანებით";
     }
 
     if (error.message.toLowerCase().includes("ორ სპიკერს")) {
-      return "Gemini დიალოგი ამ ეტაპზე მაქსიმუმ ორ სპიკერს უჭერს მხარს";
+      return "დიალოგი ამ ეტაპზე მაქსიმუმ ორ სპიკერს უჭერს მხარს";
     }
 
     if (error.statusCode >= 500) {
-      return "Google TTS დიალოგი დროებით შეფერხებულია. სცადეთ თავიდან ან გამოიყენეთ Pro მოდელი";
+      return "ხმის სერვისი დროებით შეფერხებულია. სცადეთ თავიდან";
     }
 
     return "გენერაციის დროს მოხდა შეცდომა. გადაამოწმეთ შეყვანილი მონაცემები";
@@ -100,11 +98,11 @@ export async function POST(request: NextRequest) {
     const uniqueSpeakers = new Set(params.segments.map((segment) => segment.speaker));
     if (uniqueSpeakers.size > 2) {
       return validationErrorResponse({
-        segments: "Gemini დიალოგი მაქსიმუმ ორ სპიკერს უჭერს მხარს",
+        segments: "დიალოგი მაქსიმუმ ორ სპიკერს უჭერს მხარს",
       });
     }
 
-    const model = AUDIO_MODELS[params.model];
+    const model = AUDIO_MODELS[AUDIO_DIALOGUE_MODEL_ID];
 
     const hasCredits = await hasEnoughCredits(auth.userId, model.coins);
     if (!hasCredits) {
@@ -113,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     const generation = await createAudioGenerationRecord({
       userId: auth.userId,
-      modelId: params.model,
+      modelId: AUDIO_DIALOGUE_MODEL_ID,
       modelName: model.name,
       creditsCost: model.coins,
       prompt: params.segments
@@ -125,7 +123,7 @@ export async function POST(request: NextRequest) {
       const result = await generateDialogue(
         params.segments,
         params.styleInstructions,
-        params.model,
+        AUDIO_DIALOGUE_MODEL_ID,
         params.temperature
       );
 
@@ -137,7 +135,11 @@ export async function POST(request: NextRequest) {
           `generations/audio/${auth.userId}/${generation.id}.${result.extension}`
         );
       } catch (storageError) {
-        console.warn("POST /api/ai/audio/dialogue storage fallback", storageError);
+        if (storageError instanceof BunnyStorageError && storageError.statusCode === 401) {
+          warnBunnyUnauthorizedOnce("audio dialogue fallback");
+        } else {
+          console.warn("POST /api/ai/audio/dialogue storage fallback", storageError);
+        }
       }
 
       const inlineAudioData = outputUrl
@@ -170,7 +172,7 @@ export async function POST(request: NextRequest) {
         userId: auth.userId,
         generationId: generation.id,
         creditsCost: generation.creditsCost,
-        modelId: params.model,
+        modelId: AUDIO_DIALOGUE_MODEL_ID,
         reason: message,
       });
 

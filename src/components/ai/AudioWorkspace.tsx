@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode, RefObject } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -42,11 +42,9 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { AUDIO_MODELS } from "@/lib/credits/pricing";
 import {
-  GEMINI_DIALOGUE_MODEL_OPTIONS,
-  GEMINI_TTS_MODEL_OPTIONS,
+  AUDIO_DIALOGUE_MODEL_ID,
+  AUDIO_TTS_MODEL_ID,
   GEMINI_VOICE_OPTIONS,
-  type GeminiDialogueModelId,
-  type GeminiSingleSpeakerModelId,
   type GeminiVoiceOption,
 } from "@/lib/google/tts";
 import { cn } from "@/lib/utils";
@@ -101,14 +99,14 @@ const TOOL_ITEMS: Array<{
     key: "tts",
     title: "წაკითხვა",
     icon: Volume2,
-    description: "ტექსტის წაკითხვა Google Gemini TTS-ით",
+    description: "ტექსტის ხმამაღლა წაკითხვა არჩეული ხმით",
     cost: 3,
   },
   {
     key: "dialogue",
     title: "დიალოგი",
     icon: MessageCircleMore,
-    description: "ორ სპიკერამდე ხმოვანი დიალოგი Google Gemini-ით",
+    description: "ორ სპიკერამდე ხმოვანი დიალოგის აწყობა",
     cost: 4,
   },
   {
@@ -325,15 +323,15 @@ function createDialogueSpeakers(): DialogueSpeaker[] {
       id: "speaker-1",
       name: "სპიკერი 1",
       voice: "Zephyr",
-      toneClassName: "border-[#F5A623]/40 bg-[#F5A623]/10 text-[#F5A623]",
-      dotClassName: "bg-[#F5A623]",
+      toneClassName: "border-brand-primary bg-brand-primary text-black",
+      dotClassName: "bg-brand-primary",
     },
     {
       id: "speaker-2",
       name: "სპიკერი 2",
       voice: "Kore",
-      toneClassName: "border-[#E09000]/40 bg-[#E09000]/10 text-[#E09000]",
-      dotClassName: "bg-[#E09000]",
+      toneClassName: "border-brand-primary bg-brand-primary text-black",
+      dotClassName: "bg-brand-primary",
     },
   ];
 }
@@ -341,18 +339,13 @@ function createDialogueSpeakers(): DialogueSpeaker[] {
 function VoiceSelect({
   value,
   onValueChange,
-  model,
   onPreview,
   previewLoadingKey,
   previewPlayingKey,
 }: {
   value: GeminiVoiceOption["id"];
   onValueChange: (value: GeminiVoiceOption["id"]) => void;
-  model: GeminiSingleSpeakerModelId | GeminiDialogueModelId;
-  onPreview: (
-    voice: GeminiVoiceOption["id"],
-    model: GeminiSingleSpeakerModelId | GeminiDialogueModelId
-  ) => void;
+  onPreview: (voice: GeminiVoiceOption["id"]) => void;
   previewLoadingKey: string | null;
   previewPlayingKey: string | null;
 }) {
@@ -399,12 +392,7 @@ function VoiceSelect({
         onClick={() => setOpen((current) => !current)}
         className="flex h-12 w-full items-center justify-between gap-3 rounded-2xl border border-[#2A2A2A] bg-[#141414] px-3 text-left text-white transition-colors hover:border-[#3A3A3A]"
       >
-        <span className="min-w-0">
-          <span className="block truncate">{selectedVoice.name}</span>
-          <span className="block truncate text-xs text-[#8A8A8A]">
-            {selectedVoice.description}
-          </span>
-        </span>
+        <span className="min-w-0 truncate">{selectedVoice.name}</span>
         <ChevronDown
           className={cn("size-4 shrink-0 text-[#8A8A8A] transition-transform", open && "rotate-180")}
         />
@@ -414,7 +402,7 @@ function VoiceSelect({
         <div className="absolute top-full left-0 z-50 mt-2 w-full overflow-hidden rounded-2xl border border-[#2A2A2A] bg-[#141414] shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
           <div className="h-80 overflow-y-auto overscroll-contain p-1.5">
             {GEMINI_VOICE_OPTIONS.map((voice) => {
-              const previewKey = `${model}:${voice.id}`;
+              const previewKey = voice.id;
               const isLoading = previewLoadingKey === previewKey;
               const isPlaying = previewPlayingKey === previewKey;
               const isSelected = voice.id === value;
@@ -423,8 +411,10 @@ function VoiceSelect({
                 <div
                   key={voice.id}
                   className={cn(
-                    "flex items-center gap-3 rounded-2xl px-2 py-2",
-                    isSelected ? "bg-[#F5A623]/10" : "hover:bg-[#1E1E1E]"
+                    "flex items-center gap-3 rounded-2xl border px-2 py-2 transition-colors",
+                    isSelected
+                      ? "border-brand-primary/40 bg-[#221c05] text-brand-primary"
+                      : "border-transparent hover:bg-[#1E1E1E]"
                   )}
                 >
                   <button
@@ -434,9 +424,9 @@ function VoiceSelect({
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
-                      onPreview(voice.id, model);
+                      onPreview(voice.id);
                     }}
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#F5A623] text-black transition-colors hover:bg-[#FFD60A]"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-primary text-black shadow-[0_0_0_1px_rgba(255,214,10,0.2)] transition-colors hover:bg-brand-primary-hover"
                   >
                     {isLoading ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -453,16 +443,15 @@ function VoiceSelect({
                       onValueChange(voice.id);
                       setOpen(false);
                     }}
-                    className="flex min-w-0 flex-1 flex-col text-left"
+                    className="min-w-0 flex-1 text-left"
                   >
-                    <span className="truncate text-white">{voice.name}</span>
-                    <span className="truncate text-xs text-[#8A8A8A]">
-                      {voice.description}
+                    <span className={cn("truncate", isSelected ? "text-brand-primary" : "text-white")}>
+                      {voice.name}
                     </span>
                   </button>
 
                   {isSelected ? (
-                    <Check className="size-4 shrink-0 text-[#F5A623]" />
+                    <Check className="size-4 shrink-0 text-brand-primary" />
                   ) : null}
                 </div>
               );
@@ -489,11 +478,13 @@ function SliderField({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const fillPercent = ((value - min) / (max - min)) * 100;
+
   return (
     <label className="block">
       <div className="mb-2 flex items-center justify-between text-sm text-[#D1D1D1]">
         <span>{label}</span>
-        <span className="tabular-nums text-[#F5A623]">{value}</span>
+        <span className="tabular-nums text-brand-primary">{value}</span>
       </div>
       <input
         type="range"
@@ -502,7 +493,13 @@ function SliderField({
         step={step}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="h-2 w-full cursor-pointer accent-[#F5A623]"
+        className="audio-slider h-2 w-full cursor-pointer"
+        style={
+          {
+            accentColor: "#FFD60A",
+            "--range-fill": `${fillPercent}%`,
+          } as CSSProperties
+        }
       />
     </label>
   );
@@ -553,7 +550,6 @@ export function AudioWorkspace({
   const [ttsStyleInstructions, setTtsStyleInstructions] = useState("");
   const [ttsText, setTtsText] = useState("");
   const [ttsVoice, setTtsVoice] = useState<GeminiVoiceOption["id"]>("Kore");
-  const [ttsModel, setTtsModel] = useState<GeminiSingleSpeakerModelId>("audio_tts_flash");
   const [ttsTemperature, setTtsTemperature] = useState(1);
 
   const [dialogueSegments, setDialogueSegments] = useState<DialogueSegment[]>([
@@ -564,8 +560,6 @@ export function AudioWorkspace({
     createDialogueSpeakers()
   );
   const [dialogueStyleInstructions, setDialogueStyleInstructions] = useState("");
-  const [dialogueModel, setDialogueModel] =
-    useState<GeminiDialogueModelId>("audio_dialogue_flash");
   const [dialogueTemperature, setDialogueTemperature] = useState(1);
 
   const [sfxText, setSfxText] = useState("");
@@ -591,9 +585,9 @@ export function AudioWorkspace({
   const activeToolConfig = getToolConfig(activeTool);
   const activeToolCost =
     activeTool === "tts"
-      ? AUDIO_MODELS[ttsModel].coins
+      ? AUDIO_MODELS[AUDIO_TTS_MODEL_ID].coins
       : activeTool === "dialogue"
-        ? AUDIO_MODELS[dialogueModel].coins
+        ? AUDIO_MODELS[AUDIO_DIALOGUE_MODEL_ID].coins
         : activeToolConfig.cost;
   const filteredHistory = useMemo(
     () => history.filter((item) => getToolByModel(item.modelId) === activeTool),
@@ -648,7 +642,6 @@ export function AudioWorkspace({
       createDialogueSegment("segment-2", speakers[1].id),
     ]);
     setDialogueStyleInstructions("");
-    setDialogueModel("audio_dialogue_flash");
     setDialogueTemperature(1);
   }
 
@@ -717,7 +710,6 @@ export function AudioWorkspace({
             text: ttsText,
             styleInstructions: ttsStyleInstructions,
             voice: ttsVoice,
-            model: ttsModel,
             temperature: ttsTemperature,
           }),
         });
@@ -729,7 +721,6 @@ export function AudioWorkspace({
           },
           body: JSON.stringify({
             styleInstructions: dialogueStyleInstructions,
-            model: dialogueModel,
             temperature: dialogueTemperature,
             segments: dialogueSegments.map((segment) => {
               const speaker = getDialogueSpeaker(segment.speakerId);
@@ -811,9 +802,9 @@ export function AudioWorkspace({
         id: data.generationId,
         modelId:
           tool === "tts"
-            ? ttsModel
+            ? AUDIO_TTS_MODEL_ID
             : tool === "dialogue"
-              ? dialogueModel
+              ? AUDIO_DIALOGUE_MODEL_ID
               : tool === "sfx"
                 ? "audio_sfx"
                 : tool === "isolation"
@@ -821,9 +812,9 @@ export function AudioWorkspace({
                   : "audio_transcription",
         modelName:
           tool === "tts"
-            ? AUDIO_MODELS[ttsModel].name
+            ? AUDIO_MODELS[AUDIO_TTS_MODEL_ID].name
             : tool === "dialogue"
-              ? AUDIO_MODELS[dialogueModel].name
+              ? AUDIO_MODELS[AUDIO_DIALOGUE_MODEL_ID].name
               : getToolConfig(tool).title,
         type: "AUDIO",
         prompt:
@@ -948,10 +939,11 @@ export function AudioWorkspace({
   }
 
   async function playVoicePreview(
-    voice: GeminiVoiceOption["id"],
-    model: GeminiSingleSpeakerModelId | GeminiDialogueModelId
+    voice: GeminiVoiceOption["id"]
   ) {
-    const cacheKey = `${model}:${voice}`;
+    const cacheKey = voice;
+    const voiceOption =
+      GEMINI_VOICE_OPTIONS.find((item) => item.id === voice) ?? GEMINI_VOICE_OPTIONS[0];
 
     if (previewPlayingKey === cacheKey) {
       stopVoicePreview();
@@ -972,7 +964,7 @@ export function AudioWorkspace({
           },
           body: JSON.stringify({
             voice,
-            model,
+            name: voiceOption.name,
           }),
         });
 
@@ -1016,16 +1008,14 @@ export function AudioWorkspace({
 
   function renderVoiceSelect(
     value: string,
-    onValueChange: (value: string) => void,
-    model: GeminiSingleSpeakerModelId | GeminiDialogueModelId
+    onValueChange: (value: string) => void
   ) {
     return (
       <VoiceSelect
         value={value as GeminiVoiceOption["id"]}
         onValueChange={(nextValue) => onValueChange(nextValue)}
-        model={model}
-        onPreview={(voice, previewModel) => {
-          void playVoicePreview(voice, previewModel);
+        onPreview={(voice) => {
+          void playVoicePreview(voice);
         }}
         previewLoadingKey={previewLoadingKey}
         previewPlayingKey={previewPlayingKey}
@@ -1055,7 +1045,7 @@ export function AudioWorkspace({
           <Button
             type="button"
             variant="outline"
-            className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
+            className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-brand-primary hover:bg-brand-primary hover:text-black"
             onClick={options.onClear}
           >
             <Trash2 className="size-4" />
@@ -1074,9 +1064,9 @@ export function AudioWorkspace({
           event.preventDefault();
           options.onSelectFile(event.dataTransfer.files?.[0] ?? null);
         }}
-        className="flex min-h-56 w-full flex-col items-center justify-center rounded-3xl border border-dashed border-[#2A2A2A] bg-[#141414] px-6 text-center transition-colors hover:border-[#F5A623] hover:bg-[#F5A623]/5"
+        className="flex min-h-56 w-full flex-col items-center justify-center rounded-3xl border border-dashed border-[#2A2A2A] bg-[#141414] px-6 text-center transition-colors hover:border-brand-primary hover:bg-brand-primary/12"
       >
-        <div className="flex size-14 items-center justify-center rounded-full bg-[#F5A623]/10 text-[#F5A623]">
+        <div className="flex size-14 items-center justify-center rounded-full bg-brand-primary text-black">
           <Upload className="size-6" />
         </div>
         <p className="mt-5 text-lg text-white">{options.title}</p>
@@ -1100,17 +1090,17 @@ export function AudioWorkspace({
       return (
         <Panel
           title="ტექსტიდან აუდიო"
-          description="სტილის ინსტრუქციით მართე ტონი, ტემპი და ხმის ხასიათი Google Gemini TTS-ით."
+          description="სტილის ინსტრუქციით მართეთ ტონი, ტემპი და ხმის ხასიათი."
           footer={
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <a href="#audio-history" className="text-sm text-[#F5A623] hover:text-[#FFD60A]">
+              <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
                 ისტორია
               </a>
               <Button
                 type="button"
                 onClick={() => void runGeneration()}
                 disabled={submitting || !ttsText.trim() || !ttsVoice}
-                className="rounded-full bg-[#F5A623] px-6 text-black hover:bg-[#FFD60A]"
+                className="rounded-full bg-brand-primary px-6 text-black hover:bg-brand-primary-hover disabled:bg-brand-primary disabled:text-black/60 disabled:opacity-100"
               >
                 {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
                 გენერაცია ✦ {activeToolCost}
@@ -1142,28 +1132,9 @@ export function AudioWorkspace({
             </div>
 
             <div className="space-y-4 rounded-[24px] border border-[#2A2A2A] bg-[#141414] p-4 lg:self-start">
-              <div className="space-y-2">
-                <p className="text-sm text-[#D1D1D1]">მოდელი</p>
-                <Select
-                  value={ttsModel}
-                  onValueChange={(value) => setTtsModel(value as GeminiSingleSpeakerModelId)}
-                >
-                  <SelectTrigger className="h-12 rounded-2xl border-[#2A2A2A] bg-[#0A0A0A]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="border-[#2A2A2A] bg-[#141414]">
-                    {GEMINI_TTS_MODEL_OPTIONS.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="rounded-2xl border border-[#F5A623]/20 bg-[#F5A623]/10 px-4 py-3">
-                <p className="text-xs text-[#A3A3A3]">რეჟიმი</p>
-                <p className="mt-1 text-sm font-medium text-[#F5A623]">ერთი სპიკერი</p>
+              <div className="rounded-2xl border border-brand-primary bg-brand-primary px-4 py-3 text-black">
+                <p className="text-xs text-black/60">რეჟიმი</p>
+                <p className="mt-1 text-sm font-medium text-black">ერთი სპიკერი</p>
               </div>
 
               <SliderField
@@ -1177,11 +1148,7 @@ export function AudioWorkspace({
 
               <div className="space-y-2">
                 <p className="text-sm text-[#D1D1D1]">ხმა</p>
-                {renderVoiceSelect(
-                  ttsVoice,
-                  (value) => setTtsVoice(value as GeminiVoiceOption["id"]),
-                  ttsModel
-                )}
+                {renderVoiceSelect(ttsVoice, (value) => setTtsVoice(value as GeminiVoiceOption["id"]))}
               </div>
             </div>
           </div>
@@ -1193,10 +1160,10 @@ export function AudioWorkspace({
       return (
         <Panel
           title="მრავალსპიკერიანი დიალოგი"
-          description="Gemini დიალოგი ამ ეტაპზე ორ სპიკერს უჭერს მხარს. მარცხნივ ააწყვე სცენარი, მარჯვნივ დააყენე ხმები."
+          description="ამ ეტაპზე დიალოგი ორ სპიკერს უჭერს მხარს. მარცხნივ ააწყვეთ სცენარი, მარჯვნივ დააყენეთ ხმები."
           footer={
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <a href="#audio-history" className="text-sm text-[#F5A623] hover:text-[#FFD60A]">
+              <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
                 ისტორია
               </a>
               <div className="flex flex-wrap items-center gap-3">
@@ -1204,7 +1171,7 @@ export function AudioWorkspace({
                   type="button"
                   variant="outline"
                   onClick={resetDialogue}
-                  className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
+                  className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-brand-primary hover:bg-brand-primary hover:text-black"
                 >
                   გადატვირთვა
                 </Button>
@@ -1212,7 +1179,7 @@ export function AudioWorkspace({
                   type="button"
                   onClick={() => void runGeneration()}
                   disabled={submitting || dialogueSegments.some((segment) => !segment.text.trim())}
-                  className="rounded-full bg-[#F5A623] px-6 text-black hover:bg-[#FFD60A]"
+                  className="rounded-full bg-brand-primary px-6 text-black hover:bg-brand-primary-hover disabled:bg-brand-primary disabled:text-black/60 disabled:opacity-100"
                 >
                   {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
                   გენერაცია ✦ {activeToolCost}
@@ -1266,7 +1233,7 @@ export function AudioWorkspace({
                           <button
                             type="button"
                             onClick={() => removeDialogueSegment(segment.id)}
-                            className="text-sm text-[#8A8A8A] hover:text-[#F5A623]"
+                            className="text-sm text-[#8A8A8A] hover:text-brand-primary"
                           >
                             წაშლა
                           </button>
@@ -1312,7 +1279,7 @@ export function AudioWorkspace({
                   type="button"
                   variant="outline"
                   onClick={addDialogueSegment}
-                  className="w-full rounded-3xl border-dashed border-[#2A2A2A] bg-transparent py-6 text-white hover:border-[#F5A623] hover:bg-[#F5A623]/5"
+                  className="w-full rounded-3xl border-dashed border-[#2A2A2A] bg-transparent py-6 text-white hover:border-brand-primary hover:bg-brand-primary/12"
                 >
                   + დიალოგის დამატება
                 </Button>
@@ -1320,28 +1287,9 @@ export function AudioWorkspace({
             </div>
 
             <div className="space-y-4 rounded-[24px] border border-[#2A2A2A] bg-[#141414] p-4 lg:self-start">
-              <div className="space-y-2">
-                <p className="text-sm text-[#D1D1D1]">მოდელი</p>
-                <Select
-                  value={dialogueModel}
-                  onValueChange={(value) => setDialogueModel(value as GeminiDialogueModelId)}
-                >
-                  <SelectTrigger className="h-12 rounded-2xl border-[#2A2A2A] bg-[#0A0A0A]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="border-[#2A2A2A] bg-[#141414]">
-                    {GEMINI_DIALOGUE_MODEL_OPTIONS.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="rounded-2xl border border-[#F5A623]/20 bg-[#F5A623]/10 px-4 py-3">
-                <p className="text-xs text-[#A3A3A3]">რეჟიმი</p>
-                <p className="mt-1 text-sm font-medium text-[#F5A623]">მრავალი სპიკერი</p>
+              <div className="rounded-2xl border border-brand-primary bg-brand-primary px-4 py-3 text-black">
+                <p className="text-xs text-black/60">რეჟიმი</p>
+                <p className="mt-1 text-sm font-medium text-black">მრავალი სპიკერი</p>
               </div>
 
               <SliderField
@@ -1381,10 +1329,8 @@ export function AudioWorkspace({
 
                       <div className="space-y-2">
                         <p className="text-sm text-[#D1D1D1]">ხმა</p>
-                        {renderVoiceSelect(
-                          speaker.voice,
-                          (value) => updateDialogueSpeaker(speaker.id, "voice", value),
-                          dialogueModel
+                        {renderVoiceSelect(speaker.voice, (value) =>
+                          updateDialogueSpeaker(speaker.id, "voice", value)
                         )}
                       </div>
                     </div>
@@ -1404,14 +1350,14 @@ export function AudioWorkspace({
           description="მოკლე ტექსტური აღწერით შექმენი გარემოს ხმა, ეფექტი ან ატმოსფერო."
           footer={
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <a href="#audio-history" className="text-sm text-[#F5A623] hover:text-[#FFD60A]">
+              <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
                 ისტორია
               </a>
               <Button
                 type="button"
                 onClick={() => void runGeneration()}
                 disabled={submitting || !sfxText.trim()}
-                className="rounded-full bg-[#F5A623] px-6 text-black hover:bg-[#FFD60A]"
+                className="rounded-full bg-brand-primary px-6 text-black hover:bg-brand-primary-hover disabled:bg-brand-primary disabled:text-black/60 disabled:opacity-100"
               >
                 {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
                 გენერაცია ✦ {activeToolCost}
@@ -1479,14 +1425,14 @@ export function AudioWorkspace({
           description="ატვირთე აუდიო ფაილი და მიიღე გაწმენდილი ხმა ფონური შრის გარეშე."
           footer={
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <a href="#audio-history" className="text-sm text-[#F5A623] hover:text-[#FFD60A]">
+              <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
                 ისტორია
               </a>
               <Button
                 type="button"
                 onClick={() => void runGeneration()}
                 disabled={submitting || !isolationFile}
-                className="rounded-full bg-[#F5A623] px-6 text-black hover:bg-[#FFD60A]"
+                className="rounded-full bg-brand-primary px-6 text-black hover:bg-brand-primary-hover disabled:bg-brand-primary disabled:text-black/60 disabled:opacity-100"
               >
                 {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
                 იზოლაცია ✦ {activeToolCost}
@@ -1514,14 +1460,14 @@ export function AudioWorkspace({
         description="აუდიოდან მიიღე ტექსტი, საჭიროების შემთხვევაში სპიკერების გამოყოფით."
         footer={
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <a href="#audio-history" className="text-sm text-[#F5A623] hover:text-[#FFD60A]">
+            <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
               ისტორია
             </a>
             <Button
               type="button"
               onClick={() => void runGeneration()}
               disabled={submitting || !transcriptionFile}
-              className="rounded-full bg-[#F5A623] px-6 text-black hover:bg-[#FFD60A]"
+              className="rounded-full bg-brand-primary px-6 text-black hover:bg-brand-primary-hover disabled:bg-brand-primary disabled:text-black/60 disabled:opacity-100"
             >
               {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
               ტრანსკრიფცია ✦ {activeToolCost}
@@ -1612,8 +1558,8 @@ export function AudioWorkspace({
                         className={cn(
                           "flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors",
                           isActive
-                            ? "border-[#FFD60A] bg-[#FFD60A]/15 text-[#FFD60A]"
-                            : "border-[#2A2A2A] bg-[#1E1E1E] text-[#D1D1D1] hover:border-[#FFD60A]/30 hover:bg-[#FFD60A]/5"
+                            ? "border-brand-primary bg-brand-primary text-black"
+                            : "border-[#2A2A2A] bg-[#1E1E1E] text-[#D1D1D1] hover:border-brand-primary/30 hover:bg-brand-primary/12"
                         )}
                       >
                         <Icon className="size-4" />
@@ -1636,8 +1582,8 @@ export function AudioWorkspace({
                       className={cn(
                         "flex w-full items-start gap-3 border-l-2 px-4 py-4 text-left transition-colors",
                         isActive
-                          ? "border-l-[#FFD60A] bg-[#FFD60A]/15 text-[#FFD60A]"
-                          : "border-l-transparent text-[#D1D1D1] hover:bg-[#FFD60A]/5 hover:text-white"
+                          ? "border-l-brand-primary bg-brand-primary text-black"
+                          : "border-l-transparent text-[#D1D1D1] hover:bg-brand-primary/12 hover:text-white"
                       )}
                     >
                       <Icon className="mt-0.5 size-5 shrink-0" />
@@ -1651,7 +1597,7 @@ export function AudioWorkspace({
 
               <div className="border-t border-[#2A2A2A] px-4 py-4">
                 <p className="text-xs uppercase text-[#8A8A8A]">GEO კოინები</p>
-                <p className="mt-2 font-display text-2xl text-[#FFD60A]">
+                <p className="mt-2 font-display text-2xl text-brand-primary">
                   ✦ {balance.toLocaleString("ka-GE")}
                 </p>
               </div>
@@ -1659,7 +1605,7 @@ export function AudioWorkspace({
           </aside>
 
           <main className="space-y-6">
-            {error ? <p className="text-sm text-[#F5A623]">{error}</p> : null}
+            {error ? <p className="text-sm text-brand-primary">{error}</p> : null}
             {renderInputPanel()}
 
             <section
@@ -1703,10 +1649,10 @@ export function AudioWorkspace({
                               className={cn(
                                 "rounded-full px-3 py-1 text-xs",
                                 item.status === "SUCCEEDED"
-                                  ? "bg-[#F5A623]/10 text-[#F5A623]"
+                                  ? "bg-brand-primary text-black"
                                   : item.status === "FAILED" || item.status === "CANCELED"
                                     ? "bg-[#2A2A2A] text-[#A3A3A3]"
-                                    : "bg-[#F5A623]/10 text-[#F5A623]"
+                                    : "bg-brand-primary text-black"
                               )}
                             >
                               {getStatusLabel(item.status)}
@@ -1720,7 +1666,7 @@ export function AudioWorkspace({
                                 setDeleteTarget(item);
                               }}
                               disabled={isDeleting}
-                              className="size-10 rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
+                              className="size-10 rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-brand-primary hover:bg-brand-primary hover:text-black"
                               aria-label="შედეგის წაშლა"
                             >
                               {isDeleting ? (
@@ -1748,7 +1694,7 @@ export function AudioWorkspace({
                                         className="rounded-2xl border border-[#2A2A2A] bg-[#141414] p-3"
                                       >
                                         {segment.speaker ? (
-                                          <p className="mb-2 text-xs font-medium text-[#F5A623]">
+                                          <p className="mb-2 text-xs font-medium text-brand-primary">
                                             {segment.speaker}
                                           </p>
                                         ) : null}
@@ -1774,7 +1720,7 @@ export function AudioWorkspace({
                                     type="button"
                                     variant="outline"
                                     onClick={() => void copyTranscript(item)}
-                                    className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
+                                    className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-brand-primary hover:bg-brand-primary hover:text-black"
                                   >
                                     <Copy className="size-4" />
                                     {copiedHistoryId === item.id ? "დაკოპირდა" : "კოპირება"}
@@ -1783,7 +1729,7 @@ export function AudioWorkspace({
                                     type="button"
                                     variant="outline"
                                     onClick={() => downloadTranscript(item)}
-                                    className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-[#F5A623] hover:bg-[#F5A623]/10"
+                                    className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:border-brand-primary hover:bg-brand-primary hover:text-black"
                                   >
                                     ჩამოტვირთვა
                                   </Button>
@@ -1797,7 +1743,7 @@ export function AudioWorkspace({
                             />
                           ) : isProcessing ? (
                             <div className="flex min-h-44 flex-col items-center justify-center text-center">
-                              <Loader2 className="size-7 animate-spin text-[#F5A623]" />
+                              <Loader2 className="size-7 animate-spin text-brand-primary" />
                               <p className="mt-4 text-lg text-white">აუდიო მუშავდება</p>
                               <p className="mt-2 max-w-md text-sm leading-6 text-[#8A8A8A]">
                                 გენერაცია მიმდინარეობს. დასრულების შემდეგ შედეგი აქ გამოჩნდება.
@@ -1863,7 +1809,7 @@ export function AudioWorkspace({
                     </p>
                   </div>
                 ) : null}
-                {deleteError ? <p className="text-sm text-[#F5A623]">{deleteError}</p> : null}
+                {deleteError ? <p className="text-sm text-brand-primary">{deleteError}</p> : null}
                 <AlertDialogFooter>
                   <AlertDialogCancel className="rounded-full border-[#2A2A2A] bg-transparent text-white hover:bg-[#1E1E1E]">
                     გაუქმება

@@ -452,7 +452,7 @@ export const AUDIO_MODELS: Record<AudioToolId, AudioModelConfig> = {
     coins: 3,
   },
   audio_tts_pro: {
-    name: "წაკითხვა Pro",
+    name: "წაკითხვა",
     kieModel: "gemini-2.5-pro-preview-tts",
     type: "AUDIO",
     tool: "tts",
@@ -468,7 +468,7 @@ export const AUDIO_MODELS: Record<AudioToolId, AudioModelConfig> = {
     coins: 4,
   },
   audio_dialogue_pro: {
-    name: "დიალოგი Pro",
+    name: "დიალოგი",
     kieModel: "gemini-2.5-pro-preview-tts",
     type: "AUDIO",
     tool: "dialogue",

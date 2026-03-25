@@ -77,8 +77,13 @@ function PillDropdown({
       <DropdownMenuContent
         side="top"
         align="end"
+        style={{
+          width: "var(--radix-dropdown-menu-trigger-width)",
+          minWidth: "var(--radix-dropdown-menu-trigger-width)",
+          maxWidth: "var(--radix-dropdown-menu-trigger-width)",
+        }}
         className={cn(
-          "w-[var(--radix-dropdown-menu-trigger-width)] min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[var(--radix-dropdown-menu-trigger-width)] rounded-3xl border border-brand-accent/20 bg-[#111111] p-2 text-brand-secondary"
+          "rounded-3xl border border-brand-accent/20 bg-[#111111] p-2 text-brand-secondary"
         )}
       >
         {options.map((item) => (
@@ -250,7 +255,10 @@ export function PromptBar({
   }
 
   return (
-    <div className="sticky bottom-0 z-40 border-t border-brand-border bg-brand-background/95 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 backdrop-blur-md sm:px-6">
+    <div
+      className="sticky bottom-0 z-40 border-t border-brand-border bg-brand-background/95 px-4 pt-3 backdrop-blur-md sm:px-6"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+    >
       <div className="mx-auto flex max-w-[1440px] flex-col gap-3 rounded-[30px] border border-brand-border bg-[#111111] p-3 shadow-sm">
         {imageUrls.length > 0 ? (
           <div className="flex flex-wrap gap-2 px-1">

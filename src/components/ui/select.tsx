@@ -73,10 +73,18 @@ function SelectContent({
       >
         <SelectScrollUpButton />
         <SelectPrimitive.Viewport
+          style={
+            position === "popper"
+              ? {
+                  height: "var(--radix-select-trigger-height)",
+                  minWidth: "var(--radix-select-trigger-width)",
+                }
+              : undefined
+          }
           className={cn(
             "max-h-[inherit] overflow-y-auto overscroll-contain p-1",
             position === "popper" &&
-              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1"
+              "w-full scroll-my-1"
           )}
         >
           {children}

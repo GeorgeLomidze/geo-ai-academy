@@ -44,7 +44,12 @@ export function ModelSelectorPill({
       <DropdownMenuContent
         side="top"
         align="end"
-        className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[var(--radix-dropdown-menu-trigger-width)] rounded-3xl border border-brand-accent/20 bg-[#111111] p-2 text-brand-secondary"
+        style={{
+          width: "var(--radix-dropdown-menu-trigger-width)",
+          minWidth: "var(--radix-dropdown-menu-trigger-width)",
+          maxWidth: "var(--radix-dropdown-menu-trigger-width)",
+        }}
+        className="rounded-3xl border border-brand-accent/20 bg-[#111111] p-2 text-brand-secondary"
       >
         {Object.entries(grouped).map(([provider, models], groupIndex) => (
           <div key={provider}>

@@ -288,10 +288,16 @@ export function NodeCard({
       <div
         className={`relative cursor-grab overflow-hidden rounded-2xl border transition-all active:cursor-grabbing ${
           selected
-            ? "border-brand-accent/30 shadow-[0_0_20px_rgba(var(--brand-accent-rgb,234,179,8),0.08)]"
+            ? "border-brand-accent/30"
             : "border-white/[0.08] hover:border-white/15"
         }`}
-        style={{ height, background: "#161616" }}
+        style={{
+          height,
+          background: "#161616",
+          boxShadow: selected
+            ? "0 0 20px rgba(var(--brand-accent-rgb, 234, 179, 8), 0.08)"
+            : undefined,
+        }}
       >
         <div className="absolute right-2 top-2 z-20 flex items-center gap-1">
           {downloadUrl ? (

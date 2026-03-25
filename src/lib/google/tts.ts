@@ -5,29 +5,22 @@ const GOOGLE_TTS_API_BASE_URL =
 
 export const GEMINI_TTS_MODEL_OPTIONS = [
   {
-    id: "audio_tts_flash",
-    model: "gemini-2.5-flash-preview-tts",
-    label: "Gemini 2.5 Flash TTS",
-  },
-  {
     id: "audio_tts_pro",
     model: "gemini-2.5-pro-preview-tts",
-    label: "Gemini 2.5 Pro TTS",
+    label: "სტანდარტული ხმა",
   },
 ] as const;
 
 export const GEMINI_DIALOGUE_MODEL_OPTIONS = [
   {
-    id: "audio_dialogue_flash",
-    model: "gemini-2.5-flash-preview-tts",
-    label: "Gemini 2.5 Flash TTS",
-  },
-  {
     id: "audio_dialogue_pro",
     model: "gemini-2.5-pro-preview-tts",
-    label: "Gemini 2.5 Pro TTS",
+    label: "სტანდარტული ხმა",
   },
 ] as const;
+
+export const AUDIO_TTS_MODEL_ID = "audio_tts_pro" as const;
+export const AUDIO_DIALOGUE_MODEL_ID = "audio_dialogue_pro" as const;
 
 export const GEMINI_TTS_VOICES = [
   "Zephyr",
@@ -60,9 +53,7 @@ export type GeminiDialogueModelId = (typeof GEMINI_DIALOGUE_MODEL_OPTIONS)[numbe
 
 export type GeminiVoiceOption = {
   id: GeminiTtsVoice;
-  name: GeminiTtsVoice;
-  description: string;
-  label: string;
+  name: string;
 };
 
 export type DialogueSegmentInput = {
@@ -103,37 +94,60 @@ export class GoogleTtsError extends Error {
   }
 }
 
-const GEMINI_VOICE_DESCRIPTIONS: Record<GeminiTtsVoice, string> = {
-  Zephyr: "მკაფიო და ნათელი",
-  Puck: "მსუბუქი და ცოცხალი",
-  Charon: "ღრმა და მკაცრი",
-  Kore: "თბილი და ბუნებრივი",
-  Fenrir: "მტკიცე და დაბალი",
-  Leda: "რბილი და მშვიდი",
-  Orus: "დინამიკური და გამოკვეთილი",
-  Aoede: "მსუბუქი და ჰაეროვანი",
-  Callirrhoe: "სუფთა და გაწონასწორებული",
-  Autonoe: "ნაზი და რბილი",
-  Enceladus: "სტაბილური და ზომიერი",
-  Iapetus: "დაბალი და დარბაისლური",
-  Umbriel: "მშვიდი და ღრმა",
-  Algieba: "ელეგანტური და ნათელი",
-  Despina: "სასიამოვნო და თბილი",
-  Erinome: "მეგობრული და რბილი",
-  Gacrux: "ენერგიული და გამოკვეთილი",
-  Pulcherrima: "გლუვი და დახვეწილი",
-  Vindemiatrix: "სუფთა და პროფესიონალური",
-  Sadachbia: "კომფორტული და რბილი",
-  Sadaltager: "მტკიცე და მკაფიო",
-  Sulafat: "ელეგანტური და თბილი",
+export const voiceMapping = {
+  "ნინო": { id: "Zephyr" },
+  "გიორგი": { id: "Puck" },
+  "დავითი": { id: "Charon" },
+  "ნათია": { id: "Kore" },
+  "თორნიკე": { id: "Fenrir" },
+  "მარიამი": { id: "Leda" },
+  "ნიკა": { id: "Orus" },
+  "ანა": { id: "Aoede" },
+  "სოფო": { id: "Callirrhoe" },
+  "ელენე": { id: "Autonoe" },
+  "ლაშა": { id: "Enceladus" },
+  "გიგა": { id: "Iapetus" },
+  "ლუკა": { id: "Umbriel" },
+  "დაჩი": { id: "Algieba" },
+  "ეკა": { id: "Despina" },
+  "თათია": { id: "Erinome" },
+  "გვანცა": { id: "Gacrux" },
+  "ია": { id: "Pulcherrima" },
+  "ხატია": { id: "Vindemiatrix" },
+  "დიტო": { id: "Sadachbia" },
+  "ბექა": { id: "Sadaltager" },
+  "თეო": { id: "Sulafat" },
+} as const satisfies Record<string, { id: GeminiTtsVoice }>;
+
+const VOICE_LABEL_BY_ID: Record<GeminiTtsVoice, string> = {
+  Zephyr: "ნინო",
+  Puck: "გიორგი",
+  Charon: "დავითი",
+  Kore: "ნათია",
+  Fenrir: "თორნიკე",
+  Leda: "მარიამი",
+  Orus: "ნიკა",
+  Aoede: "ანა",
+  Callirrhoe: "სოფო",
+  Autonoe: "ელენე",
+  Enceladus: "ლაშა",
+  Iapetus: "გიგა",
+  Umbriel: "ლუკა",
+  Algieba: "დაჩი",
+  Despina: "ეკა",
+  Erinome: "თათია",
+  Gacrux: "გვანცა",
+  Pulcherrima: "ია",
+  Vindemiatrix: "ხატია",
+  Sadachbia: "დიტო",
+  Sadaltager: "ბექა",
+  Sulafat: "თეო",
 };
 
 export const GEMINI_VOICE_OPTIONS: GeminiVoiceOption[] = GEMINI_TTS_VOICES.map(
   (voice) => ({
     id: voice,
-    name: voice,
-    description: GEMINI_VOICE_DESCRIPTIONS[voice],
-    label: `${voice} - ${GEMINI_VOICE_DESCRIPTIONS[voice]}`,
+    name: VOICE_LABEL_BY_ID[voice],
   })
 );
 
@@ -141,7 +155,7 @@ function getApiKey() {
   const apiKey = process.env.GOOGLE_AI_API_KEY;
 
   if (!apiKey) {
-    throw new ApiError(500, "Google AI API გასაღები არ არის კონფიგურირებული");
+    throw new ApiError(500, "ხმის სერვისი არ არის კონფიგურირებული");
   }
 
   return apiKey;
@@ -153,7 +167,7 @@ function getModelName(modelId: GeminiSingleSpeakerModelId | GeminiDialogueModelI
   );
 
   if (!option) {
-    throw new GoogleTtsError("Google TTS მოდელი ვერ მოიძებნა", {
+    throw new GoogleTtsError("ხმის მოდელი ვერ მოიძებნა", {
       statusCode: 400,
     });
   }
@@ -220,7 +234,7 @@ async function requestGoogleTts(
         2
       )
     );
-    throw new GoogleTtsError("Google TTS არასწორ პასუხს აბრუნებს", {
+    throw new GoogleTtsError("ხმის სერვისმა არასწორი პასუხი დააბრუნა", {
       statusCode: response.status,
       details: rawText,
     });
@@ -244,7 +258,7 @@ async function requestGoogleTts(
 
     const message =
       data.error?.message ??
-      `Google TTS მოთხოვნა ვერ შესრულდა (${response.status})`;
+      `ხმის მოთხოვნა ვერ შესრულდა (${response.status})`;
     const statusCode = data.error?.code ?? response.status;
     const status = data.error?.status ?? "";
     const isRetryable = status === "INTERNAL" || statusCode >= 500;
@@ -362,7 +376,7 @@ function getAudioPart(response: GoogleGenerateContentResponse) {
     }
   }
 
-  throw new GoogleTtsError("Google TTS აუდიოს არ აბრუნებს", {
+  throw new GoogleTtsError("ხმის გენერაციის პასუხში აუდიო ვერ მოიძებნა", {
     details: response,
   });
 }
@@ -443,7 +457,7 @@ export async function generateDialogue(
   );
 
   if (uniqueSpeakers.length > 2) {
-    throw new GoogleTtsError("Gemini დიალოგი მაქსიმუმ ორ სპიკერს უჭერს მხარს", {
+    throw new GoogleTtsError("დიალოგი მაქსიმუმ ორ სპიკერს უჭერს მხარს", {
       statusCode: 400,
     });
   }

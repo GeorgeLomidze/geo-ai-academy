@@ -19,11 +19,20 @@ type State     = "visible" | "bar-complete" | "fading" | "idle";
 type EmojiPhase = "entering" | "exiting";
 
 export function SiteLoader() {
+  const [mounted, setMounted] = useState(false);
   const [state,      setState]      = useState<State>("visible");
   const [emojiIdx,   setEmojiIdx]   = useState(0);
   const [emojiPhase, setEmojiPhase] = useState<EmojiPhase>("entering");
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
     const root = document.documentElement;
     const clearPendingClass = () => root.classList.remove("site-loader-pending");
 
@@ -94,9 +103,9 @@ export function SiteLoader() {
       cancelled = true;
       clearInterval(emojiTimer);
     };
-  }, []);
+  }, [mounted]);
 
-  if (state === "idle") return null;
+  if (!mounted || state === "idle") return null;
 
   return (
     <div

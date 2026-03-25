@@ -10,8 +10,17 @@ import { requireAuth } from "@/lib/auth";
 import { createAudioGenerationRecord, markAudioGenerationFailedAndRefund, markAudioGenerationSucceeded } from "@/lib/audio/generation";
 import { hasEnoughCredits } from "@/lib/credits/manager";
 import { AUDIO_MODELS } from "@/lib/credits/pricing";
-import { GEMINI_TTS_MODEL_OPTIONS, GEMINI_TTS_VOICES, GoogleTtsError, generateSpeech } from "@/lib/google/tts";
-import { uploadToStorage } from "@/lib/bunny/storage";
+import {
+  AUDIO_TTS_MODEL_ID,
+  GEMINI_TTS_VOICES,
+  GoogleTtsError,
+  generateSpeech,
+} from "@/lib/google/tts";
+import {
+  BunnyStorageError,
+  uploadToStorage,
+  warnBunnyUnauthorizedOnce,
+} from "@/lib/bunny/storage";
 import { Prisma } from "@prisma/client";
 
 function arrayBufferToBase64(buffer: ArrayBuffer) {
@@ -22,12 +31,6 @@ const bodySchema = z.object({
   text: z.string().trim().min(1, "ტექსტი აუცილებელია"),
   styleInstructions: z.string().trim().max(400).default(""),
   voice: z.enum(GEMINI_TTS_VOICES),
-  model: z.enum(
-    GEMINI_TTS_MODEL_OPTIONS.map((item) => item.id) as [
-      (typeof GEMINI_TTS_MODEL_OPTIONS)[number]["id"],
-      ...(typeof GEMINI_TTS_MODEL_OPTIONS)[number]["id"][],
-    ]
-  ),
   temperature: z.number().min(0).max(2).default(1),
 });
 
@@ -49,11 +52,11 @@ function getRouteErrorMessage(error: unknown) {
     }
 
     if (error.statusCode === 429) {
-      return "Google TTS დროებით გადატვირთულია. სცადეთ ცოტა მოგვიანებით";
+      return "ხმის სერვისი დროებით გადატვირთულია. სცადეთ ცოტა მოგვიანებით";
     }
 
     if (error.statusCode >= 500) {
-      return "Google TTS დროებით შეფერხებულია. სცადეთ თავიდან ან გამოიყენეთ Pro მოდელი";
+      return "ხმის სერვისი დროებით შეფერხებულია. სცადეთ თავიდან";
     }
 
     return "გენერაციის დროს მოხდა შეცდომა. გადაამოწმეთ შეყვანილი მონაცემები";
@@ -77,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     const params = parsed.data;
-    const model = AUDIO_MODELS[params.model];
+    const model = AUDIO_MODELS[AUDIO_TTS_MODEL_ID];
 
     const hasCredits = await hasEnoughCredits(auth.userId, model.coins);
     if (!hasCredits) {
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     const generation = await createAudioGenerationRecord({
       userId: auth.userId,
-      modelId: params.model,
+      modelId: AUDIO_TTS_MODEL_ID,
       modelName: model.name,
       creditsCost: model.coins,
       prompt: params.text,
@@ -97,7 +100,7 @@ export async function POST(request: NextRequest) {
         params.text,
         params.styleInstructions,
         params.voice,
-        params.model,
+        AUDIO_TTS_MODEL_ID,
         params.temperature
       );
 
@@ -109,7 +112,11 @@ export async function POST(request: NextRequest) {
           `generations/audio/${auth.userId}/${generation.id}.${result.extension}`
         );
       } catch (storageError) {
-        console.warn("POST /api/ai/audio/tts storage fallback", storageError);
+        if (storageError instanceof BunnyStorageError && storageError.statusCode === 401) {
+          warnBunnyUnauthorizedOnce("audio tts fallback");
+        } else {
+          console.warn("POST /api/ai/audio/tts storage fallback", storageError);
+        }
       }
 
       const inlineAudioData = outputUrl
@@ -142,7 +149,7 @@ export async function POST(request: NextRequest) {
         userId: auth.userId,
         generationId: generation.id,
         creditsCost: generation.creditsCost,
-        modelId: params.model,
+        modelId: AUDIO_TTS_MODEL_ID,
         reason: message,
       });
 
