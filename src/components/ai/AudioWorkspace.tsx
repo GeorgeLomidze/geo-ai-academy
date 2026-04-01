@@ -139,7 +139,7 @@ const SOUND_EFFECT_FORMATS = [
 ];
 
 const LANGUAGE_OPTIONS = [
-  { value: "", label: "ავტომატურად" },
+  { value: "auto", label: "ავტომატურად" },
   { value: "ka", label: "ქართული" },
   { value: "en", label: "ინგლისური" },
   { value: "ru", label: "რუსული" },
@@ -149,13 +149,29 @@ const LANGUAGE_OPTIONS = [
   { value: "es", label: "ესპანური" },
 ];
 
-const audioDateFormatter = new Intl.DateTimeFormat("ka-GE", {
+const audioDatePartsFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Tbilisi",
-  month: "short",
+  month: "numeric",
   day: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  hourCycle: "h23",
 });
+
+const GEORGIAN_MONTH_LABELS = [
+  "იან",
+  "თებ",
+  "მარ",
+  "აპრ",
+  "მაი",
+  "ივნ",
+  "ივლ",
+  "აგვ",
+  "სექ",
+  "ოქტ",
+  "ნოე",
+  "დეკ",
+] as const;
 
 function getToolConfig(tool: ToolKey) {
   return TOOL_ITEMS.find((item) => item.key === tool) ?? TOOL_ITEMS[0];
@@ -179,7 +195,20 @@ function getToolByModel(modelId: string): ToolKey {
 }
 
 function formatDate(value: string) {
-  return audioDateFormatter.format(new Date(value));
+  const parts = Object.fromEntries(
+    audioDatePartsFormatter
+      .formatToParts(new Date(value))
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+
+  const monthNumber = Number(parts.month);
+  const monthLabel =
+    Number.isFinite(monthNumber) && monthNumber >= 1 && monthNumber <= 12
+      ? GEORGIAN_MONTH_LABELS[monthNumber - 1]
+      : parts.month;
+
+  return `${parts.day} ${monthLabel}, ${parts.hour}:${parts.minute}`;
 }
 
 function getToolFailureMessage(tool: ToolKey) {
@@ -269,10 +298,33 @@ function getTranscriptSegments(outputData: unknown): TranscriptSegment[] {
     return [
       {
         text,
-        speaker: typeof speaker === "string" ? speaker : null,
+        speaker:
+          typeof speaker === "string"
+            ? formatTranscriptSpeakerLabel(speaker)
+            : null,
       },
     ];
   });
+}
+
+function formatTranscriptSpeakerLabel(speaker: string) {
+  const normalized = speaker.trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  const indexedMatch = normalized.match(/^(?:speaker|spk)[\s_-]*(\d+)$/i);
+  if (indexedMatch) {
+    return `სპიკერი ${Number(indexedMatch[1]) + 1}`;
+  }
+
+  const numberedMatch = normalized.match(/^speaker\s+(\d+)$/i);
+  if (numberedMatch) {
+    return `სპიკერი ${Number(numberedMatch[1]) + 1}`;
+  }
+
+  return normalized;
 }
 
 function getTranscriptText(item: AIHistoryItem) {
@@ -570,7 +622,7 @@ export function AudioWorkspace({
 
   const [isolationFile, setIsolationFile] = useState<LocalAudioFile | null>(null);
   const [transcriptionFile, setTranscriptionFile] = useState<LocalAudioFile | null>(null);
-  const [transcriptionLanguage, setTranscriptionLanguage] = useState("");
+  const [transcriptionLanguage, setTranscriptionLanguage] = useState("auto");
   const [transcriptionTagEvents, setTranscriptionTagEvents] = useState(true);
   const [transcriptionDiarize, setTranscriptionDiarize] = useState(true);
 
@@ -741,7 +793,7 @@ export function AudioWorkspace({
             params:
               tool === "transcription"
                 ? {
-                    language_code: transcriptionLanguage,
+                    language_code: transcriptionLanguage === "auto" ? "" : transcriptionLanguage,
                     tag_audio_events: transcriptionTagEvents,
                     diarize: transcriptionDiarize,
                   }
@@ -1678,11 +1730,7 @@ export function AudioWorkspace({
                           </div>
                         </div>
 
-                        <p className="mt-4 text-sm leading-6 text-[#A3A3A3]">
-                          {getToolConfig(itemTool).description}
-                        </p>
-
-                        <div className="mt-5 rounded-3xl border border-[#2A2A2A] bg-[#141414] p-4">
+                        <div className="mt-4 rounded-3xl border border-[#2A2A2A] bg-[#141414] p-4">
                           {isSucceeded && isTranscript ? (
                             <div className="space-y-4">
                               <div className="max-h-[24rem] overflow-y-auto rounded-3xl border border-[#2A2A2A] bg-[#0A0A0A] p-4">

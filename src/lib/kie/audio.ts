@@ -1,5 +1,4 @@
 import { ApiError } from "@/lib/api-error";
-import { logDebug } from "@/lib/logger";
 import { KieApiError } from "@/lib/kie/client";
 
 const KIE_API_BASE_URL = "https://api.kie.ai";
@@ -55,6 +54,10 @@ type KieStatusData = {
   response?: {
     resultUrls?: string[];
     result_urls?: string[];
+    resultObject?: unknown;
+    result?: unknown;
+    text?: string;
+    transcript?: string;
   };
   resultJson?: string;
 };
@@ -137,6 +140,13 @@ async function requestKieJson<T>(
   }
 
   if (!response.ok || data.code !== 200) {
+    console.error("[Kie Audio] requestKieJson error", {
+      path,
+      httpStatus: response.status,
+      responseCode: data.code,
+      msg: data.msg ?? data.message,
+      fullData: data,
+    });
     throw new KieApiError(data.msg ?? data.message ?? "Kie.ai მოთხოვნა ვერ შესრულდა", {
       statusCode: response.status,
       details: data,
@@ -272,11 +282,24 @@ export async function uploadAudioFileToKie(params: {
   };
 
   if (!response.ok || data.code !== 200 || !data.data?.downloadUrl) {
+    console.error("[Kie Audio] uploadAudioFileToKie failed", {
+      httpStatus: response.status,
+      responseCode: data.code,
+      msg: data.msg ?? data.message,
+      fileName: params.fileName,
+      uploadPath: params.uploadPath,
+      fullResponse: data,
+    });
     throw new KieApiError(data.msg ?? data.message ?? "ფაილის ატვირთვა ვერ შესრულდა", {
       statusCode: response.status,
       details: data,
     });
   }
+
+  console.log("[Kie Audio] uploadAudioFileToKie success", {
+    fileName: params.fileName,
+    downloadUrl: data.data.downloadUrl,
+  });
 
   return data.data.downloadUrl;
 }
@@ -285,7 +308,7 @@ export async function createAudioTask({
   model,
   input,
 }: CreateAudioTaskInput) {
-  logDebug("[Kie Audio] createTask", { model, input });
+  console.log("[Kie Audio] createTask →", { model, input });
 
   const response = await requestKieJson<KieCreateTaskData>(KIE_CREATE_TASK_PATH, {
     method: "POST",
@@ -372,60 +395,126 @@ function normalizeSpeaker(value: unknown) {
   return null;
 }
 
-function extractTranscription(data: KieStatusData) {
-  const rawJson = data.resultJson;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
-  if (!rawJson) {
+function parseJsonIfPossible(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return value;
+  }
+
+  if (
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"))
+  ) {
+    try {
+      return JSON.parse(trimmed) as unknown;
+    } catch {
+      return value;
+    }
+  }
+
+  return value;
+}
+
+function hasTranscriptionContent(value: unknown) {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.text === "string" ||
+    typeof value.transcript === "string" ||
+    typeof value.full_text === "string" ||
+    Array.isArray(value.words) ||
+    Array.isArray(value.segments) ||
+    Array.isArray(value.speakers)
+  );
+}
+
+function unwrapTranscriptionPayload(value: unknown): Record<string, unknown> | null {
+  let current = parseJsonIfPossible(value);
+
+  for (let depth = 0; depth < 5; depth += 1) {
+    if (!isRecord(current)) {
+      return null;
+    }
+
+    if (hasTranscriptionContent(current)) {
+      return current;
+    }
+
+    const nestedCandidate =
+      current.resultObject ??
+      current.result ??
+      current.data ??
+      current.response ??
+      current.output;
+
+    if (nestedCandidate === undefined) {
+      return current;
+    }
+
+    current = parseJsonIfPossible(nestedCandidate);
+  }
+
+  return isRecord(current) ? current : null;
+}
+
+function extractTranscription(data: KieStatusData) {
+  const parsed = unwrapTranscriptionPayload(
+    data.resultJson ?? data.response?.resultObject ?? data.response?.result ?? data.response
+  );
+
+  if (!parsed) {
     throw new KieApiError("ტრანსკრიფციის შედეგი ვერ მოიძებნა");
   }
 
-  const parsed = JSON.parse(rawJson) as {
-    text?: string;
-    transcript?: string;
-    full_text?: string;
-    segments?: Array<{
-      text?: string;
-      speaker?: string | number | null;
-      speaker_id?: string | number | null;
-    }>;
-    speakers?: Array<{
-      text?: string;
-      speaker?: string | number | null;
-    }>;
-    words?: Array<{
-      text?: string;
-      word?: string;
-      speaker?: string | number | null;
-      speaker_id?: string | number | null;
-    }>;
-  };
-
   const segments =
-    parsed.segments
+    (Array.isArray(parsed.segments) ? parsed.segments : undefined)
       ?.map((segment) => ({
-        speaker: normalizeSpeaker(segment.speaker ?? segment.speaker_id),
-        text: (segment.text ?? "").trim(),
+        speaker:
+          isRecord(segment)
+            ? normalizeSpeaker(segment.speaker ?? segment.speaker_id)
+            : null,
+        text:
+          isRecord(segment)
+            ? String(segment.text ?? segment.word ?? segment.content ?? "").trim()
+            : "",
       }))
       .filter((segment) => segment.text.length > 0) ?? [];
 
   const speakerEntries =
-    parsed.speakers
+    (Array.isArray(parsed.speakers) ? parsed.speakers : undefined)
       ?.map((segment) => ({
-        speaker: normalizeSpeaker(segment.speaker),
-        text: (segment.text ?? "").trim(),
+        speaker: isRecord(segment) ? normalizeSpeaker(segment.speaker) : null,
+        text:
+          isRecord(segment)
+            ? String(segment.text ?? segment.word ?? segment.content ?? "").trim()
+            : "",
       }))
       .filter((segment) => segment.text.length > 0) ?? [];
 
   const groupedWords = (() => {
-    if (!parsed.words?.length) {
+    if (!Array.isArray(parsed.words) || parsed.words.length === 0) {
       return [];
     }
 
     const items: Array<{ speaker: string | null; text: string }> = [];
 
     for (const word of parsed.words) {
+      if (!isRecord(word)) {
+        continue;
+      }
+
       const speaker = normalizeSpeaker(word.speaker ?? word.speaker_id);
-      const nextWord = (word.word ?? word.text ?? "").trim();
+      const nextWord = String(word.word ?? word.text ?? "").trim();
 
       if (!nextWord) {
         continue;
@@ -449,9 +538,9 @@ function extractTranscription(data: KieStatusData) {
       : groupedWords;
 
   const text =
-    parsed.text?.trim() ??
-    parsed.transcript?.trim() ??
-    parsed.full_text?.trim() ??
+    (typeof parsed.text === "string" ? parsed.text.trim() : "") ||
+    (typeof parsed.transcript === "string" ? parsed.transcript.trim() : "") ||
+    (typeof parsed.full_text === "string" ? parsed.full_text.trim() : "") ||
     normalizedSegments.map((segment) => segment.text).join("\n").trim();
 
   if (!text) {
@@ -510,6 +599,14 @@ export async function waitForAudioTaskResult(
     }
 
     if (state === "fail" || state === "failed" || state === "error") {
+      console.error("[Kie Audio] task failed", {
+        taskId,
+        tool,
+        state,
+        failMsg: details.failMsg,
+        errorMessage: details.errorMessage,
+        fullDetails: details,
+      });
       throw new KieApiError(
         details.failMsg ?? details.errorMessage ?? "აუდიო გენერაცია ვერ შესრულდა",
         { details }
