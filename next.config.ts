@@ -51,11 +51,18 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Authenticated API routes — never cache
+      // All API routes — never cache
       {
-        source: "/api/auth/(.*)",
+        source: "/api/(.*)",
         headers: [
-          { key: "Cache-Control", value: "private, no-store" },
+          { key: "Cache-Control", value: "no-store" },
+        ],
+      },
+      // HTML pages — always revalidate so users get fresh content after deployments
+      {
+        source: "/((?!_next/static|_next/image|fonts|api|.*\\.).*)",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, must-revalidate" },
         ],
       },
     ];

@@ -8,7 +8,12 @@ import {
   validationErrorResponse,
 } from "@/lib/api-error";
 import { requireAuth } from "@/lib/auth";
-import { persistToBunnyStorage, uploadToStorage } from "@/lib/bunny/storage";
+import {
+  BunnyStorageError,
+  persistToBunnyStorage,
+  uploadToStorage,
+  warnBunnyUnauthorizedOnce,
+} from "@/lib/bunny/storage";
 import { deductCreditsWithClient, hasEnoughCredits } from "@/lib/credits/manager";
 import { AUDIO_MODELS, type AudioToolId } from "@/lib/credits/pricing";
 import { refundKieGenerationCredits } from "@/lib/kie/callback";
@@ -18,6 +23,7 @@ import {
   waitForAudioTaskResult,
 } from "@/lib/kie/audio";
 import { KieApiError } from "@/lib/kie/client";
+import { translateSoundEffectPromptToEnglish } from "@/lib/google/translate";
 import { prisma } from "@/lib/prisma";
 
 const jsonEnvelopeSchema = z.object({
@@ -28,16 +34,75 @@ const jsonEnvelopeSchema = z.object({
 const soundEffectSchema = z.object({
   text: z.string().trim().min(1, "აღწერა აუცილებელია"),
   loop: z.boolean().default(false),
-  duration_seconds: z.number().min(0.5).max(22).default(11.25),
+  duration_seconds: z.number().min(0.5).max(22).default(11.2),
   prompt_influence: z.number().min(0).max(1).default(0.3),
   output_format: z.string().trim().default("mp3_44100_128"),
 });
+
+function normalizeSoundEffectParams(params: z.infer<typeof soundEffectSchema>) {
+  return {
+    ...params,
+    duration_seconds: Number((Math.round(params.duration_seconds * 10) / 10).toFixed(1)),
+  };
+}
 
 const transcriptionSchema = z.object({
   language_code: z.string().trim().default(""),
   tag_audio_events: z.boolean().default(true),
   diarize: z.boolean().default(true),
 });
+
+function isSoundEffectModerationError(error: unknown) {
+  const message =
+    error instanceof KieApiError
+      ? error.message.toLowerCase()
+      : error instanceof Error
+        ? error.message.toLowerCase()
+        : String(error).toLowerCase();
+
+  return (
+    message.includes("request_blocked_due_to_moderation") ||
+    message.includes("violate our terms of service") ||
+    message.includes("sound generation may violate")
+  );
+}
+
+function buildSoundEffectRetryText(text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  const normalized = trimmed.toLowerCase();
+  if (
+    normalized.includes("ხმა") ||
+    normalized.includes("sound") ||
+    normalized.includes("effect") ||
+    normalized.includes("ეფექტ")
+  ) {
+    return trimmed;
+  }
+
+  const containsGeorgian = /[\u10A0-\u10FF]/.test(trimmed);
+  return containsGeorgian ? `${trimmed} ხმა` : `${trimmed} sound effect`;
+}
+
+async function prepareSoundEffectInput(params: z.infer<typeof soundEffectSchema>) {
+  let translatedText = params.text;
+
+  try {
+    translatedText = await translateSoundEffectPromptToEnglish(params.text);
+  } catch (error) {
+    console.warn("POST /api/ai/audio/generate sfx translation fallback", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  return {
+    ...params,
+    text: translatedText,
+  };
+}
 
 function getPublicAudioFailureMessage(
   tool: "sfx" | "isolation" | "transcription" | null
@@ -98,6 +163,10 @@ function getAudioRouteErrorMessage(
   if (error instanceof KieApiError) {
     const message = error.message.toLowerCase();
 
+    if (tool === "sfx" && isSoundEffectModerationError(error)) {
+      return "ეს მოთხოვნა ხმოვანი ეფექტების უსაფრთხოების ფილტრმა დაბლოკა. სცადეთ უფრო ნეიტრალური ან უფრო კონკრეტული აღწერა.";
+    }
+
     if (
       error.statusCode === 402 ||
       message.includes("insufficient") ||
@@ -151,12 +220,12 @@ function getAudioRouteErrorMessage(
     return `მონაცემთა ბაზის შეცდომა: ${error.code}`;
   }
 
-  if (error instanceof Error) {
-    return error.message;
-  }
+    if (error instanceof Error) {
+      return getPublicAudioFailureMessage(tool);
+    }
 
-  return "დროებითი შეფერხება. გთხოვთ სცადოთ მოგვიანებით";
-}
+    return "დროებითი შეფერხება. გთხოვთ სცადოთ მოგვიანებით";
+  }
 
 function getAudioModelId(tool: "sfx" | "isolation" | "transcription"): AudioToolId {
   switch (tool) {
@@ -312,7 +381,7 @@ export async function POST(request: NextRequest) {
             params: parsed.error.issues[0]?.message ?? "მონაცემები არასწორია",
           });
         }
-        parsedParams = parsed.data;
+        parsedParams = normalizeSoundEffectParams(parsed.data);
         break;
       }
       case "isolation": {
@@ -389,9 +458,19 @@ export async function POST(request: NextRequest) {
     try {
       let input: Record<string, unknown>;
       let sourceUrl: string | null = null;
+      let soundEffectRetryInput: Record<string, unknown> | null = null;
 
       if (payload.tool === "sfx") {
-        input = parsedParams as z.infer<typeof soundEffectSchema>;
+        const sfxParams = parsedParams as z.infer<typeof soundEffectSchema>;
+        input = await prepareSoundEffectInput(sfxParams);
+        const retryText = buildSoundEffectRetryText(input.text as string);
+        soundEffectRetryInput =
+          retryText !== input.text
+            ? {
+                ...input,
+                text: retryText,
+              }
+            : null;
       } else {
         const uploadFileName = normalizeUploadFileName(file!.name);
         const uploadUrl = await uploadAudioFileToKie({
@@ -403,15 +482,24 @@ export async function POST(request: NextRequest) {
 
         sourceUrl = uploadUrl;
 
-        input =
-          payload.tool === "isolation"
-            ? { audio_url: uploadUrl }
-            : {
-                audio_url: uploadUrl,
-                language_code: (parsedParams as z.infer<typeof transcriptionSchema>).language_code,
-                tag_audio_events: (parsedParams as z.infer<typeof transcriptionSchema>).tag_audio_events,
-                diarize: (parsedParams as z.infer<typeof transcriptionSchema>).diarize,
-              };
+        if (payload.tool === "isolation") {
+          input = { audio_url: uploadUrl };
+        } else {
+          const tp = parsedParams as z.infer<typeof transcriptionSchema>;
+          input = {
+            audio_url: uploadUrl,
+            tag_audio_events: tp.tag_audio_events,
+            diarize: tp.diarize,
+            // Omit language_code when empty — ElevenLabs API prefers missing over ""
+            ...(tp.language_code ? { language_code: tp.language_code } : {}),
+          };
+          console.log("[Transcription] task input →", {
+            audio_url: uploadUrl,
+            language_code: tp.language_code || "(auto-detect)",
+            tag_audio_events: tp.tag_audio_events,
+            diarize: tp.diarize,
+          });
+        }
       }
 
       const runAudioTask = async (taskInput: Record<string, unknown>) => {
@@ -429,6 +517,17 @@ export async function POST(request: NextRequest) {
         taskResult = await runAudioTask(input);
       } catch (error) {
         if (
+          payload.tool === "sfx" &&
+          soundEffectRetryInput &&
+          isSoundEffectModerationError(error)
+        ) {
+          console.warn("POST /api/ai/audio/generate sfx retrying with safer wording", {
+            originalText: (input.text as string | undefined) ?? null,
+            retryText: soundEffectRetryInput.text,
+          });
+
+          taskResult = await runAudioTask(soundEffectRetryInput);
+        } else if (
           payload.tool === "transcription" &&
           input.language_code &&
           typeof sourceUrl === "string" &&
@@ -444,7 +543,7 @@ export async function POST(request: NextRequest) {
 
           taskResult = await runAudioTask({
             audio_url: sourceUrl,
-            language_code: "",
+            // Omit language_code entirely for auto-detect retry
             tag_audio_events: input.tag_audio_events,
             diarize: input.diarize,
           });
@@ -497,7 +596,14 @@ export async function POST(request: NextRequest) {
           `generations/transcripts/${auth.userId}/${generation.id}.txt`
         );
       } catch (storageError) {
-        console.warn("POST /api/ai/audio/generate transcript storage fallback", storageError);
+        if (storageError instanceof BunnyStorageError && storageError.statusCode === 401) {
+          warnBunnyUnauthorizedOnce("audio transcription transcript fallback");
+        } else {
+          console.warn(
+            "POST /api/ai/audio/generate transcript storage fallback",
+            storageError
+          );
+        }
       }
 
       try {
@@ -544,6 +650,16 @@ export async function POST(request: NextRequest) {
             ? error.message
             : "აუდიო გენერაცია ვერ შესრულდა";
 
+      console.error("[Audio Generate] inner error", {
+        tool: payload.tool,
+        errorType: error instanceof KieApiError ? "KieApiError" : error instanceof Error ? error.constructor.name : typeof error,
+        message,
+        statusCode: error instanceof KieApiError ? error.statusCode : undefined,
+        details: error instanceof KieApiError ? error.details : undefined,
+      });
+
+      const publicMessage = getAudioRouteErrorMessage(error, payload.tool);
+
       await refundKieGenerationCredits(
         {
           userId: auth.userId,
@@ -551,7 +667,7 @@ export async function POST(request: NextRequest) {
           amount: generation.creditsCost,
           modelUsed: modelId,
         },
-        message
+        publicMessage
       );
 
       throw error;
@@ -569,6 +685,13 @@ export async function POST(request: NextRequest) {
       const rawStatusCode = error.statusCode ?? 500;
       const statusCode =
         rawStatusCode >= 400 && rawStatusCode < 600 ? rawStatusCode : 500;
+
+      console.error("╔══ KIE.AI ERROR ══════════════════════════════════╗");
+      console.error("║ tool:", requestedTool);
+      console.error("║ message:", error.message);
+      console.error("║ statusCode:", error.statusCode);
+      console.error("║ details:", JSON.stringify(error.details, null, 2));
+      console.error("╚══════════════════════════════════════════════════╝");
 
       return handleApiError(
         new ApiError(statusCode, mappedMessage),

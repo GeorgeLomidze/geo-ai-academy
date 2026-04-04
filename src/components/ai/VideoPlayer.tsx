@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react"
 import { Copy, Download, Info, Loader2, Play, Sparkles } from "lucide-react"
+import { ClientDateText } from "@/components/ai/ClientDateText"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -16,6 +17,29 @@ interface VideoPlayerProps {
   item: AIHistoryItem | null
   onDownload: (item: AIHistoryItem) => void
   onCopyLink: (item: AIHistoryItem) => void
+}
+
+const videoCardDateFormatter = new Intl.DateTimeFormat("ka-GE", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+})
+
+const videoDetailsDateFormatter = new Intl.DateTimeFormat("ka-GE", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+})
+
+function formatVideoCardDate(value: string) {
+  return videoCardDateFormatter.format(new Date(value))
+}
+
+function formatVideoDetailsDate(value: string) {
+  return videoDetailsDateFormatter.format(new Date(value))
 }
 
 export function VideoPlayer({
@@ -148,7 +172,7 @@ export function VideoPlayer({
 
               <div className="absolute left-4 top-4 flex items-center gap-2">
                 <span className="rounded-full border border-white/10 bg-black/80 px-3 py-1 text-xs text-white">
-                  {new Date(item.createdAt).toLocaleDateString("ka-GE")}
+                  <ClientDateText value={item.createdAt} format={formatVideoCardDate} />
                 </span>
               </div>
             </div>
@@ -161,7 +185,7 @@ export function VideoPlayer({
           <DialogHeader className="text-left">
             <DialogTitle>{item.modelName}</DialogTitle>
             <DialogDescription className="text-brand-muted">
-              {new Date(item.createdAt).toLocaleString("ka-GE")}
+              <ClientDateText value={item.createdAt} format={formatVideoDetailsDate} />
             </DialogDescription>
           </DialogHeader>
 

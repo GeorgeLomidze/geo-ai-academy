@@ -42,6 +42,13 @@ const generateSchema = z.object({
     .optional(),
   endFrameUrl: z.string().url("ბოლო კადრის მისამართი არასწორია").optional(),
   videoUrl: z.string().url("ვიდეოს მისამართი არასწორია").optional(),
+  /** Seedance 2.0: up to 9 multimodal reference image URLs */
+  referenceImageUrls: z
+    .array(z.string().url("სარეფერენო სურათის მისამართი არასწორია"))
+    .max(9)
+    .optional(),
+  /** Seedance 2.0: reference audio URL */
+  referenceAudioUrl: z.string().url("სარეფერენო აუდიოს მისამართი არასწორია").optional(),
   options: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -192,7 +199,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const { model, type, prompt, imageUrl, imageUrls, endFrameUrl, videoUrl, options } = parsed.data;
+    const { model, type, prompt, imageUrl, imageUrls, endFrameUrl, videoUrl, referenceImageUrls, referenceAudioUrl, options } = parsed.data;
     const normalizedImageUrls = Array.from(
       new Set(
         (imageUrls ?? []).concat(imageUrl ? [imageUrl] : []).filter(Boolean)
@@ -210,6 +217,11 @@ export async function POST(request: NextRequest) {
       (effectiveModel === "veo31" || effectiveModel === "veo31fast") &&
       Boolean(primaryImageUrl || endFrameUrl);
     const motionControlReady = effectiveModel === "kling3_motion" && Boolean(primaryImageUrl);
+    const isSeedance2 = effectiveModel === "seedance2" || effectiveModel === "seedance2fast";
+    const seedance2HasMedia =
+      isSeedance2 &&
+      (Boolean(primaryImageUrl || endFrameUrl || videoUrl || referenceAudioUrl) ||
+        (referenceImageUrls && referenceImageUrls.length > 0));
 
     if (!modelMetadata) {
       throw new ApiError(400, "არჩეული მოდელი არ მოიძებნა");
@@ -219,7 +231,7 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, "არჩეული მოდელი ამ ტიპს არ შეესაბამება");
     }
 
-    if (!normalizedPrompt && !(type === "VIDEO" && (klingHasFrames || motionControlReady))) {
+    if (!normalizedPrompt && !(type === "VIDEO" && (klingHasFrames || motionControlReady || seedance2HasMedia))) {
       throw new ApiError(400, "პრომპტი აუცილებელია");
     }
 
@@ -385,6 +397,22 @@ export async function POST(request: NextRequest) {
           task = await generateVideo(effectiveModel, normalizedPrompt, {
             ...kieOptions,
             input: veoInput,
+          });
+        // Seedance 2.0 / 2.0 Fast: multimodal reference inputs
+        } else if (isSeedance2) {
+          const seedanceInput: Record<string, unknown> = { ...(kieOptions.input ?? {}) };
+          if (primaryImageUrl) seedanceInput.first_frame_url = primaryImageUrl;
+          if (endFrameUrl) seedanceInput.last_frame_url = endFrameUrl;
+          if (referenceImageUrls && referenceImageUrls.length > 0) {
+            seedanceInput.reference_image_urls = referenceImageUrls;
+          }
+          if (videoUrl) seedanceInput.reference_video_urls = [videoUrl];
+          if (referenceAudioUrl) seedanceInput.reference_audio_urls = [referenceAudioUrl];
+          // API requires prompt (3-2500 chars); use fallback when media present but prompt omitted
+          const seedancePrompt = normalizedPrompt || (seedance2HasMedia ? "generate video" : "");
+          task = await generateVideo(effectiveModel, seedancePrompt, {
+            ...kieOptions,
+            input: seedanceInput,
           });
         // Kling Motion Control: input_urls (character) + video_urls (reference video)
         } else if (effectiveModel === "kling3_motion" && primaryImageUrl) {

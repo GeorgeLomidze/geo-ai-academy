@@ -263,6 +263,16 @@ const KIE_MODELS = {
     taskMode: "text-to-video",
     kieModel: "bytedance/seedance-1.5-pro",
   },
+  seedance2: {
+    taskType: "video",
+    taskMode: "text-to-video",
+    kieModel: "bytedance/seedance-2",
+  },
+  seedance2fast: {
+    taskType: "video",
+    taskMode: "text-to-video",
+    kieModel: "bytedance/seedance-2-fast",
+  },
   wan: {
     taskType: "video",
     taskMode: "text-to-video",
@@ -494,6 +504,33 @@ function normalizeVideoInputOptions(
         else normalized.duration = 12;
       }
       if (audioEnabled) normalized.generate_audio = true;
+      break;
+    }
+
+    case "seedance2":
+    case "seedance2fast": {
+      // Remove camelCase UI option keys spread from rest — use snake_case API names instead
+      delete normalized.webSearch;
+      delete normalized.returnLastFrame;
+      delete normalized.generateAudio;
+      if (aspectRatio) normalized.aspect_ratio = aspectRatio;
+      if (resolution) normalized.resolution = resolution;
+      // Seedance 2.0 accepts integer seconds 4-15
+      if (durationStr) {
+        const sec = Math.max(4, Math.min(15, Number(durationStr)));
+        normalized.duration = Number.isNaN(sec) ? 8 : sec;
+      }
+      // generate_audio defaults to true; only send false to disable
+      const generateAudio = coerceBooleanOption(rest.generateAudio);
+      if (typeof generateAudio === "boolean") {
+        normalized.generate_audio = generateAudio;
+      }
+      // web_search is required by the API
+      const webSearch = coerceBooleanOption(rest.webSearch);
+      normalized.web_search = webSearch ?? false;
+      // return_last_frame
+      const returnLastFrame = coerceBooleanOption(rest.returnLastFrame);
+      if (returnLastFrame) normalized.return_last_frame = true;
       break;
     }
 

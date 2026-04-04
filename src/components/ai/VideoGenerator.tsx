@@ -30,6 +30,10 @@ type GenerationRequest = {
   startFrameUrl: string | null
   endFrameUrl: string | null
   referenceVideoUrl: string | null
+  referenceImageUrls: string[]
+  referenceAudioUrl: string | null
+  returnLastFrame: boolean
+  webSearch: boolean
   durationSeconds: number
   aspectRatio: string
   resolution: string
@@ -58,6 +62,10 @@ export function VideoGenerator({
   const [startFrameUrl, setStartFrameUrl] = useState<string | null>(null)
   const [endFrameUrl, setEndFrameUrl] = useState<string | null>(null)
   const [referenceVideoUrl, setReferenceVideoUrl] = useState<string | null>(null)
+  const [referenceImageUrls, setReferenceImageUrls] = useState<string[]>([])
+  const [referenceAudioUrl, setReferenceAudioUrl] = useState<string | null>(null)
+  const [returnLastFrame, setReturnLastFrame] = useState(false)
+  const [webSearch, setWebSearch] = useState(false)
   const [audio, setAudio] = useState(false)
   const [multiShot, setMultiShot] = useState(false)
   const [durationSeconds, setDurationSeconds] = useState(
@@ -79,10 +87,15 @@ export function VideoGenerator({
 
   const isMotionControl = selectedModel === "kling3_motion"
   const isKling3 = selectedModel === "kling3"
+  const isSeedance2 = selectedModel === "seedance2" || selectedModel === "seedance2fast"
   const hasKlingFrames = Boolean(startFrameUrl || endFrameUrl)
-  // Prompt is optional for: Kling 3 with frames, or Motion Control with both uploads
+  const seedance2HasMedia = isSeedance2 && (
+    referenceImageUrls.length > 0 ||
+    Boolean(referenceVideoUrl || referenceAudioUrl || startFrameUrl || endFrameUrl)
+  )
+  // Prompt is optional for: Kling 3 with frames, or Motion Control with both uploads, or Seedance 2 with media
   const motionControlReady = isMotionControl && Boolean(startFrameUrl) && Boolean(referenceVideoUrl)
-  const requiresPrompt = !motionControlReady && (!isKling3 || !hasKlingFrames)
+  const requiresPrompt = !motionControlReady && (!isKling3 || !hasKlingFrames) && !seedance2HasMedia
 
   const canGenerate =
     (!requiresPrompt || Boolean(prompt.trim())) &&
@@ -135,6 +148,22 @@ export function VideoGenerator({
 
     if (meta.inputMode !== "video" && meta.id !== "kling3_motion") {
       setReferenceVideoUrl(null)
+    }
+
+    if (!meta.supportsReferenceImages) {
+      setReferenceImageUrls([])
+    }
+
+    if (!meta.supportsReferenceAudio) {
+      setReferenceAudioUrl(null)
+    }
+
+    if (!meta.supportsReturnLastFrame) {
+      setReturnLastFrame(false)
+    }
+
+    if (!meta.supportsWebSearch) {
+      setWebSearch(false)
     }
   }, [aspectRatio, resolution, selectedModelMeta])
 
@@ -191,13 +220,23 @@ export function VideoGenerator({
     return () => window.clearInterval(intervalId)
   }, [pendingGenerations])
 
+  // Translate Georgian @mention labels to API @Image references
+  function translateMentions(text: string): string {
+    return text.replace(/@სურათი(\d+)/g, (_match, n: string) => `@Image${n}`)
+  }
+
   async function runGeneration(config: GenerationRequest) {
     const model = getModelEntry(config.model)
     const coins = getCoins(config.model, config.resolution, config.durationSeconds)
     const hasFrames = Boolean(config.startFrameUrl || config.endFrameUrl)
     const isMotion = config.model === "kling3_motion"
+    const isSeedance2Gen = config.model === "seedance2" || config.model === "seedance2fast"
+    const seedance2Media = isSeedance2Gen && (
+      config.referenceImageUrls.length > 0 ||
+      Boolean(config.referenceVideoUrl || config.referenceAudioUrl || config.startFrameUrl || config.endFrameUrl)
+    )
     const motionReady = isMotion && Boolean(config.startFrameUrl) && Boolean(config.referenceVideoUrl)
-    const promptRequired = !motionReady && (config.model !== "kling3" || !hasFrames)
+    const promptRequired = !motionReady && (config.model !== "kling3" || !hasFrames) && !seedance2Media
 
     if (promptRequired && !config.prompt.trim()) {
       setError("პრომპტი აუცილებელია")
@@ -231,6 +270,11 @@ export function VideoGenerator({
       const supportsImageInput =
         model.inputMode === "image" || Boolean(model.supportsFirstLastFrames)
 
+      const isSeedance2Body = config.model === "seedance2" || config.model === "seedance2fast"
+      const translatedPrompt = isSeedance2Body
+        ? translateMentions(config.prompt)
+        : config.prompt
+
       const response = await fetch("/api/ai/generate", {
         method: "POST",
         headers: {
@@ -239,21 +283,33 @@ export function VideoGenerator({
         body: JSON.stringify({
           model: config.model,
           type: "VIDEO",
-          prompt: config.prompt,
+          prompt: translatedPrompt,
           imageUrl: supportsImageInput ? config.startFrameUrl ?? undefined : undefined,
           endFrameUrl: model.supportsFirstLastFrames
             ? config.endFrameUrl ?? undefined
             : undefined,
           videoUrl:
-            model.inputMode === "video" || config.model === "kling3_motion"
+            model.inputMode === "video" || config.model === "kling3_motion" || isSeedance2Body
               ? config.referenceVideoUrl ?? undefined
               : undefined,
+          ...(isSeedance2Body && config.referenceImageUrls.length > 0
+            ? { referenceImageUrls: config.referenceImageUrls }
+            : {}),
+          ...(isSeedance2Body && config.referenceAudioUrl
+            ? { referenceAudioUrl: config.referenceAudioUrl }
+            : {}),
           options: {
             duration: `${config.durationSeconds}s`,
             aspectRatio: config.aspectRatio,
             resolution: config.resolution,
             audio: config.audio,
             multiShot: config.multiShot,
+            ...(isSeedance2Body
+              ? {
+                  webSearch: config.webSearch,
+                  generateAudio: config.audio,
+                }
+              : {}),
           },
         }),
       })
@@ -301,6 +357,10 @@ export function VideoGenerator({
       startFrameUrl,
       endFrameUrl,
       referenceVideoUrl,
+      referenceImageUrls,
+      referenceAudioUrl,
+      returnLastFrame,
+      webSearch,
       durationSeconds,
       aspectRatio,
       resolution,
@@ -318,6 +378,10 @@ export function VideoGenerator({
     setStartFrameUrl(item.sourceUrl)
     setEndFrameUrl(null)
     setReferenceVideoUrl(null)
+    setReferenceImageUrls([])
+    setReferenceAudioUrl(null)
+    setReturnLastFrame(false)
+    setWebSearch(false)
     setAudio(false)
     setMultiShot(false)
     setDurationSeconds(
@@ -340,6 +404,10 @@ export function VideoGenerator({
       startFrameUrl: item.sourceUrl,
       endFrameUrl: null,
       referenceVideoUrl: null,
+      referenceImageUrls: [],
+      referenceAudioUrl: null,
+      returnLastFrame: false,
+      webSearch: false,
       durationSeconds:
         Number.parseInt(
           getNormalizedVideoDuration(model.id, model.defaultDuration) ?? model.defaultDuration,
@@ -376,6 +444,14 @@ export function VideoGenerator({
               onEndFrameChange={setEndFrameUrl}
               referenceVideoUrl={referenceVideoUrl}
               onReferenceVideoChange={setReferenceVideoUrl}
+              referenceImageUrls={referenceImageUrls}
+              onReferenceImageUrlsChange={setReferenceImageUrls}
+              referenceAudioUrl={referenceAudioUrl}
+              onReferenceAudioUrlChange={setReferenceAudioUrl}
+              returnLastFrame={returnLastFrame}
+              onReturnLastFrameChange={setReturnLastFrame}
+              webSearch={webSearch}
+              onWebSearchChange={setWebSearch}
               audio={audio}
               onAudioChange={setAudio}
               multiShot={multiShot}

@@ -19,6 +19,7 @@ import {
   Waves,
 } from "lucide-react";
 import { AudioPlayer } from "@/components/ai/AudioPlayer";
+import { ClientDateText } from "@/components/ai/ClientDateText";
 import type { AIHistoryItem } from "@/components/ai/types";
 import {
   AlertDialog,
@@ -92,42 +93,36 @@ const TOOL_ITEMS: Array<{
   key: ToolKey;
   title: string;
   icon: LucideIcon;
-  description: string;
   cost: number;
 }> = [
   {
     key: "tts",
     title: "წაკითხვა",
     icon: Volume2,
-    description: "ტექსტის ხმამაღლა წაკითხვა არჩეული ხმით",
     cost: 3,
   },
   {
     key: "dialogue",
     title: "დიალოგი",
     icon: MessageCircleMore,
-    description: "ორ სპიკერამდე ხმოვანი დიალოგის აწყობა",
     cost: 4,
   },
   {
     key: "sfx",
     title: "ხმოვანი ეფექტები",
     icon: Music2,
-    description: "სცენის ან ეფექტის ხმოვანი ატმოსფერო",
     cost: 8,
   },
   {
     key: "isolation",
     title: "ხმის იზოლაცია",
     icon: Waves,
-    description: "ხმიდან ფონის მოშორება და ვოკალის გაწმენდა",
     cost: 9,
   },
   {
     key: "transcription",
     title: "ტრანსკრიფცია",
     icon: FileAudio,
-    description: "აუდიოს ტექსტად გადაყვანა და სპიკერების გაყოფა",
     cost: 12,
   },
 ];
@@ -249,7 +244,22 @@ function getSafeClientErrorMessage(
     normalized.includes("no message available") ||
     normalized.includes("please try again later") ||
     normalized.includes("kie.ai") ||
+    normalized.includes("headers:") ||
+    normalized.includes("body:") ||
+    normalized.includes("status_code") ||
+    normalized.includes("request_id") ||
+    normalized.includes("access-control-allow") ||
+    normalized.includes("content-type") ||
+    normalized.includes("strict-transport-security") ||
     normalized.includes("language_code") ||
+    normalized.includes("sound effect generation failed") ||
+    normalized.includes("request_blocked_due_to_moderation") ||
+    normalized.includes("authorization_error") ||
+    (message.length > 180 &&
+      (normalized.includes("{") ||
+        normalized.includes("}") ||
+        normalized.includes("[") ||
+        normalized.includes("]"))) ||
     /^[\x00-\x7f\s.,:;!?'"\-_/()[\]]+$/.test(message)
   ) {
     return fallbackMessage;
@@ -559,12 +569,10 @@ function SliderField({
 
 function Panel({
   title,
-  description,
   children,
   footer,
 }: {
   title: string;
-  description?: string;
   children: ReactNode;
   footer?: ReactNode;
 }) {
@@ -572,9 +580,6 @@ function Panel({
     <section className="rounded-[28px] border border-[#2A2A2A] bg-[#1E1E1E] p-5 sm:p-6">
       <div className="mb-5">
         <h2 className="font-display text-xl text-white">{title}</h2>
-        {description ? (
-          <p className="mt-2 text-sm leading-6 text-[#A3A3A3]">{description}</p>
-        ) : null}
       </div>
 
       {children}
@@ -616,7 +621,7 @@ export function AudioWorkspace({
 
   const [sfxText, setSfxText] = useState("");
   const [sfxLoop, setSfxLoop] = useState(false);
-  const [sfxDuration, setSfxDuration] = useState(11.25);
+  const [sfxDuration, setSfxDuration] = useState(11.2);
   const [sfxInfluence, setSfxInfluence] = useState(0.3);
   const [sfxFormat, setSfxFormat] = useState("mp3_44100_128");
 
@@ -1142,7 +1147,6 @@ export function AudioWorkspace({
       return (
         <Panel
           title="ტექსტიდან აუდიო"
-          description="სტილის ინსტრუქციით მართეთ ტონი, ტემპი და ხმის ხასიათი."
           footer={
             <div className="flex flex-wrap items-center justify-between gap-3">
               <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
@@ -1212,7 +1216,6 @@ export function AudioWorkspace({
       return (
         <Panel
           title="მრავალსპიკერიანი დიალოგი"
-          description="ამ ეტაპზე დიალოგი ორ სპიკერს უჭერს მხარს. მარცხნივ ააწყვეთ სცენარი, მარჯვნივ დააყენეთ ხმები."
           footer={
             <div className="flex flex-wrap items-center justify-between gap-3">
               <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
@@ -1399,7 +1402,6 @@ export function AudioWorkspace({
       return (
         <Panel
           title="ხმოვანი ეფექტები"
-          description="მოკლე ტექსტური აღწერით შექმენი გარემოს ხმა, ეფექტი ან ატმოსფერო."
           footer={
             <div className="flex flex-wrap items-center justify-between gap-3">
               <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
@@ -1474,7 +1476,6 @@ export function AudioWorkspace({
       return (
         <Panel
           title="ხმის იზოლაცია"
-          description="ატვირთე აუდიო ფაილი და მიიღე გაწმენდილი ხმა ფონური შრის გარეშე."
           footer={
             <div className="flex flex-wrap items-center justify-between gap-3">
               <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
@@ -1509,7 +1510,6 @@ export function AudioWorkspace({
     return (
       <Panel
         title="ტრანსკრიფცია"
-        description="აუდიოდან მიიღე ტექსტი, საჭიროების შემთხვევაში სპიკერების გამოყოფით."
         footer={
           <div className="flex flex-wrap items-center justify-between gap-3">
             <a href="#audio-history" className="text-sm text-brand-primary hover:text-brand-primary-hover">
@@ -1667,9 +1667,6 @@ export function AudioWorkspace({
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="font-display text-2xl text-white">ისტორია</h2>
-                  <p className="mt-2 text-sm text-[#8A8A8A]">
-                    მიმდინარე ინსტრუმენტის ბოლო გენერაციები
-                  </p>
                 </div>
               </div>
 
@@ -1686,6 +1683,10 @@ export function AudioWorkspace({
                     const isProcessing =
                       item.status === "PENDING" || item.status === "PROCESSING";
                     const isDeleting = deletePending && deleteTarget?.id === item.id;
+                    const safeItemErrorMessage = getSafeClientErrorMessage(
+                      item.errorMessage,
+                      getToolFailureMessage(itemTool)
+                    );
 
                     return (
                       <article
@@ -1694,7 +1695,9 @@ export function AudioWorkspace({
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <p className="text-xs text-[#8A8A8A]">
-                            {formatDate(item.createdAt)} · ✦ {item.creditsUsed}
+                            <ClientDateText value={item.createdAt} format={formatDate} />
+                            {" · ✦ "}
+                            {item.creditsUsed}
                           </p>
                           <div className="flex flex-wrap items-center gap-2">
                             <span
@@ -1753,16 +1756,13 @@ export function AudioWorkspace({
                                     ))
                                   ) : (
                                     <p className="whitespace-pre-wrap text-sm leading-7 text-[#D1D1D1]">
-                                      {transcriptText || "ტრანსკრიფცია მზადაა"}
+                                      {transcriptText}
                                     </p>
                                   )}
                                 </div>
                               </div>
 
-                              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#2A2A2A] pt-1">
-                                <p className="text-xs text-[#8A8A8A]">
-                                  ტექსტის კოპირება ან ფაილად ჩამოტვირთვა
-                                </p>
+                              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#2A2A2A] pt-1">
                                 <div className="flex flex-wrap items-center gap-3">
                                   <Button
                                     type="button"
@@ -1801,7 +1801,7 @@ export function AudioWorkspace({
                             <div className="flex min-h-44 flex-col items-center justify-center text-center">
                               <p className="text-lg text-white">გენერაცია ვერ შესრულდა</p>
                               <p className="mt-2 max-w-md text-sm leading-6 text-[#8A8A8A]">
-                                {item.errorMessage ?? "სცადე თავიდან ან შეცვალე პარამეტრები."}
+                                {safeItemErrorMessage}
                               </p>
                             </div>
                           ) : (
@@ -1811,14 +1811,6 @@ export function AudioWorkspace({
                           )}
                         </div>
 
-                        <div className="mt-4 rounded-3xl border border-[#2A2A2A] bg-[#141414] px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.12em] text-[#8A8A8A]">
-                            აღწერა
-                          </p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#D1D1D1]">
-                            {getHistoryPreview(item)}
-                          </p>
-                        </div>
                       </article>
                     );
                   })}

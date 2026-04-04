@@ -50,7 +50,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <SiteLoader />
         <div id="site-content">{children}</div>
       </body>
